@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "=BAN Keyword Highlighter ",
+  "version": "1.0",
+  "description": "Live keyword highlighting works for HostHavoc Web Console",
+
+  "permissions": [
+    "storage",
+    "scripting"
+  ],
+
+  "host_permissions": [
+    "https://gamepanel.hosthavoc.com/*"
+  ],
+
+  "action": {
+    "default_popup": "popup.html"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://gamepanel.hosthavoc.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "all_frames": true,
+      "run_at": "document_start"
+    }
+  ]
+}

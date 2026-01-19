@@ -1,0 +1,1 @@
+# -BAN-Keyword-Highlight-Extension
