@@ -4,9 +4,25 @@
   let observer = null; 
   let KEYWORDS = [];
   let SECONDARYWORDS = [];
+  let COLORS = { highlight: "#ff0033", secondary: "#ffff33", steamidColor: "#ff8c00" }; // Default fallbacks
   let enabled = true;
   let scanTimeout;
-
+  
+  function updateStyles(primary, secondary, idcolor) {
+    let styleEl = document.getElementById("hh-dynamic-styles");
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = "hh-dynamic-styles";
+      document.head.appendChild(styleEl);
+    }
+    // Update CSS variables for the highlights
+    styleEl.textContent = `
+      .hh-highlight { background-color: ${primary} !important; color: black !important; }
+      .hh-secondaryhighlight { background-color: ${secondary} !important; color: black !important; }
+      .hh-idhighlight { background-color: ${idcolor}; border-bottom: 1px dotted #888; }
+    `;
+  }
+  
   function debouncedScan(node) {
     clearTimeout(scanTimeout);
     scanTimeout = setTimeout(() => {
@@ -19,13 +35,25 @@
 
     // 1. Storage Retrieval (Restoring state from 2026 session storage)
     const [sync, session] = await Promise.all([
-      chrome.storage.sync.get(["keywords", "enabled", "secondarykeywords"]),
+      chrome.storage.sync.get([
+        "keywords", 
+        "enabled", 
+        "secondarykeywords", 
+        "primaryColor",
+        "secondaryColor",
+		"steamidColor"
+      ]),
       chrome.storage.session.get("savedEnabledState")
     ]);
   
     KEYWORDS = sync.keywords?.length ? sync.keywords : ["motorhome", "started", "finished"];
     SECONDARYWORDS = sync.secondarykeywords?.length ? sync.secondarykeywords : [];
-  
+	COLORS.primary = sync.primaryColor || "#ffff00";
+    COLORS.secondary = sync.secondaryColor || "#00ff00";
+	COLORS.steamidColor = sync.steamidColor || "#ff8c00";
+	
+	updateStyles(COLORS.primary, COLORS.secondary, COLORS.steamidColor);
+	
     enabled = session.savedEnabledState !== undefined ? session.savedEnabledState : (sync.enabled ?? true);
  
     console.log("[Detector] Settings Loaded. Keywords:", KEYWORDS);
@@ -258,6 +286,12 @@
         if (observer) observer.disconnect();
         // removeAllHighlights();
       }
+    }
+	if (msg.action === "updateColors") {
+        COLORS.primary = msg.primaryColor;
+        COLORS.secondary = msg.secondaryColor;
+        COLORS.steamidColor = msg.steamidColor;
+        updateStyles(COLORS.primary, COLORS.secondary, COLORS.steamidColor);
     }
   });
 

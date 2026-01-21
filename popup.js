@@ -1,34 +1,44 @@
 const textarea = document.getElementById("keywords");
 const secondarytextarea = document.getElementById("secondarykeywords");
+const primaryColorInput = document.getElementById("primaryColor");
+const secondaryColorInput = document.getElementById("secondaryColor");
+const steamidColorInput = document.getElementById("steamidColor");
 const saveBtn = document.getElementById("save");
 const toggleBtn = document.getElementById("toggle");
 
 let enabled = true;
 
-// Load keywords directly from storage on popup open
-function loadKeywords() {
-  chrome.storage.sync.get(["keywords", "enabled", "secondarykeywords"], data => {
+// Load keywords and colors from storage
+function loadSettings() {
+  chrome.storage.sync.get(["keywords", "secondarykeywords", "primaryColor", "secondaryColor", "steamidColor", "enabled"], data => {
     textarea.value = (data.keywords || []).join("\n");
+    secondarytextarea.value = (data.secondarykeywords || []).join("\n");
+    
+    // Set colors (with defaults if none saved)
+    primaryColorInput.value = data.primaryColor || "#ffff00";
+    secondaryColorInput.value = data.secondaryColor || "#00ff00";
+    steamidColor.value = data.steamidColor || "#ff8c00";
     enabled = data.enabled ?? true;
-	secondarytextarea.value = (data.secondarykeywords || []).join("\n");
     toggleBtn.textContent = enabled ? "Disable" : "Enable";
   });
 }
 
-// Save keywords to storage and send to content script
+// Save settings to storage and notify content script
 saveBtn.addEventListener("click", () => {
-  const keywords = textarea.value
-    .split("\n")
-    .map(k => k.trim())
-    .filter(Boolean);
+  const keywords = textarea.value.split("\n").map(k => k.trim()).filter(Boolean);
+  const secondarykeywords = secondarytextarea.value.split("\n").map(k => k.trim()).filter(Boolean);
+  const primaryColor = primaryColorInput.value;
+  const secondaryColor = secondaryColorInput.value;
+  const steamidColor = steamidColorInput.value;
 
-  const secondarykeywords = secondarytextarea.value
-    .split("\n")
-    .map(k => k.trim())
-    .filter(Boolean);
-
-  chrome.storage.sync.set({ keywords, secondarykeywords }, () => {
-	console.log("Settings saved");
+  chrome.storage.sync.set({ 
+    keywords, 
+    secondarykeywords, 
+    primaryColor, 
+    secondaryColor,
+	steamidColor
+  }, () => {
+    console.log("Settings saved");
   });
 
   chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
@@ -37,12 +47,14 @@ saveBtn.addEventListener("click", () => {
 
     chrome.tabs.sendMessage(activeTab.id, {
       action: "setKeywords",
-      keywords: keywords, 
-      secondarykeywords: secondarykeywords
+      keywords,
+      secondarykeywords,
+      primaryColor,
+      secondaryColor,
+	  steamidColor
     });
-  
-  chrome.tabs.reload(activeTab.id, { bypassCache: true });
-  
+
+    chrome.tabs.reload(activeTab.id, { bypassCache: true });
   });
 });
 
@@ -50,13 +62,13 @@ saveBtn.addEventListener("click", () => {
 toggleBtn.addEventListener("click", () => {
   enabled = !enabled;
   chrome.storage.sync.set({ enabled });
-
   toggleBtn.textContent = enabled ? "Disable" : "Enable";
 
   chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-    chrome.tabs.sendMessage(tabs[0].id, { action: "toggle" });
+    if (tabs[0]) {
+      chrome.tabs.sendMessage(tabs[0].id, { action: "toggle" });
+    }
   });
 });
 
-// Initial load
-loadKeywords();
+loadSettings();
