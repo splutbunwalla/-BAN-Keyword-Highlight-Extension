@@ -161,12 +161,59 @@
       }
     });
   }
+  
+  function highlightSteamId(el) {
+  if (!enabled) return;
+  if (el.nodeType !== Node.ELEMENT_NODE || el.classList.contains("hh-idhighlight")) return;
+  
+  // Define regex once outside the loop
+  const steamIdRegex = /\b\d{17}\b/g;
+  
+  el.childNodes.forEach(child => {
+  	if (child.nodeType === Node.TEXT_NODE && child.nodeValue.trim()) {
+  	let text = child.nodeValue;
+  	
+  	// Use the pre-defined regex
+  	if (!steamIdRegex.test(text)) return;
+  	
+  	// Reset regex index because of the 'g' flag and the .test() call above
+  	steamIdRegex.lastIndex = 0; 
+  
+  	const fragment = document.createDocumentFragment();
+  	let lastIndex = 0;
+  	
+      text.replace(steamIdRegex, (match, offset) => {
+        if (offset > lastIndex) {
+          fragment.appendChild(document.createTextNode(text.slice(lastIndex, offset)));
+        }
+        const span = document.createElement("span");
+        span.className = "hh-idhighlight";
+        span.textContent = match;
+        fragment.appendChild(span);
+        lastIndex = offset + match.length;
+      });
+
+        if (lastIndex < text.length) {
+          fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+        }
+
+        try {
+          child.parentNode.replaceChild(fragment, child);
+        } catch {
+          /* DOM recycled */
+        }
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        highlightSteamId(child);
+      }
+	});
+  }
 
   // Scan an element or the whole document
   function scan(node) {
     if (!node) return;
     highlightElement(node);
     highlightSecondaryElement(node);
+	highlightSteamId(node);
   }
 
   function startObserver() {
