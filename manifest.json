@@ -1,25 +1,25 @@
 {
   "manifest_version": 3,
-  "name": "=BAN Keyword Highlighter ",
+  "name": "=BAN Keyword Highlighter",
   "version": "1.0",
-  "description": "Live keyword highlighting works for HostHavoc Web Console",
-
+  "description": "Live keyword highlighting for HostHavoc Web Console",
   "permissions": [
-    "storage",
-    "scripting"
+    "storage"
   ],
-
   "host_permissions": [
     "https://gamepanel.hosthavoc.com/*"
   ],
-
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html"
   },
-
   "content_scripts": [
     {
-      "matches": ["https://gamepanel.hosthavoc.com/*"],
+      "matches": [
+        "https://gamepanel.hosthavoc.com/*"
+      ],
       "js": ["content.js"],
       "css": ["content.css"],
       "all_frames": true,

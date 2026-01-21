@@ -5,3 +5,11 @@
   padding: 0 2px;
   border-radius: 3px;
 }
+
+.hh-secondaryhighlight {
+  background: #ffff33;
+  color: #000;
+  font-weight: bold;
+  padding: 0 2px;
+  border-radius: 3px;
+}

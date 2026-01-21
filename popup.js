@@ -1,4 +1,5 @@
 const textarea = document.getElementById("keywords");
+const secondarytextarea = document.getElementById("secondarykeywords");
 const saveBtn = document.getElementById("save");
 const toggleBtn = document.getElementById("toggle");
 
@@ -6,9 +7,10 @@ let enabled = true;
 
 // Load keywords directly from storage on popup open
 function loadKeywords() {
-  chrome.storage.sync.get(["keywords", "enabled"], data => {
+  chrome.storage.sync.get(["keywords", "enabled", "secondarykeywords"], data => {
     textarea.value = (data.keywords || []).join("\n");
     enabled = data.enabled ?? true;
+	secondarytextarea.value = (data.secondarykeywords || []).join("\n");
     toggleBtn.textContent = enabled ? "Disable" : "Enable";
   });
 }
@@ -20,12 +22,18 @@ saveBtn.addEventListener("click", () => {
     .map(k => k.trim())
     .filter(Boolean);
 
-  chrome.storage.sync.set({ keywords });
+  const secondarykeywords = secondarytextarea.value
+    .split("\n")
+    .map(k => k.trim())
+    .filter(Boolean);
+
+  chrome.storage.sync.set({ keywords, secondarykeywords });
 
   chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
     chrome.tabs.sendMessage(tabs[0].id, {
       action: "setKeywords",
-      keywords
+      keywords: keywords, 
+	  secondarykeywords: secondarykeywords
     });
   });
 });
