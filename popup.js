@@ -27,14 +27,22 @@ saveBtn.addEventListener("click", () => {
     .map(k => k.trim())
     .filter(Boolean);
 
-  chrome.storage.sync.set({ keywords, secondarykeywords });
+  chrome.storage.sync.set({ keywords, secondarykeywords }, () => {
+	console.log("Settings saved");
+  });
 
   chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-    chrome.tabs.sendMessage(tabs[0].id, {
+    const activeTab = tabs[0];
+    if (!activeTab) return;
+
+    chrome.tabs.sendMessage(activeTab.id, {
       action: "setKeywords",
       keywords: keywords, 
-	  secondarykeywords: secondarykeywords
+      secondarykeywords: secondarykeywords
     });
+  
+  chrome.tabs.reload(activeTab.id, { bypassCache: true });
+  
   });
 });
 
