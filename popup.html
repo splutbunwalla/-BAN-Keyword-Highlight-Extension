@@ -2,29 +2,51 @@
 <html>
 <head>
   <style>
-    body { font-family: sans-serif; width: 220px; padding: 10px; }
-    textarea { width: 100%; height: 80px; margin-bottom: 5px; box-sizing: border-box; }
-    .color-container { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; font-size: 12px; }
+    body { font-family: sans-serif; width: 240px; padding: 10px; }
+    textarea { width: 100%; height: 60px; margin-bottom: 5px; box-sizing: border-box; }
+    .control-group { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+    .color-container { display: flex; align-items: center; justify-content: space-between; font-size: 12px; margin-top: 5px; }
+    .alpha-container { display: flex; align-items: center; gap: 10px; font-size: 11px; margin-top: 5px; }
     input[type="color"] { border: none; width: 30px; height: 30px; cursor: pointer; background: none; }
+    input[type="range"] { flex-grow: 1; cursor: pointer; }
     button { width: 100%; margin-top: 5px; padding: 8px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <textarea id="keywords" placeholder="Primary keywords..."></textarea>
-  <div class="color-container">
-    <label for="primaryColor">Highlight Color:</label>
-    <input type="color" id="primaryColor" value="#ffff00">
+  
+  <div class="control-group">
+    <textarea id="keywords" placeholder="Primary keywords..."></textarea>
+    <div class="color-container">
+      <label for="primaryColor">Primary Color:</label>
+      <input type="color" id="primaryColor" value="#ffff00">
+    </div>
+    <div class="alpha-container">
+      <label>Opacity:</label>
+      <input type="range" id="primaryAlpha" min="0" max="1" step="0.1" value="0.5">
+    </div>
   </div>
 
-  <textarea id="secondarykeywords" placeholder="Secondary keywords..."></textarea>
-  <div class="color-container">
-    <label for="secondaryColor">Highlight Color:</label>
-    <input type="color" id="secondaryColor" value="#00ff00">
+  <div class="control-group">
+    <textarea id="secondarykeywords" placeholder="Secondary keywords..."></textarea>
+    <div class="color-container">
+      <label for="secondaryColor">Secondary Color:</label>
+      <input type="color" id="secondaryColor" value="#00ff00">
+    </div>
+    <div class="alpha-container">
+      <label>Opacity:</label>
+      <input type="range" id="secondaryAlpha" min="0" max="1" step="0.1" value="0.5">
+    </div>
   </div>
 
-  <div class="color-container">
-    <label for="steamidColor">SteamID Color:</label>
-    <input type="color" id="steamidColor" value="#00ff00">
+  <div class="control-group">
+    <div class="color-container">
+      <label for="steamidColor">SteamID Color:</label>
+      <input type="color" id="steamidColor" value="#00ff00">
+    </div>
+    <div class="alpha-container">
+      <label>Opacity:</label>
+      <input type="range" id="steamidAlpha" min="0" max="1" step="0.1" value="0.5">
+    </div>
   </div>
 
   <button id="save">Save Settings</button>

@@ -4,23 +4,35 @@
   let observer = null; 
   let KEYWORDS = [];
   let SECONDARYWORDS = [];
-  let COLORS = { highlight: "#ff0033", secondary: "#ffff33", steamidColor: "#ff8c00" }; // Default fallbacks
+  let COLORS = { primary: "#ff0033", secondary: "#ffff33", steamidColor: "#ff8c00" }; // Default fallbacks
+  let ALPHAS = { primary:1, secondary:1, steamidAlpha:1 }
   let enabled = true;
   let scanTimeout;
   
-  function updateStyles(primary, secondary, idcolor) {
-    let styleEl = document.getElementById("hh-dynamic-styles");
-    if (!styleEl) {
-      styleEl = document.createElement("style");
-      styleEl.id = "hh-dynamic-styles";
-      document.head.appendChild(styleEl);
-    }
-    // Update CSS variables for the highlights
-    styleEl.textContent = `
-      .hh-highlight { background-color: ${primary} !important; color: black !important; }
-      .hh-secondaryhighlight { background-color: ${secondary} !important; color: black !important; }
-      .hh-idhighlight { background-color: ${idcolor}; border-bottom: 1px dotted #888; }
-    `;
+  function hexToRGBA(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  
+  function updateStyles(pColor, pAlpha, sColor, sAlpha, idColor, idAlpha) {
+	const root = document.documentElement;
+    
+    // Convert hex + alpha to rgba
+    const pRGBA = hexToRGBA(pColor, pAlpha);
+    const sRGBA = hexToRGBA(sColor, sAlpha);
+    const idRGBA = hexToRGBA(idColor, idAlpha);
+
+    // Set CSS Variables globally
+    root.style.setProperty('--hh-primary-bg', pRGBA);
+    root.style.setProperty('--hh-secondary-bg', sRGBA);
+    root.style.setProperty('--hh-id-bg', idRGBA);
+    
+    // You can also dynamically set text colors if needed
+    root.style.setProperty('--hh-primary-text', 'black');
+    root.style.setProperty('--hh-secondary-text', 'black');
+    root.style.setProperty('--hh-id-text', 'black');
   }
   
   function debouncedScan(node) {
@@ -33,15 +45,12 @@
   async function init() {
     console.log("[Detector] Initializing iframe logic...");
 
-    // 1. Storage Retrieval (Restoring state from 2026 session storage)
     const [sync, session] = await Promise.all([
       chrome.storage.sync.get([
-        "keywords", 
-        "enabled", 
-        "secondarykeywords", 
-        "primaryColor",
-        "secondaryColor",
-		"steamidColor"
+        "keywords", "enabled", "secondarykeywords", 
+        "primaryColor", "primaryAlpha",
+        "secondaryColor", "secondaryAlpha",
+        "steamidColor", "steamidAlpha"
       ]),
       chrome.storage.session.get("savedEnabledState")
     ]);
@@ -51,8 +60,11 @@
 	COLORS.primary = sync.primaryColor || "#ffff00";
     COLORS.secondary = sync.secondaryColor || "#00ff00";
 	COLORS.steamidColor = sync.steamidColor || "#ff8c00";
+	ALPHAS.primary = sync.primaryAlpha || 1;
+	ALPHAS.secondary = sync.secondaryAlpha || 1;
+	ALPHAS.steamidAlpha = sync.steamidAlpha || 1;
 	
-	updateStyles(COLORS.primary, COLORS.secondary, COLORS.steamidColor);
+	updateStyles(COLORS.primary, ALPHAS.primary, COLORS.secondary, ALPHAS.secondary, COLORS.steamidColor, ALPHAS.steamidAlpha);
 	
     enabled = session.savedEnabledState !== undefined ? session.savedEnabledState : (sync.enabled ?? true);
  
@@ -284,14 +296,24 @@
         scan(document.body);
       } else {
         if (observer) observer.disconnect();
-        // removeAllHighlights();
+        removeAllHighlights();
       }
     }
 	if (msg.action === "updateColors") {
-        COLORS.primary = msg.primaryColor;
-        COLORS.secondary = msg.secondaryColor;
-        COLORS.steamidColor = msg.steamidColor;
-        updateStyles(COLORS.primary, COLORS.secondary, COLORS.steamidColor);
+        COLORS.primary = msg.primaryColor || COLORS.primary;
+        COLORS.secondary = msg.secondaryColor || COLORS.secondary;
+        COLORS.steamidColor = msg.steamidColor || COLORS.steamidColor;
+        ALPHAS.primary = msg.primaryAlpha !== undefined ? msg.primaryAlpha : ALPHAS.primary;
+        ALPHAS.secondary = msg.secondaryAlpha !== undefined ? msg.secondaryAlpha : ALPHAS.secondary;
+        ALPHAS.steamidAlpha = msg.steamidAlpha !== undefined ? msg.steamidAlpha : ALPHAS.steamidAlpha;
+        updateStyles(
+            COLORS.primary, 
+            ALPHAS.primary, 
+            COLORS.secondary, 
+            ALPHAS.secondary, 
+            COLORS.steamidColor, 
+            ALPHAS.steamidAlpha
+        );
     }
   });
 

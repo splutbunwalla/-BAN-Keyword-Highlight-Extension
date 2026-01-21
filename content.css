@@ -1,23 +1,27 @@
 .hh-highlight {
-  background: #ff0033;
-  color: #fff;
+  background-color: var(--hh-primary-bg, #ff0033);
+  color: var(--hh-primary-text, #fff);
+  
   font-weight: bold;
   padding: 0 2px;
   border-radius: 3px;
 }
 
 .hh-secondaryhighlight {
-  background: #ffff33;
-  color: #000;
+  background-color: var(--hh-secondary-bg, #ffff33);
+  color: var(--hh-secondary-text, #000);
+  
   font-weight: bold;
   padding: 0 2px;
   border-radius: 3px;
 }
 
 .hh-idhighlight {
-  background: #FF8C00;
-  color: #000;
+  background-color: var(--hh-id-bg, #FF8C00);
+  color: var(--hh-id-text, #000);
+  
   font-weight: bold;
   padding: 0 2px;
   border-radius: 3px;
+  border-bottom: 1px dotted #888;
 }
