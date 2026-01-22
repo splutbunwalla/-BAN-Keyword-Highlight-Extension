@@ -4,288 +4,131 @@
   let observer = null; 
   let KEYWORDS = [];
   let SECONDARYWORDS = [];
-  let COLORS = { primary: "#ff0033", secondary: "#ffff33", steamidColor: "#ff8c00" }; // Default fallbacks
-  let ALPHAS = { primary:1, secondary:1, steamidAlpha:1 }
+  let COLORS = { primary: "#ff0033", secondary: "#ffff33", steamidColor: "#ff8c00" };
+  let ALPHAS = { primary: 1, secondary: 1, steamidAlpha: 1 };
   let enabled = true;
   let scanTimeout;
-  
-  function hexToRGBA(hex, alpha) {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
+
+  const hexToRGBA = (hex, alpha) => {
+    const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-  
-  function updateStyles(pColor, pAlpha, sColor, sAlpha, idColor, idAlpha) {
-	const root = document.documentElement;
-    
-    // Convert hex + alpha to rgba
-    const pRGBA = hexToRGBA(pColor, pAlpha);
-    const sRGBA = hexToRGBA(sColor, sAlpha);
-    const idRGBA = hexToRGBA(idColor, idAlpha);
+  };
 
-    // Set CSS Variables globally
-    root.style.setProperty('--hh-primary-bg', pRGBA);
-    root.style.setProperty('--hh-secondary-bg', sRGBA);
-    root.style.setProperty('--hh-id-bg', idRGBA);
-    
-    // You can also dynamically set text colors if needed
-    root.style.setProperty('--hh-primary-text', 'black');
-    root.style.setProperty('--hh-secondary-text', 'black');
-    root.style.setProperty('--hh-id-text', 'black');
-  }
-  
-  function debouncedScan(node) {
-    clearTimeout(scanTimeout);
-    scanTimeout = setTimeout(() => {
-      if (enabled) scan(document.body);
-    }, 150);
-  }
+  const updateStyles = () => {
+    const root = document.documentElement;
+    root.style.setProperty('--hh-primary-bg', hexToRGBA(COLORS.primary, ALPHAS.primary));
+    root.style.setProperty('--hh-secondary-bg', hexToRGBA(COLORS.secondary, ALPHAS.secondary));
+    root.style.setProperty('--hh-id-bg', hexToRGBA(COLORS.steamidColor, ALPHAS.steamidAlpha));
+  };
 
-  async function init() {
-    console.log("[Detector] Initializing iframe logic...");
-
-    const [sync, session] = await Promise.all([
-      chrome.storage.sync.get([
-        "keywords", "enabled", "secondarykeywords", 
-        "primaryColor", "primaryAlpha",
-        "secondaryColor", "secondaryAlpha",
-        "steamidColor", "steamidAlpha"
-      ]),
-      chrome.storage.session.get("savedEnabledState")
-    ]);
-  
-    KEYWORDS = sync.keywords?.length ? sync.keywords : ["motorhome", "started", "finished"];
-    SECONDARYWORDS = sync.secondarykeywords?.length ? sync.secondarykeywords : [];
-	COLORS.primary = sync.primaryColor || "#ffff00";
-    COLORS.secondary = sync.secondaryColor || "#00ff00";
-	COLORS.steamidColor = sync.steamidColor || "#ff8c00";
-	ALPHAS.primary = sync.primaryAlpha || 1;
-	ALPHAS.secondary = sync.secondaryAlpha || 1;
-	ALPHAS.steamidAlpha = sync.steamidAlpha || 1;
-	
-	updateStyles(COLORS.primary, ALPHAS.primary, COLORS.secondary, ALPHAS.secondary, COLORS.steamidColor, ALPHAS.steamidAlpha);
-	
-    enabled = session.savedEnabledState !== undefined ? session.savedEnabledState : (sync.enabled ?? true);
- 
-    console.log("[Detector] Settings Loaded. Keywords:", KEYWORDS);
-
-    if (enabled) {
-      // 2. WAIT FOR DOM: Essential for iframe stability
-      if (document.body) {
-        startObserver();
-      } else {
-        // If body is null, wait for DOMContentLoaded or use a small interval
-        document.addEventListener('DOMContentLoaded', startObserver);
-      }
-    }
-  }
-  
-  async function reloadAndPreserve() {
-    await chrome.storage.session.set({ "savedEnabledState": enabled });
-    enabled = false; // Disable locally to prevent errors during unload
-    console.log("[Detector] State saved. Reloading...");
-    location.reload();
-  }
-  
-  console.log("[Detector] Running inside iframe:", location.href);
-
-  // Remove all existing highlights
+  // CLEANUP: Removed normalize() to prevent MutationObserver loops
   function removeAllHighlights() {
-    const highlighted = document.querySelectorAll(".hh-highlight");
-    const secondaryhighlighted = document.querySelectorAll(".hh-secondaryhighlight");
-    highlighted.forEach(span => {
-      const parent = span.parentNode;
-      if (parent) {
-        parent.replaceChild(document.createTextNode(span.textContent), span);
-        parent.normalize(); // merge adjacent text nodes
-      }
-    });
-    secondaryhighlighted.forEach(span => {
-      const parent = span.parentNode;
-      if (parent) {
-        parent.replaceChild(document.createTextNode(span.textContent), span);
-        parent.normalize(); // merge adjacent text nodes
-      }
+    document.querySelectorAll(".hh-highlight, .hh-secondaryhighlight, .hh-idhighlight").forEach(span => {
+      span.replaceWith(document.createTextNode(span.textContent));
     });
   }
 
-  // Updated Regex Generator to handle non-breaking spaces and correct data types
   function getMasterRegex() {
     const escapeAndFixSpace = (str) => {
       if (!str) return "";
-      // Escape regex chars and replace spaces with a pattern that matches any whitespace/nbsp
+      // Matches spaces OR non-breaking spaces commonly found in web consoles
       return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s\\u00A0]+");
     };
-  
-    const processList = (list) => {
-      return list
-        .filter(k => {
-          const isEnabled = typeof k === 'object' ? k.enabled : true;
-          const val = typeof k === 'object' ? k.text : k;
-          return isEnabled && val && val.trim() !== "";
-        })
-        .map(k => {
-          const val = typeof k === 'object' ? k.text : k;
-          return escapeAndFixSpace(val.trim());
-        })
-        .sort((a, b) => b.length - a.length);
-    };
-  
-    const p = processList(KEYWORDS);
-    const s = processList(SECONDARYWORDS);
-    const steamIdPattern = "\\b\\d{17}\\b";
-  
+
+    const process = (list) => list
+      .filter(k => (typeof k === 'object' ? k.enabled : true) && (typeof k === 'object' ? k.text : k)?.trim())
+      .map(k => escapeAndFixSpace((typeof k === 'object' ? k.text : k).trim()))
+      .sort((a, b) => b.length - a.length);
+
+    const p = process(KEYWORDS), s = process(SECONDARYWORDS);
+    const steamId = "\\b\\d{17}\\b";
+
     let parts = [];
-    // Use non-capturing groups inside named groups for stability
     if (p.length) parts.push(`(?<primary>${p.join("|")})`);
     if (s.length) parts.push(`(?<secondary>${s.join("|")})`);
-    parts.push(`(?<steamid>${steamIdPattern})`);
-  
+    parts.push(`(?<steamid>${steamId})`);
+
     return new RegExp(parts.join("|"), "gi");
   }
-  
-  // Optimized Scanner: Uses capture groups to prevent text deletion
-  function highlightUnified(node) {
+
+  function scan(node = document.body) {
     if (!enabled || !node) return;
-  
+
     const masterRegex = getMasterRegex();
-    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null, false);
-    const nodesToProcess = [];
-  
-    let textNode;
-    while (textNode = walker.nextNode()) {
-      const parent = textNode.parentElement;
-      if (parent && (
-        parent.tagName === "SCRIPT" || 
-        parent.tagName === "STYLE" || 
-        parent.closest(".hh-highlight, .hh-secondaryhighlight, .hh-idhighlight")
-      )) continue;
-      nodesToProcess.push(textNode);
-    }
-  
-    nodesToProcess.forEach(child => {
-      const text = child.nodeValue;
-      if (!text) return;
-  
-      // Use matchAll to get every instance and its specific group name
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (
+        n.parentElement.closest(".hh-highlight, .hh-secondaryhighlight, .hh-idhighlight, script, style") 
+        ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+      )
+    });
+
+    const nodes = [];
+    let n;
+    while (n = walker.nextNode()) nodes.push(n);
+
+    nodes.forEach(textNode => {
+      const text = textNode.nodeValue;
       const matches = Array.from(text.matchAll(masterRegex));
-      if (matches.length === 0) return;
-  
+      if (!matches.length) return;
+
       const fragment = document.createDocumentFragment();
-      let lastIndex = 0;
-  
+      let lastIdx = 0;
+
       for (const match of matches) {
-        const { primary, secondary, steamid } = match.groups;
-        const matchText = match[0];
-        const matchIndex = match.index;
-  
-        // Append text appearing BEFORE the match
-        if (matchIndex > lastIndex) {
-          fragment.appendChild(document.createTextNode(text.slice(lastIndex, matchIndex)));
-        }
-  
-        // Create the span with the correct class based on which group matched
+        fragment.appendChild(document.createTextNode(text.slice(lastIdx, match.index)));
+        
         const span = document.createElement("span");
-        if (primary) span.className = "hh-highlight";
-        else if (secondary) span.className = "hh-secondaryhighlight";
-        else if (steamid) span.className = "hh-idhighlight";
+        const { primary, secondary } = match.groups;
+        span.className = primary ? "hh-highlight" : (secondary ? "hh-secondaryhighlight" : "hh-idhighlight");
+        span.textContent = match[0];
         
-        span.textContent = matchText;
         fragment.appendChild(span);
-        
-        lastIndex = matchIndex + matchText.length;
+        lastIdx = match.index + match[0].length;
       }
-  
-      // Append remaining text AFTER the last match
-      if (lastIndex < text.length) {
-        fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
-      }
-  
-      try {
-        child.parentNode.replaceChild(fragment, child);
-      } catch (e) {
-        console.error("[Detector] Replacement failed:", e);
-      }
+      fragment.appendChild(document.createTextNode(text.slice(lastIdx)));
+      textNode.replaceWith(fragment);
     });
   }
-  
-  function scan(node) {
-    if (!node) return;
-    highlightUnified(node);
-  }
 
+  // REPLACEMENT: MutationObserver is now more targeted
   function startObserver() {
-    // Safety check for the 'Node' error
-    if (!document.body) {
-      console.warn("[Detector] Body not found, retrying observer in 500ms...");
-      setTimeout(startObserver, 500);
-      return;
-    }
-
     if (observer) observer.disconnect();
-
-    observer = new MutationObserver(mutations => {
-      const hasChanges = mutations.some(m => 
-        m.addedNodes.length > 0 || m.type === 'characterData'
-      );
-      if (hasChanges) debouncedScan();
+    observer = new MutationObserver(() => {
+      clearTimeout(scanTimeout);
+      scanTimeout = setTimeout(() => scan(), 100);
     });
-
-    try {
-      // Host Havoc console updates often target text nodes (characterData)
-      observer.observe(document.body, { 
-        childList: true, 
-        subtree: true, 
-        characterData: true 
-      });
-      console.log("[Detector] MutationObserver successfully attached to", location.href);
-      scan(document.body); // Initial scan after successful attachment
-    } catch (e) {
-      console.error("[Detector] Critical Observer Error:", e);
-    }
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    scan();
   }
 
-  // --- MESSAGE LISTENERS ---
   chrome.runtime.onMessage.addListener(msg => {
     if (msg.action === "toggle") {
       enabled = !enabled;
-      if (enabled) {
-        startObserver();
-        scan(document.body);
-      } else {
-        if (observer) observer.disconnect();
-        removeAllHighlights();
-      }
+      enabled ? startObserver() : (observer?.disconnect(), removeAllHighlights());
     }
-	if (msg.action === "updateColors") {
-	  // Update local variables
-	  COLORS.primary = msg.primaryColor || COLORS.primary;
-	  COLORS.secondary = msg.secondaryColor || COLORS.secondary;
-	  COLORS.steamidColor = msg.steamidColor || COLORS.steamidColor;
-	  
-	  // Update Alpha values (using the correct message keys)
-	  ALPHAS.primary = msg.primaryAlpha !== undefined ? msg.primaryAlpha : ALPHAS.primary;
-	  ALPHAS.secondary = msg.secondaryAlpha !== undefined ? msg.secondaryAlpha : ALPHAS.secondary;
-	  ALPHAS.steamidAlpha = msg.steamidAlpha !== undefined ? msg.steamidAlpha : ALPHAS.steamidAlpha;
-
-	  // Apply to DOM
-	  updateStyles(
-		COLORS.primary, ALPHAS.primary, 
-		COLORS.secondary, ALPHAS.secondary, 
-		COLORS.steamidColor, ALPHAS.steamidAlpha
-	  );
-	}
-
-	if (msg.action === "updateKeywords") {
-		// getMasterRegex now handles the objects so just make sure they are uptodate
-		KEYWORDS = msg.keywords || [];
-		SECONDARYWORDS = msg.secondarykeywords || [];
-
-		removeAllHighlights();
-		scan(document.body);
-	  }
+    if (msg.action === "updateColors") {
+      Object.assign(COLORS, { primary: msg.primaryColor, secondary: msg.secondaryColor, steamidColor: msg.steamidColor });
+      Object.assign(ALPHAS, { primary: msg.primaryAlpha, secondary: msg.secondaryAlpha, steamidAlpha: msg.steamidAlpha });
+      updateStyles();
+    }
+    if (msg.action === "updateKeywords") {
+      KEYWORDS = msg.keywords || [];
+      SECONDARYWORDS = msg.secondarykeywords || [];
+      removeAllHighlights();
+      scan();
+    }
   });
 
-  init();
+  // Init
+  (async () => {
+    const sync = await chrome.storage.sync.get(null);
+    KEYWORDS = sync.keywords || ["motorhome", "started", "finished"];
+    SECONDARYWORDS = sync.secondarykeywords || [];
+    Object.assign(COLORS, { primary: sync.primaryColor, secondary: sync.secondaryColor, steamidColor: sync.steamidColor });
+    Object.assign(ALPHAS, { primary: sync.primaryAlpha, secondary: sync.secondaryAlpha, steamidAlpha: sync.steamidAlpha });
+    
+    updateStyles();
+    if (document.body) startObserver();
+    else document.addEventListener('DOMContentLoaded', startObserver);
+  })();
 })();
