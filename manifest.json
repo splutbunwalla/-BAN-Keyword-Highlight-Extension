@@ -4,7 +4,8 @@
   "version": "1.0",
   "description": "Live keyword highlighting for HostHavoc Web Console",
   "permissions": [
-    "storage"
+    "storage",
+    "clipboardWrite"
   ],
   "host_permissions": [
     "https://gamepanel.hosthavoc.com/*"
