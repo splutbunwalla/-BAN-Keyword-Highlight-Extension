@@ -110,155 +110,109 @@
     });
   }
 
-  // Escape regex characters in keywords
-  function escapeRegex(str) {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
-
-  // Highlight keywords inside an element (handles multi-word keywords)
-  function highlightElement(el) {
-    if (!enabled || !KEYWORDS || KEYWORDS.length === 0 || (KEYWORDS.length === 1 && KEYWORDS[0] === "")) return;
-    if (el.nodeType !== Node.ELEMENT_NODE || el.classList.contains("hh-highlight")) return;
-
-    // Filter out inactive and empty strings to prevent Regex errors
-	const activeKeywords = KEYWORDS
-        .filter(k => k.enabled && k.text.trim() !== "")
-        .map(k => k.text);
-
-    if (activeKeywords.length === 0) return;	
-
-    el.childNodes.forEach(child => {
-      if (child.nodeType === Node.TEXT_NODE && child.nodeValue.trim()) {
-        let text = child.nodeValue;
-        let regex = new RegExp(`(${activeKeywords.map(escapeRegex).join("|")})`, "gi");
-        
-        if (!regex.test(text)) return;
-        // Wrap matched keywords in span
-        const fragment = document.createDocumentFragment();
-        let lastIndex = 0;
-        text.replace(regex, (match, _p1, offset) => {
-          if (offset > lastIndex) {
-            fragment.appendChild(document.createTextNode(text.slice(lastIndex, offset)));
-          }
-          const span = document.createElement("span");
-          span.className = "hh-highlight";
-          span.textContent = match;
-          fragment.appendChild(span);
-          lastIndex = offset + match.length;
-        });
-        if (lastIndex < text.length) {
-          fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
-        }
-
-        try {
-          child.parentNode.replaceChild(fragment, child);
-        } catch {
-          /* DOM recycled */
-        }
-      } else if (child.nodeType === Node.ELEMENT_NODE) {
-        highlightElement(child);
-      }
-    });
+  // Updated Regex Generator to handle non-breaking spaces and correct data types
+  function getMasterRegex() {
+    const escapeAndFixSpace = (str) => {
+      if (!str) return "";
+      // Escape regex chars and replace spaces with a pattern that matches any whitespace/nbsp
+      return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s\\u00A0]+");
+    };
+  
+    const processList = (list) => {
+      return list
+        .filter(k => {
+          const isEnabled = typeof k === 'object' ? k.enabled : true;
+          const val = typeof k === 'object' ? k.text : k;
+          return isEnabled && val && val.trim() !== "";
+        })
+        .map(k => {
+          const val = typeof k === 'object' ? k.text : k;
+          return escapeAndFixSpace(val.trim());
+        })
+        .sort((a, b) => b.length - a.length);
+    };
+  
+    const p = processList(KEYWORDS);
+    const s = processList(SECONDARYWORDS);
+    const steamIdPattern = "\\b\\d{17}\\b";
+  
+    let parts = [];
+    // Use non-capturing groups inside named groups for stability
+    if (p.length) parts.push(`(?<primary>${p.join("|")})`);
+    if (s.length) parts.push(`(?<secondary>${s.join("|")})`);
+    parts.push(`(?<steamid>${steamIdPattern})`);
+  
+    return new RegExp(parts.join("|"), "gi");
   }
   
-  // Highlight keywords inside an element (handles multi-word keywords)
-  function highlightSecondaryElement(el) {
-    if (!enabled || !SECONDARYWORDS || SECONDARYWORDS.length === 0 || (SECONDARYWORDS.length === 1 && SECONDARYWORDS[0] === "")) return;
-    if (el.nodeType !== Node.ELEMENT_NODE || el.classList.contains("hh-secondaryhighlight")) return;
-
-	// Filter out inactive and empty strings to prevent Regex errors
-	const activeKeywords = SECONDARYWORDS
-        .filter(k => k.enabled && k.text.trim() !== "")
-        .map(k => k.text);
-
-    if (activeKeywords.length === 0) return;	
-    // Only text nodes inside element
-    el.childNodes.forEach(child => {
-      if (child.nodeType === Node.TEXT_NODE && child.nodeValue.trim()) {
-        let text = child.nodeValue;
-        let regex = new RegExp(`(${activeKeywords.map(escapeRegex).join("|")})`, "gi");
-        if (!regex.test(text)) return;
-
-        // Wrap matched keywords in span
-        const fragment = document.createDocumentFragment();
-        let lastIndex = 0;
-        text.replace(regex, (match, _p1, offset) => {
-          if (offset > lastIndex) {
-            fragment.appendChild(document.createTextNode(text.slice(lastIndex, offset)));
-          }
-          const span = document.createElement("span");
-          span.className = "hh-secondaryhighlight";
-          span.textContent = match;
-          fragment.appendChild(span);
-          lastIndex = offset + match.length;
-        });
-        if (lastIndex < text.length) {
-          fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+  // Optimized Scanner: Uses capture groups to prevent text deletion
+  function highlightUnified(node) {
+    if (!enabled || !node) return;
+  
+    const masterRegex = getMasterRegex();
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null, false);
+    const nodesToProcess = [];
+  
+    let textNode;
+    while (textNode = walker.nextNode()) {
+      const parent = textNode.parentElement;
+      if (parent && (
+        parent.tagName === "SCRIPT" || 
+        parent.tagName === "STYLE" || 
+        parent.closest(".hh-highlight, .hh-secondaryhighlight, .hh-idhighlight")
+      )) continue;
+      nodesToProcess.push(textNode);
+    }
+  
+    nodesToProcess.forEach(child => {
+      const text = child.nodeValue;
+      if (!text) return;
+  
+      // Use matchAll to get every instance and its specific group name
+      const matches = Array.from(text.matchAll(masterRegex));
+      if (matches.length === 0) return;
+  
+      const fragment = document.createDocumentFragment();
+      let lastIndex = 0;
+  
+      for (const match of matches) {
+        const { primary, secondary, steamid } = match.groups;
+        const matchText = match[0];
+        const matchIndex = match.index;
+  
+        // Append text appearing BEFORE the match
+        if (matchIndex > lastIndex) {
+          fragment.appendChild(document.createTextNode(text.slice(lastIndex, matchIndex)));
         }
-
-        try {
-          child.parentNode.replaceChild(fragment, child);
-        } catch {
-          /* DOM recycled */
-        }
-      } else if (child.nodeType === Node.ELEMENT_NODE) {
-        highlightSecondaryElement(child);
-      }
-    });
-  }
   
-  function highlightSteamId(el) {
-  if (!enabled) return;
-  if (el.nodeType !== Node.ELEMENT_NODE || el.classList.contains("hh-idhighlight")) return;
-  
-  // Define regex once outside the loop
-  const steamIdRegex = /\b\d{17}\b/g;
-  
-  el.childNodes.forEach(child => {
-  	if (child.nodeType === Node.TEXT_NODE && child.nodeValue.trim()) {
-  	let text = child.nodeValue;
-  	
-  	// Use the pre-defined regex
-  	if (!steamIdRegex.test(text)) return;
-  	
-  	// Reset regex index because of the 'g' flag and the .test() call above
-  	steamIdRegex.lastIndex = 0; 
-  
-  	const fragment = document.createDocumentFragment();
-  	let lastIndex = 0;
-  	
-      text.replace(steamIdRegex, (match, offset) => {
-        if (offset > lastIndex) {
-          fragment.appendChild(document.createTextNode(text.slice(lastIndex, offset)));
-        }
+        // Create the span with the correct class based on which group matched
         const span = document.createElement("span");
-        span.className = "hh-idhighlight";
-        span.textContent = match;
+        if (primary) span.className = "hh-highlight";
+        else if (secondary) span.className = "hh-secondaryhighlight";
+        else if (steamid) span.className = "hh-idhighlight";
+        
+        span.textContent = matchText;
         fragment.appendChild(span);
-        lastIndex = offset + match.length;
-      });
-
-        if (lastIndex < text.length) {
-          fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
-        }
-
-        try {
-          child.parentNode.replaceChild(fragment, child);
-        } catch {
-          /* DOM recycled */
-        }
-      } else if (child.nodeType === Node.ELEMENT_NODE) {
-        highlightSteamId(child);
+        
+        lastIndex = matchIndex + matchText.length;
       }
-	});
+  
+      // Append remaining text AFTER the last match
+      if (lastIndex < text.length) {
+        fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+      }
+  
+      try {
+        child.parentNode.replaceChild(fragment, child);
+      } catch (e) {
+        console.error("[Detector] Replacement failed:", e);
+      }
+    });
   }
-
-  // Scan an element or the whole document
+  
   function scan(node) {
     if (!node) return;
-    highlightElement(node);
-    highlightSecondaryElement(node);
-	highlightSteamId(node);
+    highlightUnified(node);
   }
 
   function startObserver() {
@@ -322,13 +276,15 @@
 		COLORS.steamidColor, ALPHAS.steamidAlpha
 	  );
 	}
+
 	if (msg.action === "updateKeywords") {
-	  KEYWORDS = msg.keywords || [];
-	  SECONDARYWORDS = msg.secondarykeywords || [];
-	  // Remove all current highlights and re-scan with the new list
-	  removeAllHighlights();
-	  scan(document.body);
-	}
+		// getMasterRegex now handles the objects so just make sure they are uptodate
+		KEYWORDS = msg.keywords || [];
+		SECONDARYWORDS = msg.secondarykeywords || [];
+
+		removeAllHighlights();
+		scan(document.body);
+	  }
   });
 
   init();
