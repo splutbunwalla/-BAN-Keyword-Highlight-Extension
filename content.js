@@ -6,6 +6,7 @@
   let SECONDARYWORDS = [];
   let COLORS = { primary: "#ff0033", secondary: "#ffff33", steamidColor: "#ff8c00" };
   let ALPHAS = { primary: 1, secondary: 1, steamidAlpha: 1 };
+  let NAME_MAP = {};
   let enabled = true;
   let scanTimeout;
 
@@ -82,15 +83,47 @@
     const nodes = [];
     let n;
     while (n = walker.nextNode()) nodes.push(n);
-  
-    nodes.forEach(textNode => {
+	
+	nodes.forEach(textNode => {
       const text = textNode.nodeValue;
+
+	  const parentLine = textNode.parentElement.closest('div, tr, p');
+	  if (parentLine) {
+		  const lineContent = parentLine.textContent.trim();
+		  
+		  // Format A: "Player joined/left: [id], [Name] (id: [SteamID])"
+		  const logMatch = lineContent.match(/(?:joined|left):\s*\d+,\s*(.*?)\s*\(id:\s*(\d{17})\)/i);
+		  
+		  // Format B: The Player List Table (player-id name user-id role status)
+		  // This helps capture names of people already in the server when you join
+		  const tableMatch = lineContent.match(/^\s*\d+\s+([^\d\s][^()]*?)\s+(\d{17})\s+/);
+		  
+		  let name = null;
+		  let id = null;
+		  
+		  if (logMatch) {
+			  name = logMatch[1].trim();
+			  id = logMatch[2];
+		  } else if (tableMatch) {
+			  name = tableMatch[1].trim();
+			  id = tableMatch[2];
+		  }
+		  
+		  // Final check: Only save if we found a valid name/id and it's not a header
+		  if (name && id && !/^(name|player|user|role|status|id)$/i.test(name)) {
+			  // We only update if the name is "cleaner" than what we have
+			  // or if we don't have this ID yet.
+			  NAME_MAP[id] = name;
+		  }
+	  }
+	  
+
       const matches = Array.from(text.matchAll(masterRegex));
       if (!matches.length) return;
-  
+
       const fragment = document.createDocumentFragment();
       let lastIdx = 0;
-  
+
       for (const match of matches) {
         fragment.appendChild(document.createTextNode(text.slice(lastIdx, match.index)));
         
@@ -145,23 +178,43 @@
     // Regex to detect the timestamp pattern: 12:56:19.946:
     const timestampRegex = /^\d{2}:\d{2}:\d{2}\.\d{3}:\s*/;
     
-    // 1. Check for CTRL + CLICK (Copy entire line minus timestamp)
     if (e.ctrlKey) {
-      // Find the closest line container (div, p, or tr)
       const lineElement = e.target.closest('div, p, tr');
       if (lineElement) {
-        const fullText = lineElement.innerText || lineElement.textContent;
-        const cleanMessage = fullText.replace(timestampRegex, "").trim();
+        let fullText = lineElement.innerText || lineElement.textContent;
         
-        copyToClipboard(cleanMessage, lineElement);
-        // Prevent the "Click on ID" logic from firing if we are doing a line copy
+        // Remove Timestamp
+        fullText = fullText.replace(timestampRegex, "").trim();
+
+		// Check if this is a ban message using a flexible Regex
+		// This matches ?? even if they are surrounded by weird spaces
+		const isBanMessage = /\?\?.*banned\s+by/i.test(fullText);
+
+		if (isBanMessage) {
+			console.log(`Matched ban message: ${fullText}`);
+			
+			// Extract ID: look for 17 digits, with or without parentheses
+			const idMatch = fullText.match(/(\d{17})/);
+			if (idMatch) {
+				const id = idMatch[1];
+				const foundName = NAME_MAP[id];
+				
+				console.log(`ID found: ${id}. Name in map: ${foundName || 'NOT FOUND'}`);
+				
+				if (foundName) {
+					// Replace ?? (and any whitespace around it) with the found name
+					fullText = fullText.replace(/\?\?/, foundName).replace(/\s\s+/g, ' ');
+				}
+			}
+		}
+        
+        copyToClipboard(fullText, lineElement);
         e.preventDefault();
         e.stopPropagation();
         return;
       }
     }
 
-    // 2. Check for NORMAL CLICK on SteamID
     if (e.target.classList.contains("hh-idhighlight")) {
       const steamID = e.target.textContent.trim();
       copyToClipboard(steamID, e.target);
