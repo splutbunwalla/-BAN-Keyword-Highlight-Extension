@@ -21,9 +21,8 @@
     root.style.setProperty('--hh-id-bg', hexToRGBA(COLORS.steamidColor, ALPHAS.steamidAlpha));
   };
 
-  // CLEANUP: Removed normalize() to prevent MutationObserver loops
   function removeAllHighlights() {
-    document.querySelectorAll(".hh-highlight, .hh-secondaryhighlight, .hh-idhighlight").forEach(span => {
+    document.querySelectorAll(".hh-highlight, .hh-secondaryhighlight, .hh-idhighlight, .hh-role-highlight").forEach(span => {
       span.replaceWith(document.createTextNode(span.textContent));
     });
   }
@@ -42,10 +41,12 @@
 
     const p = process(KEYWORDS), s = process(SECONDARYWORDS);
     const steamId = "\\b\\d{17}\\b";
-
+	const rolePattern = "\\b(?<role_group>vip|default|moderator|admin)\\b";
+	
     let parts = [];
     if (p.length) parts.push(`(?<primary>${p.join("|")})`);
     if (s.length) parts.push(`(?<secondary>${s.join("|")})`);
+	parts.push(`(?<role>${rolePattern})`);
     parts.push(`(?<steamid>${steamId})`);
 
     return new RegExp(parts.join("|"), "gi");
@@ -53,35 +54,55 @@
 
   function scan(node = document.body) {
     if (!enabled || !node) return;
-
+  
     const masterRegex = getMasterRegex();
+  
+    // This prevents the entire console from turning white/uppercase
+    const darkSpans = node.querySelectorAll('span[style*="rgb(12, 12, 12)"], span[style*="rgb(0, 0, 0)"]');
+    
+    darkSpans.forEach(span => {
+      // Check the parent line to see if it looks like a player row (contains a 17-digit ID)
+      const parentLine = span.closest('div, tr, p'); 
+      const hasSteamId = parentLine && /\b\d{17}\b/.test(parentLine.textContent);
+  
+      if (hasSteamId) {
+        span.style.setProperty('color', '#ffffff', 'important');
+        span.style.setProperty('filter', 'none', 'important');
+        span.style.setProperty('text-transform', 'none', 'important');
+      }
+    });
+  
     const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, {
       acceptNode: (n) => (
-        n.parentElement.closest(".hh-highlight, .hh-secondaryhighlight, .hh-idhighlight, script, style") 
+        n.parentElement.closest(".hh-highlight, .hh-secondaryhighlight, .hh-idhighlight, .hh-role-highlight, script, style") 
         ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
       )
     });
-
+  
     const nodes = [];
     let n;
     while (n = walker.nextNode()) nodes.push(n);
-
+  
     nodes.forEach(textNode => {
       const text = textNode.nodeValue;
       const matches = Array.from(text.matchAll(masterRegex));
       if (!matches.length) return;
-
+  
       const fragment = document.createDocumentFragment();
       let lastIdx = 0;
-
+  
       for (const match of matches) {
         fragment.appendChild(document.createTextNode(text.slice(lastIdx, match.index)));
         
+        const { primary, secondary, role } = match.groups;
         const span = document.createElement("span");
-        const { primary, secondary } = match.groups;
-        span.className = primary ? "hh-highlight" : (secondary ? "hh-secondaryhighlight" : "hh-idhighlight");
-        span.textContent = match[0];
         
+        if (primary) span.className = "hh-highlight";
+        else if (secondary) span.className = "hh-secondaryhighlight";
+        else if (role) span.className = "hh-role-highlight";
+        else span.className = "hh-idhighlight";
+        
+        span.textContent = match[0];
         fragment.appendChild(span);
         lastIdx = match.index + match[0].length;
       }
@@ -89,7 +110,7 @@
       textNode.replaceWith(fragment);
     });
   }
-
+  
   // REPLACEMENT: MutationObserver is now more targeted
   function startObserver() {
     if (observer) observer.disconnect();
