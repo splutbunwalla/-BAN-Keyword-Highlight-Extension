@@ -2,20 +2,32 @@
 <html>
 <head>
   <style>
-    body { font-family: sans-serif; width: 240px; padding: 10px; }
-    textarea { width: 100%; height: 60px; margin-bottom: 5px; box-sizing: border-box; }
+    body { font-family: sans-serif; width: 240px; padding: 10px; margin: 0; overflow: hidden; }
     .control-group { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
     .color-container { display: flex; align-items: center; justify-content: space-between; font-size: 12px; margin-top: 5px; }
     .alpha-container { display: flex; align-items: center; gap: 10px; font-size: 11px; margin-top: 5px; }
     input[type="color"] { border: none; width: 30px; height: 30px; cursor: pointer; background: none; }
     input[type="range"] { flex-grow: 1; cursor: pointer; }
-    button { width: 100%; margin-top: 5px; padding: 8px; cursor: pointer; }
+    button { width: 100%; margin-top: 5px; padding: 5px; cursor: pointer; }
+	.keyword-list { max-height: 120px; overflow-y: auto; border: 1px solid #ccc; margin-bottom: 8px; padding: 5px; background: #f9f9f9; }
+	.keyword-item { display: flex; align-items: center; font-size: 12px; margin-bottom: 2px; }
+	.keyword-item span { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; }
+	.add-keyword { display: flex; gap: 5px; margin-bottom: 5px; }
+	.add-keyword input { flex-grow: 1; padding: 2px; }
+	.add-keyword button { width: auto; margin-top: 0; padding: 2px 8px; }
+	.keyword-item button { width: 24px !important; height: 24px; padding: 0 !important; margin: 0 0 0 5px !important; cursor: pointer; flex-shrink: 0;}
+	.version-tag { font-size: 10px; color: #888; text-align: right; margin-top: 10px; font-style: italic; }
   </style>
 </head>
 <body>
   
   <div class="control-group">
-    <textarea id="keywords" placeholder="Primary keywords..."></textarea>
+    <label>Primary Keywords:</label>
+	<div id="primary-list" class="keyword-list"></div>
+	  <div class="add-keyword">
+		<input type="text" id="new-primary" placeholder="Add word...">
+		<button id="add-primary-btn">+</button>
+	  </div>
     <div class="color-container">
       <label for="primaryColor">Primary Color:</label>
       <input type="color" id="primaryColor" value="#ffff00">
@@ -27,7 +39,12 @@
   </div>
 
   <div class="control-group">
-    <textarea id="secondarykeywords" placeholder="Secondary keywords..."></textarea>
+	<label>Secondary Keywords:</label>
+	<div id="secondary-list" class="keyword-list"></div>
+		<div class="add-keyword">
+			<input type="text" id="new-secondary" placeholder="Add word...">
+			<button id="add-secondary-btn">+</button>
+		</div>
     <div class="color-container">
       <label for="secondaryColor">Secondary Color:</label>
       <input type="color" id="secondaryColor" value="#00ff00">
@@ -49,8 +66,8 @@
     </div>
   </div>
 
-  <button id="save">Save Settings</button>
   <button id="toggle">Toggle Detector</button>
+  <div class="version-tag">v1.4</div>
   <script src="popup.js"></script>
 </body>
 </html>

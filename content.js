@@ -120,14 +120,17 @@
     if (!enabled || !KEYWORDS || KEYWORDS.length === 0 || (KEYWORDS.length === 1 && KEYWORDS[0] === "")) return;
     if (el.nodeType !== Node.ELEMENT_NODE || el.classList.contains("hh-highlight")) return;
 
-    // Filter out empty strings to prevent Regex errors
-    const validKeywords = KEYWORDS.filter(k => k.trim() !== "");
-    if (validKeywords.length === 0) return;
+    // Filter out inactive and empty strings to prevent Regex errors
+	const activeKeywords = KEYWORDS
+        .filter(k => k.enabled && k.text.trim() !== "")
+        .map(k => k.text);
+
+    if (activeKeywords.length === 0) return;	
 
     el.childNodes.forEach(child => {
       if (child.nodeType === Node.TEXT_NODE && child.nodeValue.trim()) {
         let text = child.nodeValue;
-        let regex = new RegExp(`(${validKeywords.map(escapeRegex).join("|")})`, "gi");
+        let regex = new RegExp(`(${activeKeywords.map(escapeRegex).join("|")})`, "gi");
         
         if (!regex.test(text)) return;
         // Wrap matched keywords in span
@@ -163,15 +166,17 @@
     if (!enabled || !SECONDARYWORDS || SECONDARYWORDS.length === 0 || (SECONDARYWORDS.length === 1 && SECONDARYWORDS[0] === "")) return;
     if (el.nodeType !== Node.ELEMENT_NODE || el.classList.contains("hh-secondaryhighlight")) return;
 
-    // Filter out empty strings to prevent Regex errors
-    const validKeywords = SECONDARYWORDS.filter(k => k.trim() !== "");
-    if (validKeywords.length === 0) return;
-	
+	// Filter out inactive and empty strings to prevent Regex errors
+	const activeKeywords = SECONDARYWORDS
+        .filter(k => k.enabled && k.text.trim() !== "")
+        .map(k => k.text);
+
+    if (activeKeywords.length === 0) return;	
     // Only text nodes inside element
     el.childNodes.forEach(child => {
       if (child.nodeType === Node.TEXT_NODE && child.nodeValue.trim()) {
         let text = child.nodeValue;
-        let regex = new RegExp(`(${SECONDARYWORDS.map(escapeRegex).join("|")})`, "gi");
+        let regex = new RegExp(`(${activeKeywords.map(escapeRegex).join("|")})`, "gi");
         if (!regex.test(text)) return;
 
         // Wrap matched keywords in span
@@ -300,21 +305,30 @@
       }
     }
 	if (msg.action === "updateColors") {
-        COLORS.primary = msg.primaryColor || COLORS.primary;
-        COLORS.secondary = msg.secondaryColor || COLORS.secondary;
-        COLORS.steamidColor = msg.steamidColor || COLORS.steamidColor;
-        ALPHAS.primary = msg.primaryAlpha !== undefined ? msg.primaryAlpha : ALPHAS.primary;
-        ALPHAS.secondary = msg.secondaryAlpha !== undefined ? msg.secondaryAlpha : ALPHAS.secondary;
-        ALPHAS.steamidAlpha = msg.steamidAlpha !== undefined ? msg.steamidAlpha : ALPHAS.steamidAlpha;
-        updateStyles(
-            COLORS.primary, 
-            ALPHAS.primary, 
-            COLORS.secondary, 
-            ALPHAS.secondary, 
-            COLORS.steamidColor, 
-            ALPHAS.steamidAlpha
-        );
-    }
+	  // Update local variables
+	  COLORS.primary = msg.primaryColor || COLORS.primary;
+	  COLORS.secondary = msg.secondaryColor || COLORS.secondary;
+	  COLORS.steamidColor = msg.steamidColor || COLORS.steamidColor;
+	  
+	  // Update Alpha values (using the correct message keys)
+	  ALPHAS.primary = msg.primaryAlpha !== undefined ? msg.primaryAlpha : ALPHAS.primary;
+	  ALPHAS.secondary = msg.secondaryAlpha !== undefined ? msg.secondaryAlpha : ALPHAS.secondary;
+	  ALPHAS.steamidAlpha = msg.steamidAlpha !== undefined ? msg.steamidAlpha : ALPHAS.steamidAlpha;
+
+	  // Apply to DOM
+	  updateStyles(
+		COLORS.primary, ALPHAS.primary, 
+		COLORS.secondary, ALPHAS.secondary, 
+		COLORS.steamidColor, ALPHAS.steamidAlpha
+	  );
+	}
+	if (msg.action === "updateKeywords") {
+	  KEYWORDS = msg.keywords || [];
+	  SECONDARYWORDS = msg.secondarykeywords || [];
+	  // Remove all current highlights and re-scan with the new list
+	  removeAllHighlights();
+	  scan(document.body);
+	}
   });
 
   init();
