@@ -140,24 +140,48 @@
     }
   });
   
-  // --- CLICK TO COPY STEAM ID ---
+  // --- CLICK TO COPY LOGIC ---
   document.addEventListener("click", (e) => {
-    // Check if the clicked element is a SteamID highlight
+    // Regex to detect the timestamp pattern: 12:56:19.946:
+    const timestampRegex = /^\d{2}:\d{2}:\d{2}\.\d{3}:\s*/;
+    
+    // 1. Check for CTRL + CLICK (Copy entire line minus timestamp)
+    if (e.ctrlKey) {
+      // Find the closest line container (div, p, or tr)
+      const lineElement = e.target.closest('div, p, tr');
+      if (lineElement) {
+        const fullText = lineElement.innerText || lineElement.textContent;
+        const cleanMessage = fullText.replace(timestampRegex, "").trim();
+        
+        copyToClipboard(cleanMessage, lineElement);
+        // Prevent the "Click on ID" logic from firing if we are doing a line copy
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    }
+
+    // 2. Check for NORMAL CLICK on SteamID
     if (e.target.classList.contains("hh-idhighlight")) {
       const steamID = e.target.textContent.trim();
-      
-      navigator.clipboard.writeText(steamID).then(() => {
-        const originalBg = e.target.style.backgroundColor;
-        e.target.style.backgroundColor = "#28a745"; // Flash green
-        setTimeout(() => {
-          e.target.style.backgroundColor = originalBg;
-        }, 300);
-        console.log("[Detector] Copied SteamID:", steamID);
-      }).catch(err => {
-        console.error("[Detector] Copy failed:", err);
-      });
+      copyToClipboard(steamID, e.target);
     }
   });
+
+  // Helper function to handle clipboard and feedback
+  function copyToClipboard(text, element) {
+    navigator.clipboard.writeText(text).then(() => {
+      // Visual feedback: brief flash
+      const originalBg = element.style.backgroundColor;
+      element.style.setProperty('background-color', 'rgba(40, 167, 69, 0.5)', 'important');
+      setTimeout(() => {
+        element.style.backgroundColor = originalBg;
+      }, 300);
+      console.log("[Detector] Copied:", text);
+    }).catch(err => {
+      console.error("[Detector] Copy failed:", err);
+    });
+  }
 
   // Init
   (async () => {

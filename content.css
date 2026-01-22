@@ -28,6 +28,15 @@
   transition: background-color 0.2s ease;
 }
 
+.hh-idhighlight:hover {
+  filter: brightness(1.1); /* Makes the color slightly lighter */
+  outline: 1px solid rgba(255, 255, 255, 0.5); /* Adds a subtle border */
+}
+
+div:hover, p:hover, tr:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
 .hh-role-highlight {
     color: #ffffff !important;
     font-weight: normal !important;
