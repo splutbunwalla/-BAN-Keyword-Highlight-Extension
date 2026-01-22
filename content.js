@@ -139,6 +139,25 @@
       scan();
     }
   });
+  
+  // --- CLICK TO COPY STEAM ID ---
+  document.addEventListener("click", (e) => {
+    // Check if the clicked element is a SteamID highlight
+    if (e.target.classList.contains("hh-idhighlight")) {
+      const steamID = e.target.textContent.trim();
+      
+      navigator.clipboard.writeText(steamID).then(() => {
+        const originalBg = e.target.style.backgroundColor;
+        e.target.style.backgroundColor = "#28a745"; // Flash green
+        setTimeout(() => {
+          e.target.style.backgroundColor = originalBg;
+        }, 300);
+        console.log("[Detector] Copied SteamID:", steamID);
+      }).catch(err => {
+        console.error("[Detector] Copy failed:", err);
+      });
+    }
+  });
 
   // Init
   (async () => {

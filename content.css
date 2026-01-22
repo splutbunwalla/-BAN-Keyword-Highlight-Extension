@@ -19,11 +19,13 @@
 .hh-idhighlight {
   background-color: var(--hh-id-bg, #FF8C00);
   color: var(--hh-id-text, #000);
-  
   font-weight: bold;
   padding: 0 2px;
   border-radius: 3px;
   border-bottom: 1px dotted #888;
+  /* Add these two lines */
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
 .hh-role-highlight {
