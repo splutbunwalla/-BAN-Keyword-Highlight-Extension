@@ -1,384 +1,224 @@
 (() => {
-  if (window.top === window.self) return;
+  let KEYWORDS = [], SECONDARYWORDS = [], NAME_MAP = {};
+  let actionMenu = null, scanTimeout = null;
 
-  let observer = null; 
-  let KEYWORDS = [];
-  let SECONDARYWORDS = [];
-  let COLORS = { primary: "#ff0033", secondary: "#ffff33", steamidColor: "#ff8c00" };
-  let ALPHAS = { primary: 1, secondary: 1, steamidAlpha: 1 };
-  let NAME_MAP = {};
-  let enabled = true;
-  let scanTimeout;
-  let tooltip = null;
-  let actionMenu = null;
-  let menuHideTimeout = null;
-
-  // --- HELPERS ---
-  function createActionMenu() {
-    if (actionMenu) return;
-    actionMenu = document.createElement('div');
-    actionMenu.className = 'hh-action-menu';
-    actionMenu.style.position = "fixed";
-    actionMenu.style.display = "none";
-    
-    // Auto-hide when mouse leaves the menu area
-    actionMenu.addEventListener('mouseleave', () => {
-        clearTimeout(menuHideTimeout);
-        menuHideTimeout = setTimeout(() => {
-            actionMenu.style.display = 'none';
-        }, 1200); 
-    });
-
-    // Cancel the hide timer if the mouse comes back in
-    actionMenu.addEventListener('mouseenter', () => {
-        clearTimeout(menuHideTimeout);
-    });
-
-    document.body.appendChild(actionMenu);
-  }
-  
-  function createTooltip() {
-    if (tooltip || !document.body) return; 
-    
-    tooltip = document.createElement('div');
-    tooltip.className = 'hh-tooltip';
-    tooltip.style.zIndex = "2147483647";
-    document.body.appendChild(tooltip);
-  }
+  const loadRegistry = () => {
+    try {
+      const saved = sessionStorage.getItem('hh_registry');
+      if (saved) NAME_MAP = JSON.parse(saved);
+    } catch (e) { NAME_MAP = {}; }
+  };
+  const saveRegistry = () => sessionStorage.setItem('hh_registry', JSON.stringify(NAME_MAP));
 
   const hexToRGBA = (hex, alpha) => {
-    const safeHex = (hex && typeof hex === 'string' && hex.startsWith('#')) ? hex : "#ff0033";
-    const r = parseInt(safeHex.slice(1, 3), 16), 
-          g = parseInt(safeHex.slice(3, 5), 16), 
-          b = parseInt(safeHex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha || 1})`;
+    const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   };
-  
-  const updateStyles = () => {
+
+  const copyToClipboard = (text) => {
+    const el = document.createElement('textarea');
+    el.value = text;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+  };
+
+  const injectToInput = (cmd) => {
+    const input = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand") || 
+                  document.querySelector('input[id*="TextBoxCommand"]');
+    if (!input) return; // Silent exit if not in this frame
+
+    input.focus();
+    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    if (nativeSetter) nativeSetter.call(input, cmd);
+    else input.value = cmd;
+
+    ['input', 'change', 'keyup'].forEach(evt => {
+      input.dispatchEvent(new Event(evt, { bubbles: true }));
+    });
+  };
+
+  const stripHighlights = () => {
+    document.querySelectorAll('.hh-highlight, .hh-secondaryhighlight, .hh-idhighlight').forEach(el => {
+      const parent = el.parentNode;
+      if (parent) {
+        while (el.firstChild) parent.insertBefore(el.firstChild, el);
+        parent.removeChild(el);
+      }
+    });
+  };
+
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.action === "EXECUTE_COMMAND") {
+      injectToInput(msg.cmd);
+    }
+    if (["updateColors", "toggle", "updateKeywords"].includes(msg.action)) {
+      init();
+    }
+  });
+
+  const updateStyles = (sync) => {
     const root = document.documentElement;
-    root.style.setProperty('--hh-primary-bg', hexToRGBA(COLORS.primary, ALPHAS.primary));
-    root.style.setProperty('--hh-secondary-bg', hexToRGBA(COLORS.secondary, ALPHAS.secondary));
-    root.style.setProperty('--hh-id-bg', hexToRGBA(COLORS.steamidColor, ALPHAS.steamidAlpha));
-
-    const isConsoleFrame = window.location.href.includes("Proxy.ashx") || 
-                           window.location.href.includes("ServiceWebConsole") ||
-                           (window.frameElement && window.frameElement.id === "IFrameOutput1");
-
-    let styleTag = document.getElementById('hh-scoped-styles');
-    if (!styleTag) {
-      styleTag = document.createElement('style');
-      styleTag.id = 'hh-scoped-styles';
-      (document.head || document.documentElement).appendChild(styleTag);
-    }
-
-    styleTag.textContent = isConsoleFrame ? `
-      .hh-highlight { background-color: var(--hh-primary-bg); color: #fff; font-weight: bold; padding: 0 2px; border-radius: 3px; }
-      .hh-secondaryhighlight { background-color: var(--hh-secondary-bg); color: #000; font-weight: bold; padding: 0 2px; border-radius: 3px; }
-      .hh-idhighlight { background-color: var(--hh-id-bg); color: #000; font-weight: bold; cursor: pointer; border-radius: 3px; }
-      div:hover, p:hover, tr:hover { background-color: rgba(255, 255, 255, 0.07) !important; }
-    ` : `
-      .hh-highlight, .hh-secondaryhighlight, .hh-idhighlight { background: transparent !important; color: inherit !important; }
-    `;
+    root.style.setProperty('--hh-id-bg', hexToRGBA(sync.steamidColor || "#ff8c00", sync.steamidAlpha ?? 1));
+    root.style.setProperty('--hh-p-bg', hexToRGBA(sync.primaryColor || "#ff0033", sync.primaryAlpha ?? 1));
+    root.style.setProperty('--hh-s-bg', hexToRGBA(sync.secondaryColor || "#ffff33", sync.secondaryAlpha ?? 1));
+    if (sync.enabled === false) document.body.classList.add('hh-disabled');
+    else document.body.classList.remove('hh-disabled');
   };
 
-  function removeAllHighlights() {
-    document.querySelectorAll(".hh-highlight, .hh-secondaryhighlight, .hh-idhighlight, .hh-role-highlight").forEach(span => {
-      span.replaceWith(document.createTextNode(span.textContent));
-    });
-  }
+  function scan() {
+    if (!document.body || document.body.classList.contains('hh-disabled')) return;
 
-  function getMasterRegex() {
-    const escapeAndFixSpace = (str) => {
-      if (!str) return "";
-      return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s\\u00A0]+");
-    };
+    // 1. DATA HARVEST
+    document.querySelectorAll('tr, div.log-line, span, td').forEach(el => {
+      const txt = (el.innerText || "").trim();
+      if (!txt) return;
 
-    const process = (list) => list
-      .filter(k => (typeof k === 'object' ? k.enabled : true) && (typeof k === 'object' ? k.text : k)?.trim())
-      .map(k => escapeAndFixSpace((typeof k === 'object' ? k.text : k).trim()))
-      .sort((a, b) => b.length - a.length);
+      if (['vip', 'admin', 'moderator', 'default'].includes(txt.toLowerCase())) {
+        el.classList.add('hh-role-force-white');
+      }
 
-    const p = process(KEYWORDS), s = process(SECONDARYWORDS);
-    const steamId = "\\b\\d{17}\\b";
-    const rolePattern = "\\b(?<role_group>vip|default|moderator|admin)\\b";
-    
-    let parts = [];
-    if (p.length) parts.push(`(?<primary>${p.join("|")})`);
-    if (s.length) parts.push(`(?<secondary>${s.join("|")})`);
-    parts.push(`(?<role>${rolePattern})`);
-    parts.push(`(?<steamid>${steamId})`);
+      const tableMatch = txt.match(/^(\d+)\s+(.+?)\s+(\d{17})$/);
+      const logMatch = txt.match(/(joined|left).*?(\d+),?\s+(.*?)\s*\(id:\s*(\d{17})\)/i);
 
-    return new RegExp(parts.join("|"), "gi");
-  }
-
-  // --- MAIN SCANNING CODE ---
-  function scan(node = document.body) {
-    if (!enabled || !node) return;
-  
-    const masterRegex = getMasterRegex();
-    const darkSpans = node.querySelectorAll('span[style*="rgb(12, 12, 12)"], span[style*="rgb(0, 0, 0)"]');
-    
-    darkSpans.forEach(span => {
-      const parentLine = span.closest('div, tr, p'); 
-      const hasSteamId = parentLine && /\b\d{17}\b/.test(parentLine.textContent);
-      if (hasSteamId) {
-        span.style.setProperty('color', '#ffffff', 'important');
-        span.style.setProperty('filter', 'none', 'important');
-        span.style.setProperty('text-transform', 'none', 'important');
+      if (tableMatch) {
+        NAME_MAP[tableMatch[3]] = { name: tableMatch[2].trim(), connId: tableMatch[1], online: true };
+        saveRegistry();
+      } else if (logMatch) {
+        const id = logMatch[4];
+        const existing = NAME_MAP[id] || {};
+        NAME_MAP[id] = {
+          name: logMatch[3].trim() || existing.name || "Unknown",
+          connId: logMatch[2] || existing.connId,
+          online: logMatch[1].toLowerCase().includes('joined')
+        };
+        saveRegistry();
       }
     });
-  
-    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, {
-      acceptNode: (n) => (
-        n.parentElement.closest(".hh-highlight, .hh-secondaryhighlight, .hh-idhighlight, .hh-role-highlight, .hh-tooltip, script, style") 
-        ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
-      )
+
+    // 2. HIGHLIGHTING
+    // CRITICAL FIX: Ensure we only map ENABLED keywords
+    const p = KEYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
+    const s = SECONDARYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
+    const allWords = [...p, ...s].sort((a, b) => b.length - a.length);
+
+    if (allWords.length === 0 && !document.querySelector('.hh-idhighlight')) return;
+
+    const escape = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+    const wordPattern = allWords.map(escape).join('|');
+    const regex = new RegExp(`(\\b\\d{17}\\b${wordPattern ? '|' + wordPattern : ''})`, "gi");
+
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => n.parentElement.closest(".hh-highlight, .hh-idhighlight, .hh-secondaryhighlight, script, style, textarea, input") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
     });
-  
-    const nodes = [];
-    let n;
+
+    let nodes = [], n;
     while (n = walker.nextNode()) nodes.push(n);
-    
-    nodes.forEach(textNode => {
-      const text = textNode.nodeValue;
-      const parentLine = textNode.parentElement.closest('div, tr, p');
+
+    nodes.forEach(node => {
+      const text = node.nodeValue;
+      if (!regex.test(text)) return;
       
-      if (parentLine) {
-        const lineContent = parentLine.textContent.trim();
-        const logMatch = lineContent.match(/(joined|left):\s*(\d+),\s*(.*?)\s*\(id:\s*(\d{17})\)/i);          
-        const tableMatch = lineContent.match(/^\s*(\d+)\s+([^\d\s][^()]*?)\s+(\d{17})\s+/);
-        
-        if (logMatch) {
-          const action = logMatch[1].toLowerCase();
-          const connId = logMatch[2];
-          const name = logMatch[3].trim();
-          const steamId = logMatch[4];
-          
-          if (action === "joined") {
-            NAME_MAP[steamId] = { name: name, connId: connId };
-          } else {
-            if (NAME_MAP[steamId]) NAME_MAP[steamId].connId = null;
-            else NAME_MAP[steamId] = { name: name, connId: null };
-          }
-        } else if (tableMatch) {
-          const connId = tableMatch[1];
-          const name = tableMatch[2].trim();
-          const steamId = tableMatch[3];
-          if (steamId && name && !/^(name|player|user|role|status|id)$/i.test(name)) {
-            NAME_MAP[steamId] = { name: name, connId: connId };
-          }
-        }
-      }
-
-      const matches = Array.from(text.matchAll(masterRegex));
-      if (!matches.length) return;
-
       const fragment = document.createDocumentFragment();
-      let lastIdx = 0;
-
-      for (const match of matches) {
-        fragment.appendChild(document.createTextNode(text.slice(lastIdx, match.index)));
-        const { primary, secondary, role } = match.groups;
-        const span = document.createElement("span");
-        if (primary) span.className = "hh-highlight";
-        else if (secondary) span.className = "hh-secondaryhighlight";
-        else if (role) span.className = "hh-role-highlight";
-        else {
-            span.className = "hh-idhighlight";
-            const steamIdValue = match[0];
-            const playerData = NAME_MAP[steamIdValue];
-            if (playerData && playerData.connId !== null) {
-                span.classList.add("hh-online");
-            }
+      let lastIndex = 0;
+      regex.lastIndex = 0;
+      let match;
+      
+      while ((match = regex.exec(text)) !== null) {
+        fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+        const span = document.createElement('span');
+        const m = match[0];
+        
+        if (m.length === 17 && /^\d+$/.test(m)) {
+           const data = NAME_MAP[m];
+           span.className = `hh-idhighlight ${(data && data.online) ? 'hh-online' : 'hh-offline'}`;
+           span.textContent = m;
+        } else {
+           const isPrimary = p.some(k => new RegExp(escape(k), 'i').test(m));
+           span.className = isPrimary ? 'hh-highlight' : 'hh-secondaryhighlight';
+           span.textContent = m;
         }
-        span.textContent = match[0];
         fragment.appendChild(span);
-        lastIdx = match.index + match[0].length;
+        lastIndex = regex.lastIndex;
       }
-      fragment.appendChild(document.createTextNode(text.slice(lastIdx)));
-      textNode.replaceWith(fragment);
+      fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+      node.replaceWith(fragment);
     });
   }
-  
-  function startObserver() {
-    if (observer) observer.disconnect();
-    observer = new MutationObserver(() => {
-      clearTimeout(scanTimeout);
-      scanTimeout = setTimeout(() => scan(), 100);
-    });
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    scan();
-  }
 
-  // --- LISTENERS ---
-  chrome.runtime.onMessage.addListener(msg => {
-    if (msg.action === "toggle") {
-      enabled = !enabled;
-      enabled ? startObserver() : (observer?.disconnect(), removeAllHighlights());
+  document.addEventListener('contextmenu', (e) => {
+    const target = e.target.closest('.hh-idhighlight');
+    if (!target) return;
+    e.preventDefault();
+    if (!actionMenu) {
+      actionMenu = document.createElement('div');
+      actionMenu.className = 'hh-action-menu';
+      document.body.appendChild(actionMenu);
     }
-    if (msg.action === "updateColors") {
-      Object.assign(COLORS, { primary: msg.primaryColor, secondary: msg.secondaryColor, steamidColor: msg.steamidColor });
-      Object.assign(ALPHAS, { primary: msg.primaryAlpha, secondary: msg.secondaryAlpha, steamidAlpha: msg.steamidAlpha });
-      updateStyles();
-    }
-    if (msg.action === "updateKeywords") {
-      KEYWORDS = msg.keywords || [];
-      SECONDARYWORDS = msg.secondarykeywords || [];
-      removeAllHighlights();
-      scan();
-    }
-  });  
-
-  // --- CLICK TO COPY & PASTE LOGIC ---
-  document.addEventListener("contextmenu", (e) => {
-    clearTimeout(menuHideTimeout);
-    const target = e.target.closest(".hh-idhighlight");
     
-    if (!target) {
-      if (actionMenu) actionMenu.style.display = 'none';
-      return;
-    }
-  
-    e.preventDefault(); 
-    createActionMenu();
-  
-    const steamId = target.textContent.trim();
-    const data = NAME_MAP[steamId];
-    const playerName = data ? data.name : "Unknown Player";
-    const connId = data ? data.connId : null;
-    const isOffline = !connId;
-   
+    const sid = target.textContent.trim();
+    const data = NAME_MAP[sid] || { name: "Offline Player", connId: null, online: false };
+    
     actionMenu.innerHTML = `
-        <div class="menu-header">${playerName}</div>
-        <div class="hh-menu-item ${isOffline ? 'disabled' : ''}" data-cmd="kick ${connId}">
-          👢 Kick Player ${isOffline ? '(Offline)' : ''}
+      <div class="hh-menu-header">
+        <div style="display:flex; align-items:center;">
+          <span class="hh-status-dot ${data.online ? 'hh-status-online' : 'hh-status-offline'}"></span>
+          <span>${data.name}</span>
         </div>
-        <div class="hh-menu-item" data-cmd="ban ${steamId}">🔨 Ban SteamID</div>
-        <div class="hh-menu-item" data-cmd="copy">📋 Copy ID</div>
+        <span id="hh-close-x">✕</span>
+      </div>
+      <div class="hh-menu-row ${!data.online ? 'disabled' : ''}" data-type="kick" data-sid="${sid}" data-conn="${data.connId || ''}">👢 Kick</div>
+      <div class="hh-menu-row" data-type="ban" data-sid="${sid}">🔨 Ban</div>
+      <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>
     `;
-   
-    actionMenu.style.display = 'block';
-    actionMenu.style.left = e.clientX + "px";
-    actionMenu.style.top = e.clientY + "px";
-  
-    actionMenu.onclick = (menuEvent) => {
-        const item = menuEvent.target.closest(".hh-menu-item");
-        if (!item || item.classList.contains('disabled')) return; 
-    
-        const cmd = item.getAttribute("data-cmd");
-        if (cmd === "copy") {
-            navigator.clipboard.writeText(steamId);
-        } else {
-            chrome.storage.local.set({ 'pendingCommand': { cmd: cmd, time: Date.now() } });
-        }
-        actionMenu.style.display = 'none';
+
+    actionMenu.onclick = (ev) => {
+      const row = ev.target.closest('.hh-menu-row');
+      if (!row || row.classList.contains('disabled')) { actionMenu.style.display = 'none'; return; }
+      const type = row.getAttribute('data-type'), sid = row.getAttribute('data-sid'), conn = row.getAttribute('data-conn');
+      let cmd = (type === 'kick') ? `kick ${conn}` : (type === 'ban') ? `ban ${sid}` : sid;
+
+      copyToClipboard(cmd);
+      if (type !== 'copy') chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+      actionMenu.style.display = 'none';
     };
-  });
-  
-  const hideMenu = () => { if (actionMenu) actionMenu.style.display = 'none'; };
+    actionMenu.style.left = e.pageX + "px";
+    actionMenu.style.top = e.pageY + "px";
+    actionMenu.style.display = 'flex';
+  }, true);
 
-  document.addEventListener("mousedown", (e) => {
-    if (actionMenu && !actionMenu.contains(e.target)) hideMenu();
-  });
+  document.addEventListener('click', (e) => { if (actionMenu && !actionMenu.contains(e.target)) actionMenu.style.display = 'none'; });
 
-  window.addEventListener('blur', hideMenu);
+  document.addEventListener('mouseup', (e) => {
+    if (e.ctrlKey && e.button === 0) {
+      const line = e.target.closest('tr, div, p');
+      if (!line) return;
+      let text = (line.innerText || "").replace(/^\d{2}:\d{2}:\d{2}\.\d{3}:\s*/g, "").replace(/Command:\s*/i, "").trim();
+      const idMatch = text.match(/\b\d{17}\b/);
+      if (idMatch && NAME_MAP[idMatch[0]]) text = text.replace("??", NAME_MAP[idMatch[0]].name);
+      copyToClipboard(text);
+      line.style.backgroundColor = 'rgba(255,255,255,0.2)';
+      setTimeout(() => { line.style.backgroundColor = ''; }, 200);
+    }
+  }, true);
 
-  // --- STORAGE BRIDGE ---
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.pendingCommand) {
-      const newCmd = changes.pendingCommand.newValue.cmd;
-      const inputField = document.getElementById('ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand') || 
-                         document.querySelector('input.riTextBox') ||
-                         document.querySelector('input[name*="TextBoxCommand"]');
-
-      if (inputField) {
-        inputField.focus();
-        inputField.value = ''; 
-        try { document.execCommand('insertText', false, newCmd); } 
-        catch (e) { inputField.value = newCmd; }
-        ['input'].forEach(type => inputField.dispatchEvent(new Event(type, { bubbles: true })));
-      }
-    }
-  });
-
-  document.addEventListener('mousemove', (e) => {
-    if (!tooltip) createTooltip();
-    if (!tooltip) return; 
-  
-    if (!e.ctrlKey && !e.altKey) {
-      tooltip.style.display = 'none';
-      return;
-    }
-  
-    const lineElement = e.target.closest('div, p, tr');
-    if (!lineElement) {
-      tooltip.style.display = 'none';
-      return;
-    }
-  
-    const fullText = (lineElement.innerText || lineElement.textContent).trim();
-    let preview = "";
-    let isOffline = false;
-  
-    if (e.altKey) {
-      const idMatch = fullText.match(/\b\d{17}\b/);
-      if (idMatch) {
-        const entry = NAME_MAP[idMatch[0]];
-        const nameStr = entry ? ` (${entry.name})` : "";
-        isOffline = entry && entry.connId === null;
-        preview = `🔨 ban ${idMatch[0]}${nameStr}${isOffline ? " [OFFLINE]" : ""}`;
-      }
-    } else if (e.ctrlKey) {
-      const idMatch = fullText.match(/\b\d{17}\b/);
-      const steamId = idMatch ? idMatch[0] : null;
-      const playerListData = steamId ? NAME_MAP[steamId] : null;
-      const playerListMatch = fullText.match(/^(\d{1,3})\s+/);
-      
-      if (playerListMatch) {
-        const nameStr = playerListData ? ` (${playerListData.name})` : "";
-        preview = `👢 kick ${playerListMatch[1]}${nameStr}`;
-      } else if (playerListData) {
-        isOffline = playerListData.connId === null;
-        if (isOffline) {
-          preview = `👢 kick [OFFLINE] (${playerListData.name})`;
-        } else {
-          preview = `👢 kick ${playerListData.connId} (${playerListData.name})`;
-        }
-      } else if (fullText.includes("??")) {
-        preview = "📝 Clean & Paste Log Line";
-      }
-    }
-  
-    if (preview) {
-      tooltip.textContent = preview;
-      tooltip.style.display = 'block';
-      tooltip.style.left = (e.clientX + 15) + 'px';
-      tooltip.style.top = (e.clientY + 15) + 'px';
-      
-      if (isOffline) {
-        tooltip.style.borderColor = '#888888';
-        tooltip.style.color = '#aaaaaa';
-      } else {
-        tooltip.style.borderColor = e.altKey ? '#ff0033' : '#ffff33';
-        tooltip.style.color = '#ffffff';
-      }
-    } else {
-      tooltip.style.display = 'none';
-    }
-  });
-  
-  document.addEventListener('keyup', (e) => { 
-      if ((e.key === "Control" || e.key === "Alt") && tooltip) tooltip.style.display = 'none'; 
-  });
-  
-  (async () => {
+  const init = async () => {
+    loadRegistry();
     const sync = await chrome.storage.sync.get(null);
-    KEYWORDS = sync.keywords || ["motorhome", "started", "finished"];
+    KEYWORDS = sync.keywords || [];
     SECONDARYWORDS = sync.secondarykeywords || [];
-    Object.assign(COLORS, { primary: sync.primaryColor, secondary: sync.secondaryColor, steamidColor: sync.steamidColor });
-    Object.assign(ALPHAS, { primary: sync.primaryAlpha, secondary: sync.secondaryAlpha, steamidAlpha: sync.steamidAlpha });
-    updateStyles();
-    if (document.body) startObserver();
-    else document.addEventListener('DOMContentLoaded', startObserver);
-  })();
+    updateStyles(sync);
+    stripHighlights();
+    scan();
+    if (window.hhObserver) window.hhObserver.disconnect();
+    window.hhObserver = new MutationObserver(() => {
+      clearTimeout(scanTimeout);
+      scanTimeout = setTimeout(scan, 800); 
+    });
+    window.hhObserver.observe(document.body, { childList: true, subtree: true });
+  };
+
+  if (document.body) init();
+  else setTimeout(init, 100);
 })();

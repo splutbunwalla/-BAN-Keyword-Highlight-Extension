@@ -1,179 +1,44 @@
-/* Core Highlights */
-.hh-highlight {
-  background-color: var(--hh-primary-bg, #ff0033);
-  color: var(--hh-primary-text, #fff);
-  font-weight: bold;
-  padding: 0 2px;
-  border-radius: 3px;
+:root {
+    --hh-id-bg: rgba(255, 140, 0, 1);
+    --hh-p-bg: rgba(255, 0, 51, 1);
+    --hh-s-bg: rgba(255, 255, 51, 1);
 }
 
-.hh-secondaryhighlight {
-  background-color: var(--hh-secondary-bg, #ffff33);
-  color: var(--hh-secondary-text, #000);
-  font-weight: bold;
-  padding: 0 2px;
-  border-radius: 3px;
+tr:hover td, div.log-line:hover, p:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
-/* SteamID Specific */
-.hh-idhighlight {
-  background-color: var(--hh-id-bg, #FF8C00);
-  color: var(--hh-id-text, #000);
-  font-weight: bold;
-  padding: 0 2px;
-  border-radius: 3px;
-  border-bottom: 1px dotted #888;
-  cursor: pointer;
-  transition: background-color 0.2s ease, filter 0.2s ease;
-}
-
-.hh-idhighlight.hh-online {
-    border-left: 3px solid #00ff88 !important; /* Green indicator bar */
-    padding-left: 4px !important;
-    position: relative;
-    animation: hh-pulse 2s infinite ease-in-out;
-}
-
-/* Subtle "Breathing" Animation */
-@keyframes hh-pulse {
-    0% { box-shadow: 0 0 2px rgba(0, 255, 136, 0.2); }
-    50% { box-shadow: 0 0 8px rgba(0, 255, 136, 0.5); }
-    100% { box-shadow: 0 0 2px rgba(0, 255, 136, 0.2); }
-}
-
-.hh-idhighlight.hh-online::after {
-    content: " ●";
-    color: #00ff88;
-    font-size: 10px;
-    vertical-align: middle;
-}
-
-/* --- Quick-Action Menu Base --- */
-.hh-action-menu {
-    background-color: #1a1a1a !important; 
-    border: 1px solid #ff0033 !important;
-    display: flex !important;
-    flex-direction: column;
-    min-width: 170px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
-    z-index: 2147483647 !important; 
-    pointer-events: auto !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-	user-select: none;
-}
-
-.hh-action-menu .menu-header {
-    padding: 10px 15px;
-    background: #111111 !important;
-    color: #888888 !important;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border-bottom: 1px solid #333;
-}
-
-/* --- Menu Items: Standard State --- */
-.hh-action-menu .hh-menu-item {
-    padding: 10px 15px !important;
-    background-color: #1a1a1a !important; /* Force solid background */
-    color: #ffffff !important;
-    font-family: 'Segoe UI', Tahoma, sans-serif;
-    font-size: 13px;
-    cursor: pointer;
-    opacity: 1 !important;
-    visibility: visible !important;
-    transition: background-color 0.1s;
+body.hh-disabled .hh-idhighlight,
+body.hh-disabled .hh-highlight,
+body.hh-disabled .hh-secondaryhighlight {
+    background-color: transparent !important;
+    color: inherit !important;
     border: none !important;
 }
 
-/* --- Menu Items: Hover State (Active) --- */
-.hh-action-menu .hh-menu-item:not(.disabled):hover {
-    background-color: #ff0033 !important;
-    color: #ffffff !important;
-}
+.hh-role-force-white { color: #fff !important; font-weight: bold !important; text-shadow: 1px 1px 1px #000; }
 
-/* --- Menu Items: Disabled State (Offline) --- */
-.hh-action-menu .hh-menu-item.disabled {
-    background-color: #222222 !important; /* Darker, solid gray */
-    color: #555555 !important;           /* Dimmed text */
-    cursor: not-allowed !important;
-    pointer-events: none !important;      /* Block clicks */
+.hh-idhighlight { 
+    background-color: var(--hh-id-bg) !important; 
+    color: #000 !important; font-weight: bold !important; 
+    padding: 0 3px; border-radius: 3px; cursor: pointer; 
 }
+.hh-idhighlight.hh-online { border-bottom: 2px solid #00ff88 !important; }
+.hh-idhighlight.hh-offline { border-bottom: 2px solid #ff0000 !important; }
 
-/* Specific styling for the Kick button if player is offline */
-.hh-menu-item[style*="opacity:0.5"] {
-  background: #333 !important;
-  cursor: not-allowed;
-}
+.hh-highlight { background-color: var(--hh-p-bg) !important; color: #fff !important; font-weight: bold !important; border-radius: 3px; }
+.hh-secondaryhighlight { background-color: var(--hh-s-bg) !important; color: #000 !important; font-weight: bold !important; border-radius: 3px; }
 
-.hh-menu-item.disabled {
-    background: #2a2a2a !important;
-    color: #666 !important;
-    opacity: 0.5 !important;
-    cursor: not-allowed !important;
-    pointer-events: none !important; /* This prevents the click from ever firing */
+.hh-action-menu { 
+    position: absolute; display: none; z-index: 2147483647; 
+    background: #111; border: 1px solid #444; flex-direction: column; 
+    min-width: 180px; box-shadow: 0 4px 15px #000; font-family: sans-serif;
 }
-
-.hh-menu-item.disabled:hover {
-    background: #2a2a2a !important; /* Prevents the red hover color */
-}
-
-.hh-action-menu .hh-menu-item:not(.disabled):hover {
-    background-color: #ff0033 !important;
-    color: white !important;
-}
-
-.hh-action-menu .hh-menu-item.disabled {
-    background-color: #252525 !important; /* Slightly lighter than menu bg */
-    color: #555 !important;               /* Darker text to show it's inactive */
-    opacity: 1 !important;                /* MUST be 1 to stay visible */
-    cursor: not-allowed !important;
-    pointer-events: none !important;      /* Unclickable */
-}
-
-.hh-idhighlight:hover {
-  filter: brightness(1.2); 
-  outline: 1px solid rgba(255, 255, 255, 0.5);
-}
-
-/* Row Hover Effect */
-body:has(#IFrameOutput1) div:not(.hh-action-menu):not(.hh-menu-item):hover, 
-body:has(#IFrameOutput1) p:hover, 
-body:has(#IFrameOutput1) tr:hover,
-div[id*="PanelConsole"] div:not(.hh-action-menu):not(.hh-menu-item):hover,
-div[id*="PanelConsole"] tr:hover {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-}
-
-.hh-role-highlight {
-  color: #ffffff !important;
-  font-weight: normal !important;
-  text-shadow: 1px 1px 2px #000;
-}
-
-/* Floating Preview Tooltip */
-.hh-tooltip {
-    position: fixed !important; /* Fixed ensures it stays relative to the SCREEN, not the table */
-    padding: 6px 12px !important;
-    background: rgba(15, 15, 15, 0.98) !important;
-    color: #ffffff !important;
-    border-radius: 4px !important;
-    font-size: 13px !important;
-    font-family: 'Consolas', monospace !important;
-    pointer-events: none !important; 
-    z-index: 2147483647 !important; /* Absolute maximum z-index */
-    border: 2px solid var(--hh-primary-bg) !important;
-    white-space: nowrap !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important;
-    display: none; /* JS will toggle this to 'block' */
-    left: 0;
-    top: 0;
-}
-
-/* Safety for small frames */
-@media screen and (max-height: 150px) {
-  .hh-tooltip {
-    display: none !important;
-  }
-}
+.hh-menu-header { padding: 10px; background: #222; color: #fff; border-bottom: 1px solid #444; display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: bold; }
+.hh-status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+.hh-status-online { background-color: #00ff88; box-shadow: 0 0 5px #00ff88; }
+.hh-status-offline { background-color: #ff0033; box-shadow: 0 0 5px #ff0033; }
+.hh-menu-row { padding: 12px; color: #ddd; cursor: pointer; border-bottom: 1px solid #222; font-size: 13px; }
+.hh-menu-row:hover { background: #333; color: #fff; }
+.hh-menu-row.disabled { opacity: 0.5; cursor: not-allowed; background: #1a1a1a; }
+#hh-close-x { cursor: pointer; padding: 0 5px; color: #888; }
