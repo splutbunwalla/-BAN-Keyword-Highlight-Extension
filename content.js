@@ -30,12 +30,45 @@
     return `rgba(${r}, ${g}, ${b}, ${alpha || 1})`;
   };
 
+  // const updateStyles = () => {
+    // const root = document.documentElement;
+    // root.style.setProperty('--hh-primary-bg', hexToRGBA(COLORS.primary, ALPHAS.primary));
+    // root.style.setProperty('--hh-secondary-bg', hexToRGBA(COLORS.secondary, ALPHAS.secondary));
+    // root.style.setProperty('--hh-id-bg', hexToRGBA(COLORS.steamidColor, ALPHAS.steamidAlpha));
+  // };
+  
   const updateStyles = () => {
-    const root = document.documentElement;
-    root.style.setProperty('--hh-primary-bg', hexToRGBA(COLORS.primary, ALPHAS.primary));
-    root.style.setProperty('--hh-secondary-bg', hexToRGBA(COLORS.secondary, ALPHAS.secondary));
-    root.style.setProperty('--hh-id-bg', hexToRGBA(COLORS.steamidColor, ALPHAS.steamidAlpha));
-  };
+  const root = document.documentElement;
+  root.style.setProperty('--hh-primary-bg', hexToRGBA(COLORS.primary, ALPHAS.primary));
+  root.style.setProperty('--hh-secondary-bg', hexToRGBA(COLORS.secondary, ALPHAS.secondary));
+  root.style.setProperty('--hh-id-bg', hexToRGBA(COLORS.steamidColor, ALPHAS.steamidAlpha));
+
+  // Check if we are inside the actual console frame
+  const isConsoleFrame = window.location.href.includes("Proxy.ashx") || 
+                         window.location.href.includes("ServiceWebConsole") ||
+                         (window.frameElement && window.frameElement.id === "IFrameOutput1");
+
+  let styleTag = document.getElementById('hh-scoped-styles');
+  if (!styleTag) {
+    styleTag = document.createElement('style');
+    styleTag.id = 'hh-scoped-styles';
+    (document.head || document.documentElement).appendChild(styleTag);
+  }
+
+  // Only apply the "Visuals" if we are in the console. 
+  // Otherwise, the spans exist but are invisible.
+  styleTag.textContent = isConsoleFrame ? `
+    .hh-highlight { background-color: var(--hh-primary-bg); color: #fff; font-weight: bold; padding: 0 2px; border-radius: 3px; }
+    .hh-secondaryhighlight { background-color: var(--hh-secondary-bg); color: #000; font-weight: bold; padding: 0 2px; border-radius: 3px; }
+    .hh-idhighlight { background-color: var(--hh-id-bg); color: #000; font-weight: bold; cursor: pointer; border-radius: 3px; }
+    
+    /* The Row Hover - only active in this frame */
+    div:hover, p:hover, tr:hover { background-color: rgba(255, 255, 255, 0.07) !important; }
+  ` : `
+    /* Disable visuals for other pages */
+    .hh-highlight, .hh-secondaryhighlight, .hh-idhighlight { background: transparent !important; color: inherit !important; }
+  `;
+};
 
   function removeAllHighlights() {
     document.querySelectorAll(".hh-highlight, .hh-secondaryhighlight, .hh-idhighlight, .hh-role-highlight").forEach(span => {
