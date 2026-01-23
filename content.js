@@ -10,8 +10,33 @@
   let enabled = true;
   let scanTimeout;
   let tooltip = null;
-  
+  let actionMenu = null;
+  let menuHideTimeout = null;
+
   // --- HELPERS ---
+  function createActionMenu() {
+    if (actionMenu) return;
+    actionMenu = document.createElement('div');
+    actionMenu.className = 'hh-action-menu';
+    actionMenu.style.position = "fixed";
+    actionMenu.style.display = "none";
+    
+    // Auto-hide when mouse leaves the menu area
+    actionMenu.addEventListener('mouseleave', () => {
+        clearTimeout(menuHideTimeout);
+        menuHideTimeout = setTimeout(() => {
+            actionMenu.style.display = 'none';
+        }, 1200); 
+    });
+
+    // Cancel the hide timer if the mouse comes back in
+    actionMenu.addEventListener('mouseenter', () => {
+        clearTimeout(menuHideTimeout);
+    });
+
+    document.body.appendChild(actionMenu);
+  }
+  
   function createTooltip() {
     if (tooltip || !document.body) return; 
     
@@ -22,53 +47,39 @@
   }
 
   const hexToRGBA = (hex, alpha) => {
-    // FIX: Fallback to a default color if hex is missing to prevent .slice() crash
     const safeHex = (hex && typeof hex === 'string' && hex.startsWith('#')) ? hex : "#ff0033";
     const r = parseInt(safeHex.slice(1, 3), 16), 
           g = parseInt(safeHex.slice(3, 5), 16), 
           b = parseInt(safeHex.slice(5, 7), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha || 1})`;
   };
-
-  // const updateStyles = () => {
-    // const root = document.documentElement;
-    // root.style.setProperty('--hh-primary-bg', hexToRGBA(COLORS.primary, ALPHAS.primary));
-    // root.style.setProperty('--hh-secondary-bg', hexToRGBA(COLORS.secondary, ALPHAS.secondary));
-    // root.style.setProperty('--hh-id-bg', hexToRGBA(COLORS.steamidColor, ALPHAS.steamidAlpha));
-  // };
   
   const updateStyles = () => {
-  const root = document.documentElement;
-  root.style.setProperty('--hh-primary-bg', hexToRGBA(COLORS.primary, ALPHAS.primary));
-  root.style.setProperty('--hh-secondary-bg', hexToRGBA(COLORS.secondary, ALPHAS.secondary));
-  root.style.setProperty('--hh-id-bg', hexToRGBA(COLORS.steamidColor, ALPHAS.steamidAlpha));
+    const root = document.documentElement;
+    root.style.setProperty('--hh-primary-bg', hexToRGBA(COLORS.primary, ALPHAS.primary));
+    root.style.setProperty('--hh-secondary-bg', hexToRGBA(COLORS.secondary, ALPHAS.secondary));
+    root.style.setProperty('--hh-id-bg', hexToRGBA(COLORS.steamidColor, ALPHAS.steamidAlpha));
 
-  // Check if we are inside the actual console frame
-  const isConsoleFrame = window.location.href.includes("Proxy.ashx") || 
-                         window.location.href.includes("ServiceWebConsole") ||
-                         (window.frameElement && window.frameElement.id === "IFrameOutput1");
+    const isConsoleFrame = window.location.href.includes("Proxy.ashx") || 
+                           window.location.href.includes("ServiceWebConsole") ||
+                           (window.frameElement && window.frameElement.id === "IFrameOutput1");
 
-  let styleTag = document.getElementById('hh-scoped-styles');
-  if (!styleTag) {
-    styleTag = document.createElement('style');
-    styleTag.id = 'hh-scoped-styles';
-    (document.head || document.documentElement).appendChild(styleTag);
-  }
+    let styleTag = document.getElementById('hh-scoped-styles');
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = 'hh-scoped-styles';
+      (document.head || document.documentElement).appendChild(styleTag);
+    }
 
-  // Only apply the "Visuals" if we are in the console. 
-  // Otherwise, the spans exist but are invisible.
-  styleTag.textContent = isConsoleFrame ? `
-    .hh-highlight { background-color: var(--hh-primary-bg); color: #fff; font-weight: bold; padding: 0 2px; border-radius: 3px; }
-    .hh-secondaryhighlight { background-color: var(--hh-secondary-bg); color: #000; font-weight: bold; padding: 0 2px; border-radius: 3px; }
-    .hh-idhighlight { background-color: var(--hh-id-bg); color: #000; font-weight: bold; cursor: pointer; border-radius: 3px; }
-    
-    /* The Row Hover - only active in this frame */
-    div:hover, p:hover, tr:hover { background-color: rgba(255, 255, 255, 0.07) !important; }
-  ` : `
-    /* Disable visuals for other pages */
-    .hh-highlight, .hh-secondaryhighlight, .hh-idhighlight { background: transparent !important; color: inherit !important; }
-  `;
-};
+    styleTag.textContent = isConsoleFrame ? `
+      .hh-highlight { background-color: var(--hh-primary-bg); color: #fff; font-weight: bold; padding: 0 2px; border-radius: 3px; }
+      .hh-secondaryhighlight { background-color: var(--hh-secondary-bg); color: #000; font-weight: bold; padding: 0 2px; border-radius: 3px; }
+      .hh-idhighlight { background-color: var(--hh-id-bg); color: #000; font-weight: bold; cursor: pointer; border-radius: 3px; }
+      div:hover, p:hover, tr:hover { background-color: rgba(255, 255, 255, 0.07) !important; }
+    ` : `
+      .hh-highlight, .hh-secondaryhighlight, .hh-idhighlight { background: transparent !important; color: inherit !important; }
+    `;
+  };
 
   function removeAllHighlights() {
     document.querySelectorAll(".hh-highlight, .hh-secondaryhighlight, .hh-idhighlight, .hh-role-highlight").forEach(span => {
@@ -100,18 +111,6 @@
     return new RegExp(parts.join("|"), "gi");
   }
 
-  function copyToClipboard(text, element) {
-    navigator.clipboard.writeText(text).then(() => {
-      const originalBg = element.style.backgroundColor;
-      element.style.setProperty('background-color', 'rgba(40, 167, 69, 0.5)', 'important');
-      setTimeout(() => {
-        element.style.backgroundColor = originalBg;
-      }, 300);
-    }).catch(err => {
-      console.error("[Detector] Copy failed:", err);
-    });
-  }
-  
   // --- MAIN SCANNING CODE ---
   function scan(node = document.body) {
     if (!enabled || !node) return;
@@ -185,13 +184,13 @@
         else if (secondary) span.className = "hh-secondaryhighlight";
         else if (role) span.className = "hh-role-highlight";
         else {
-			span.className = "hh-idhighlight";
-			const steamIdValue = match[0];
-			const playerData = NAME_MAP[steamIdValue];
-			if (playerData && playerData.connId !== null) {
-				span.classList.add("hh-online");
-			}
-		}
+            span.className = "hh-idhighlight";
+            const steamIdValue = match[0];
+            const playerData = NAME_MAP[steamIdValue];
+            if (playerData && playerData.connId !== null) {
+                span.classList.add("hh-online");
+            }
+        }
         span.textContent = match[0];
         fragment.appendChild(span);
         lastIdx = match.index + match[0].length;
@@ -231,55 +230,58 @@
   });  
 
   // --- CLICK TO COPY & PASTE LOGIC ---
-  document.addEventListener("click", (e) => {
-    const timestampRegex = /^\d{2}:\d{2}:\d{2}\.\d{3}:\s*/;
-    const lineElement = e.target.closest('div, p, tr');
-    if (!lineElement) return;
-    const fullText = (lineElement.innerText || lineElement.textContent).trim();
-    let cmdToPaste = "";
-
-    if (e.altKey) {
-      const idMatch = fullText.match(/\b\d{17}\b/);
-      if (idMatch) {
-        cmdToPaste = `ban ${idMatch[0]}`;
-        copyToClipboard(cmdToPaste, lineElement);
-      }
-    } else if (e.ctrlKey) {
-      const idMatch = fullText.match(/\b\d{17}\b/);
-      const steamId = idMatch ? idMatch[0] : null;
-      const playerListData = steamId ? NAME_MAP[steamId] : null;
-      const playerListMatch = fullText.match(/^(\d{1,3})\s+/);
-      
-      if (playerListMatch) {
-        cmdToPaste = `kick ${playerListMatch[1]}`;
-      } else if (playerListData && playerListData.connId) {
-        // ONLY assign command if player has a connId (is online)
-        cmdToPaste = `kick ${playerListData.connId}`;
-      } else if (!idMatch && fullText.includes("??")) {
-        // Handle ?? replacement logic
-        let processedText = fullText.replace(timestampRegex, "").trim();
-        const isBanMessage = /\?\?.*banned\s+by/i.test(processedText);
-        if (isBanMessage) {
-          const bIdMatch = processedText.match(/(\d{17})/);
-          if (bIdMatch && NAME_MAP[bIdMatch[1]]) {
-            processedText = processedText.replace(/\?\?/, NAME_MAP[bIdMatch[1]].name).replace(/\s\s+/g, ' ');
-          }
-        }
-        copyToClipboard(processedText, lineElement);
-      }
-    }
-
-    if (cmdToPaste) {
-      chrome.storage.local.set({ 'pendingCommand': { cmd: cmdToPaste, time: Date.now() } });
-      e.preventDefault();
-      e.stopPropagation();
+  document.addEventListener("contextmenu", (e) => {
+    clearTimeout(menuHideTimeout);
+    const target = e.target.closest(".hh-idhighlight");
+    
+    if (!target) {
+      if (actionMenu) actionMenu.style.display = 'none';
       return;
     }
-
-    if (e.target.classList.contains("hh-idhighlight")) {
-      copyToClipboard(e.target.textContent.trim(), e.target);
-    }
+  
+    e.preventDefault(); 
+    createActionMenu();
+  
+    const steamId = target.textContent.trim();
+    const data = NAME_MAP[steamId];
+    const playerName = data ? data.name : "Unknown Player";
+    const connId = data ? data.connId : null;
+    const isOffline = !connId;
+   
+    actionMenu.innerHTML = `
+        <div class="menu-header">${playerName}</div>
+        <div class="hh-menu-item ${isOffline ? 'disabled' : ''}" data-cmd="kick ${connId}">
+          👢 Kick Player ${isOffline ? '(Offline)' : ''}
+        </div>
+        <div class="hh-menu-item" data-cmd="ban ${steamId}">🔨 Ban SteamID</div>
+        <div class="hh-menu-item" data-cmd="copy">📋 Copy ID</div>
+    `;
+   
+    actionMenu.style.display = 'block';
+    actionMenu.style.left = e.clientX + "px";
+    actionMenu.style.top = e.clientY + "px";
+  
+    actionMenu.onclick = (menuEvent) => {
+        const item = menuEvent.target.closest(".hh-menu-item");
+        if (!item || item.classList.contains('disabled')) return; 
+    
+        const cmd = item.getAttribute("data-cmd");
+        if (cmd === "copy") {
+            navigator.clipboard.writeText(steamId);
+        } else {
+            chrome.storage.local.set({ 'pendingCommand': { cmd: cmd, time: Date.now() } });
+        }
+        actionMenu.style.display = 'none';
+    };
   });
+  
+  const hideMenu = () => { if (actionMenu) actionMenu.style.display = 'none'; };
+
+  document.addEventListener("mousedown", (e) => {
+    if (actionMenu && !actionMenu.contains(e.target)) hideMenu();
+  });
+
+  window.addEventListener('blur', hideMenu);
 
   // --- STORAGE BRIDGE ---
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -353,7 +355,6 @@
       tooltip.style.left = (e.clientX + 15) + 'px';
       tooltip.style.top = (e.clientY + 15) + 'px';
       
-      // Visual feedback: Use gray border for offline players
       if (isOffline) {
         tooltip.style.borderColor = '#888888';
         tooltip.style.color = '#aaaaaa';
