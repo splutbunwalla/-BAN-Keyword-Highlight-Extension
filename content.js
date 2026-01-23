@@ -184,7 +184,14 @@
         if (primary) span.className = "hh-highlight";
         else if (secondary) span.className = "hh-secondaryhighlight";
         else if (role) span.className = "hh-role-highlight";
-        else span.className = "hh-idhighlight";
+        else {
+			span.className = "hh-idhighlight";
+			const steamIdValue = match[0];
+			const playerData = NAME_MAP[steamIdValue];
+			if (playerData && playerData.connId !== null) {
+				span.classList.add("hh-online");
+			}
+		}
         span.textContent = match[0];
         fragment.appendChild(span);
         lastIdx = match.index + match[0].length;
