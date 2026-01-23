@@ -22,8 +22,12 @@
   }
 
   const hexToRGBA = (hex, alpha) => {
-    const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    // FIX: Fallback to a default color if hex is missing to prevent .slice() crash
+    const safeHex = (hex && typeof hex === 'string' && hex.startsWith('#')) ? hex : "#ff0033";
+    const r = parseInt(safeHex.slice(1, 3), 16), 
+          g = parseInt(safeHex.slice(3, 5), 16), 
+          b = parseInt(safeHex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha || 1})`;
   };
 
   const updateStyles = () => {
