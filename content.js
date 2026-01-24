@@ -3,7 +3,66 @@
   let actionMenu = null, scanTimeout = null;
   let isInitializing = false;
   const PERMA_DUR = "307445734561825"; // Hardcoded duration for logging
+  let isRacing = false;
+  let banQueue = []; // Format: { sid: "", name: "", dur: "" }
+  let isProcessingQueue = false; // Internal flag to track batch processing
+  let autoSubBanDelay = 200
+  
+  const checkRaceStatus = (text) => {
+    if (/race\s+started/i.test(text)) {
+      if (!isRacing) {
+        isRacing = true;
+        chrome.runtime.sendMessage({ action: "SET_RACE_MODE", value: true });
+        showToast("Race Mode Active: Kicks/Bans Automated");
+      }
+    } else if (/race\s+finished/i.test(text) || /race\s+abandoned/i.test(text)) {
+      if (isRacing) {
+        isRacing = false;
+        chrome.runtime.sendMessage({ action: "SET_RACE_MODE", value: false });
+        processBanQueue();
+      }
+    }
+  };
 
+  const processBanQueue = () => {
+    if (banQueue.length === 0) return;
+
+    chrome.runtime.sendMessage({ action: "SET_QUEUE_MODE", value: true });
+    let combinedLogs = [];
+    
+    banQueue.forEach((item, index) => {
+      setTimeout(() => {
+        const cmd = (item.dur === PERMA_DUR) ? `ban ${item.sid}` : `ban ${item.sid},${item.dur}`;
+        chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+        
+        if (index === banQueue.length - 1) {
+          setTimeout(() => { 
+            chrome.runtime.sendMessage({ action: "SET_QUEUE_MODE", value: false }); 
+          }, 1000);
+        }
+      }, index * 2000); // Increased to 2 seconds to allow site to refresh
+
+      combinedLogs.push(`${item.name} (${item.sid}) banned for ${item.dur} mins`);
+    });
+
+    copyToClipboard(combinedLogs.join("\n"));
+    showToast(`Processing ${banQueue.length} queued bans...`);
+    banQueue = []; 
+  };
+  
+  const showToast = (msg) => {
+    const toast = document.createElement('div');
+    toast.textContent = msg;
+    toast.style = `
+      position: fixed; bottom: 20px; right: 20px; 
+      background: #ff0033; color: white; padding: 12px 20px; 
+      border-radius: 5px; z-index: 999999; font-weight: bold;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5); font-family: sans-serif;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000); // Disappears after 3 seconds
+  };
+  
   const loadRegistry = () => {
     try {
       const saved = sessionStorage.getItem('hh_registry');
@@ -26,15 +85,41 @@
     document.body.removeChild(el);
   };
 
-  const injectToInput = (cmd) => {
+  const injectToInput = (cmd, autoSubmit = false) => {
     const input = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand") || 
                   document.querySelector('input[id*="TextBoxCommand"]');
+
     if (!input) return;
+
     input.focus();
+    
+    // 1. reliable value setting
     const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
     if (nativeSetter) nativeSetter.call(input, cmd);
     else input.value = cmd;
-    ['input', 'change', 'keyup'].forEach(evt => input.dispatchEvent(new Event(evt, { bubbles: true })));
+
+    // 2. Notify the page the text changed
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // 3. AUTO-SUBMIT LOGIC (No Button Version)
+    if (autoSubmit) {
+      setTimeout(() => {
+        // Simulate pressing "Enter"
+        const enterDown = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, keyCode: 13, which: 13, key: 'Enter' });
+        const enterPress = new KeyboardEvent('keypress', { bubbles: true, cancelable: true, keyCode: 13, which: 13, key: 'Enter' });
+        const enterUp = new KeyboardEvent('keyup', { bubbles: true, cancelable: true, keyCode: 13, which: 13, key: 'Enter' });
+
+        input.dispatchEvent(enterDown);
+        input.dispatchEvent(enterPress);
+        input.dispatchEvent(enterUp);
+
+        // Simulate "Clicking Away" (Blur) - Use user's observation as backup
+        input.blur();
+        
+        console.log(`🚀 Auto-submitted: ${cmd}`);
+      }, 100); // Short delay to let the value 'settle'
+    }
   };
 
   const stripHighlights = () => {
@@ -74,9 +159,28 @@
   });
 
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.action === "EXECUTE_COMMAND") injectToInput(msg.cmd);
-    // Messages from popup now only trigger light updates for colors
-    if (msg.action === "updateColors") applyStyles(msg);
+    if (msg.action === "EXECUTE_COMMAND") {
+      let shouldAutoSubmit = false;
+
+      // Use the states passed directly from the background "brain"
+      if (msg.cmd.startsWith('kick') && msg.isRacing) {
+        shouldAutoSubmit = true;
+      }
+
+      if (msg.cmd.startsWith('ban') && msg.isProcessingQueue) {
+        shouldAutoSubmit = true;
+      }
+
+      // Check if this specific frame has the input box
+      const input = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand");
+      if (input) {
+        console.log(`Console Frame executing: ${msg.cmd} | AutoSubmit: ${shouldAutoSubmit}`);
+        injectToInput(msg.cmd, shouldAutoSubmit);
+      }
+    }
+
+	// Messages from popup now only trigger light updates for colors
+	if (msg.action === "updateColors") applyStyles(msg);
     if (msg.action === "toggle" || msg.action === "updateKeywords") init();
   });
   
@@ -87,6 +191,7 @@
     document.querySelectorAll('tr, div.log-line, span, td').forEach(el => {
       const txt = (el.innerText || "").trim();
       if (!txt) return;
+	  
       if (['vip', 'admin', 'moderator', 'default'].includes(txt.toLowerCase())) el.classList.add('hh-role-force-white');
       const tableMatch = txt.match(/^(\d+)\s+(.+?)\s+(\d{17})$/);
       const logMatch = txt.match(/(joined|left).*?(\d+),?\s+(.*?)\s*\(id:\s*(\d{17})\)/i);
@@ -148,32 +253,48 @@
   
   const handleMenuClick = (ev, data, sid) => {
     const item = ev.target.closest('.hh-menu-row, .hh-submenu-item');
-    if (!item || item.classList.contains('disabled') || item.getAttribute('data-type') === 'parent') {
-      if (ev.target.id === 'hh-close-x') actionMenu.style.display = 'none';
-      return;
-    }
+    if (!item || item.classList.contains('disabled') || item.getAttribute('data-type') === 'parent') return;
 
-    const type = item.getAttribute('data-type'), conn = item.getAttribute('data-conn');
+    // FIX: Re-load the registry and refresh 'data' to get the latest status
+    loadRegistry(); 
+    const currentData = NAME_MAP[sid] || data; 
+
+    const type = item.getAttribute('data-type'), 
+          conn = item.getAttribute('data-conn');
     let dur = item.getAttribute('data-dur');
-    let cmd = "";
 
     if (type === 'kick') {
-      cmd = `kick ${conn}`;
-      chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
-    } 
+      chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: `kick ${conn}` });
+    }
+	else if (type === 'unban') {
+      chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: `unban ${sid}` });
+	}
+	else if (type === 'role') {
+      chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: `role ${sid}` });
+	}
     else if (type === 'ban') {
       if (dur === "custom") {
         dur = prompt("Enter ban duration in minutes:");
         if (!dur || isNaN(dur)) return; 
       }
-      
-      // v1.6 Console Command Logic
-      cmd = (dur === PERMA_DUR) ? `ban ${sid}` : `ban ${sid},${dur}`;
-      chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
-      
-      const logMsg = `${data.name} (${sid}) banned by Server for ${dur} minutes`;
-      copyToClipboard(logMsg);
-    } 
+
+	  if (isRacing) {
+        banQueue.push({ sid, name: currentData.name, dur });
+        
+        if (currentData.online && currentData.connId) {
+           // This sends a PROXY_COMMAND message
+           chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: `kick ${currentData.connId}` });
+           showToast(`Queued Ban & Kicked: ${currentData.name}`);
+        } else {
+           showToast(`Queued Ban: ${currentData.name} (Offline)`);
+        }
+      } else {
+        const cmd = (dur === PERMA_DUR) ? `ban ${sid}` : `ban ${sid},${dur}`;
+        chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+        copyToClipboard(`${currentData.name} (${sid}) banned by Server for ${dur} minutes`);
+        showToast(`Banned: ${currentData.name}`);
+      }
+    }
     else {
       copyToClipboard(sid);
     }
@@ -209,6 +330,8 @@
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="custom">Custom...</div>
         </div>
       </div>
+      <div class="hh-menu-row" data-type="unban" data-sid="${sid}">📋 Unban ID</div>
+      <div class="hh-menu-row" data-type="role" data-sid="${sid}">📋 Set Role ID</div>
       <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>`;
 
     actionMenu.onclick = (ev) => handleMenuClick(ev, data, sid);
@@ -301,13 +424,26 @@
       KEYWORDS = sync.keywords || [];
       SECONDARYWORDS = sync.secondarykeywords || [];
       
-      applyStyles(sync); // Update CSS
-      stripHighlights(); // Clean DOM
-      scan();            // Re-highlight
+      applyStyles(sync);
+      stripHighlights();
+      scan();
 
       if (window.hhObserver) window.hhObserver.disconnect();
       if (document.body) {
-        window.hhObserver = new MutationObserver(() => {
+        window.hhObserver = new MutationObserver((mutations) => {
+          // 1. Check for Race Status in new nodes only (Efficient)
+          mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+			  // console.log(node)
+              if (node.nodeType === 3) { // Text node
+                checkRaceStatus(node.textContent);
+              } else if (node.innerText) { // Element node
+                checkRaceStatus(node.innerText);
+              }
+            });
+          });
+
+          // 2. Schedule the highlighter
           clearTimeout(scanTimeout);
           scanTimeout = setTimeout(scan, 800); 
         });

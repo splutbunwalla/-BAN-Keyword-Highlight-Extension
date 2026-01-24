@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "=BAN Keyword Highlighter",
+  "name": "=BAN Wreckfest 2 Admin Tool for Host Havoc Servers",
   "version": "1.5.1",
   "permissions": ["storage", "clipboardWrite"],
   "host_permissions": ["https://gamepanel.hosthavoc.com/*"],
