@@ -11,17 +11,14 @@ let enabled = true;
 function updateContentScript() {
   const settings = {
     primaryColor: primaryColorInput.value,
-    primaryAlpha: parseFloat(primaryAlphaInput.value), // Ensure it's a number
+    primaryAlpha: parseFloat(primaryAlphaInput.value),
     secondaryColor: secondaryColorInput.value,
     secondaryAlpha: parseFloat(secondaryAlphaInput.value),
     steamidColor: steamidColorInput.value,
     steamidAlpha: parseFloat(steamidAlphaInput.value)
   };
 
-  // Save to storage immediately
-  chrome.storage.sync.set(settings);
-
-  // Send message to the tab for real-time visual update
+  // 1. Send message for instant visual feedback (this hits applyStyles)
   chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
     if (tabs[0]) {
       chrome.tabs.sendMessage(tabs[0].id, {
@@ -30,7 +27,14 @@ function updateContentScript() {
       });
     }
   });
+
+  // 2. Debounce the storage save to avoid hitting Chrome's sync limits
+  clearTimeout(window.saveTimeout);
+  window.saveTimeout = setTimeout(() => {
+    chrome.storage.sync.set(settings);
+  }, 100); 
 }
+
 
 function saveSettingsSilently() {
   const pList = Array.from(document.querySelectorAll("#primary-list .keyword-item")).map(item => ({

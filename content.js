@@ -1,6 +1,7 @@
 (() => {
   let KEYWORDS = [], SECONDARYWORDS = [], NAME_MAP = {};
   let actionMenu = null, scanTimeout = null;
+  let isInitializing = false;
 
   const loadRegistry = () => {
     try {
@@ -27,16 +28,12 @@
   const injectToInput = (cmd) => {
     const input = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand") || 
                   document.querySelector('input[id*="TextBoxCommand"]');
-    if (!input) return; // Silent exit if not in this frame
-
+    if (!input) return;
     input.focus();
     const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
     if (nativeSetter) nativeSetter.call(input, cmd);
     else input.value = cmd;
-
-    ['input', 'change', 'keyup'].forEach(evt => {
-      input.dispatchEvent(new Event(evt, { bubbles: true }));
-    });
+    ['input', 'change', 'keyup'].forEach(evt => input.dispatchEvent(new Event(evt, { bubbles: true })));
   };
 
   const stripHighlights = () => {
@@ -49,39 +46,49 @@
     });
   };
 
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.action === "EXECUTE_COMMAND") {
-      injectToInput(msg.cmd);
-    }
-    if (["updateColors", "toggle", "updateKeywords"].includes(msg.action)) {
-      init();
+  // LIGHTWEIGHT UPDATE: Only changes CSS variables
+  const updateStylesOnly = (data) => {
+    if (!document.body) return;
+    const root = document.documentElement;
+    if (data.steamidColor) root.style.setProperty('--hh-id-bg', hexToRGBA(data.steamidColor, data.steamidAlpha ?? 1));
+    if (data.primaryColor) root.style.setProperty('--hh-p-bg', hexToRGBA(data.primaryColor, data.primaryAlpha ?? 1));
+    if (data.secondaryColor) root.style.setProperty('--hh-s-bg', hexToRGBA(data.secondaryColor, data.secondaryAlpha ?? 1));
+    
+    if (data.enabled === false) document.body.classList.add('hh-disabled');
+    else if (data.enabled === true) document.body.classList.remove('hh-disabled');
+  };
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'sync') {
+      const keys = Object.keys(changes);
+      const isColorChange = keys.every(k => k.includes('Color') || k.includes('Alpha') || k === 'enabled');
+      
+      if (isColorChange) {
+        // Just update CSS variables, no scanning
+        chrome.storage.sync.get(null, (data) => applyStyles(data));
+      } else {
+        init(); // Full re-scan for keyword changes
+      }
     }
   });
 
-  const updateStyles = (sync) => {
-    const root = document.documentElement;
-    root.style.setProperty('--hh-id-bg', hexToRGBA(sync.steamidColor || "#ff8c00", sync.steamidAlpha ?? 1));
-    root.style.setProperty('--hh-p-bg', hexToRGBA(sync.primaryColor || "#ff0033", sync.primaryAlpha ?? 1));
-    root.style.setProperty('--hh-s-bg', hexToRGBA(sync.secondaryColor || "#ffff33", sync.secondaryAlpha ?? 1));
-    if (sync.enabled === false) document.body.classList.add('hh-disabled');
-    else document.body.classList.remove('hh-disabled');
-  };
-
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.action === "EXECUTE_COMMAND") injectToInput(msg.cmd);
+    // Messages from popup now only trigger light updates for colors
+    if (msg.action === "updateColors") applyStyles(msg);
+    if (msg.action === "toggle" || msg.action === "updateKeywords") init();
+  });
+  
   function scan() {
     if (!document.body || document.body.classList.contains('hh-disabled')) return;
-
-    // 1. DATA HARVEST
+    
+    // Data harvesting logic...
     document.querySelectorAll('tr, div.log-line, span, td').forEach(el => {
       const txt = (el.innerText || "").trim();
       if (!txt) return;
-
-      if (['vip', 'admin', 'moderator', 'default'].includes(txt.toLowerCase())) {
-        el.classList.add('hh-role-force-white');
-      }
-
+      if (['vip', 'admin', 'moderator', 'default'].includes(txt.toLowerCase())) el.classList.add('hh-role-force-white');
       const tableMatch = txt.match(/^(\d+)\s+(.+?)\s+(\d{17})$/);
       const logMatch = txt.match(/(joined|left).*?(\d+),?\s+(.*?)\s*\(id:\s*(\d{17})\)/i);
-
       if (tableMatch) {
         NAME_MAP[tableMatch[3]] = { name: tableMatch[2].trim(), connId: tableMatch[1], online: true };
         saveRegistry();
@@ -97,12 +104,9 @@
       }
     });
 
-    // 2. HIGHLIGHTING
-    // CRITICAL FIX: Ensure we only map ENABLED keywords
     const p = KEYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
     const s = SECONDARYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
     const allWords = [...p, ...s].sort((a, b) => b.length - a.length);
-
     if (allWords.length === 0 && !document.querySelector('.hh-idhighlight')) return;
 
     const escape = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
@@ -119,17 +123,12 @@
     nodes.forEach(node => {
       const text = node.nodeValue;
       if (!regex.test(text)) return;
-      
       const fragment = document.createDocumentFragment();
-      let lastIndex = 0;
-      regex.lastIndex = 0;
-      let match;
-      
+      let lastIndex = 0; regex.lastIndex = 0; let match;
       while ((match = regex.exec(text)) !== null) {
         fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
         const span = document.createElement('span');
         const m = match[0];
-        
         if (m.length === 17 && /^\d+$/.test(m)) {
            const data = NAME_MAP[m];
            span.className = `hh-idhighlight ${(data && data.online) ? 'hh-online' : 'hh-offline'}`;
@@ -147,6 +146,7 @@
     });
   }
 
+  // ... (contextmenu, click, mouseup listeners remain the same)
   document.addEventListener('contextmenu', (e) => {
     const target = e.target.closest('.hh-idhighlight');
     if (!target) return;
@@ -156,10 +156,8 @@
       actionMenu.className = 'hh-action-menu';
       document.body.appendChild(actionMenu);
     }
-    
     const sid = target.textContent.trim();
     const data = NAME_MAP[sid] || { name: "Offline Player", connId: null, online: false };
-    
     actionMenu.innerHTML = `
       <div class="hh-menu-header">
         <div style="display:flex; align-items:center;">
@@ -169,16 +167,30 @@
         <span id="hh-close-x">✕</span>
       </div>
       <div class="hh-menu-row ${!data.online ? 'disabled' : ''}" data-type="kick" data-sid="${sid}" data-conn="${data.connId || ''}">👢 Kick</div>
-      <div class="hh-menu-row" data-type="ban" data-sid="${sid}">🔨 Ban</div>
-      <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>
-    `;
+      <div class="hh-menu-row" data-type="parent">🔨 Ban
+        <div class="hh-submenu">
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="">Permanent</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="2880">2 Days (2880)</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="5000">~3.5 Days (5000)</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="10000">7 Days (10000)</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="custom">Custom...</div>
+        </div>
+      </div>
+      <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>`;
 
     actionMenu.onclick = (ev) => {
-      const row = ev.target.closest('.hh-menu-row');
-      if (!row || row.classList.contains('disabled')) { actionMenu.style.display = 'none'; return; }
-      const type = row.getAttribute('data-type'), sid = row.getAttribute('data-sid'), conn = row.getAttribute('data-conn');
-      let cmd = (type === 'kick') ? `kick ${conn}` : (type === 'ban') ? `ban ${sid}` : sid;
-
+      const item = ev.target.closest('.hh-menu-row, .hh-submenu-item');
+      if (!item || item.classList.contains('disabled') || item.getAttribute('data-type') === 'parent') {
+        if (ev.target.id === 'hh-close-x') actionMenu.style.display = 'none';
+        return;
+      }
+      const type = item.getAttribute('data-type'), sid = item.getAttribute('data-sid'), conn = item.getAttribute('data-conn'), dur = item.getAttribute('data-dur');
+      let cmd = "";
+      if (type === 'kick') cmd = `kick ${conn}`;
+      else if (type === 'ban') {
+        if (dur === "custom") cmd = `ban ${sid},`;
+        else cmd = (dur === "") ? `ban ${sid}` : `ban ${sid},${dur}`;
+      } else cmd = sid;
       copyToClipboard(cmd);
       if (type !== 'copy') chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
       actionMenu.style.display = 'none';
@@ -189,7 +201,6 @@
   }, true);
 
   document.addEventListener('click', (e) => { if (actionMenu && !actionMenu.contains(e.target)) actionMenu.style.display = 'none'; });
-
   document.addEventListener('mouseup', (e) => {
     if (e.ctrlKey && e.button === 0) {
       const line = e.target.closest('tr, div, p');
@@ -202,23 +213,45 @@
       setTimeout(() => { line.style.backgroundColor = ''; }, 200);
     }
   }, true);
+  
+  const applyStyles = (sync) => {
+    if (!document.body) return;
+    const root = document.documentElement;
+    if (sync.steamidColor) root.style.setProperty('--hh-id-bg', hexToRGBA(sync.steamidColor, sync.steamidAlpha ?? 1));
+    if (sync.primaryColor) root.style.setProperty('--hh-p-bg', hexToRGBA(sync.primaryColor, sync.primaryAlpha ?? 1));
+    if (sync.secondaryColor) root.style.setProperty('--hh-s-bg', hexToRGBA(sync.secondaryColor, sync.secondaryAlpha ?? 1));
+    
+    if (sync.enabled === false) document.body.classList.add('hh-disabled');
+    else if (sync.enabled === true) document.body.classList.remove('hh-disabled');
+  };
+  
 
   const init = async () => {
-    loadRegistry();
-    const sync = await chrome.storage.sync.get(null);
-    KEYWORDS = sync.keywords || [];
-    SECONDARYWORDS = sync.secondarykeywords || [];
-    updateStyles(sync);
-    stripHighlights();
-    scan();
-    if (window.hhObserver) window.hhObserver.disconnect();
-    window.hhObserver = new MutationObserver(() => {
-      clearTimeout(scanTimeout);
-      scanTimeout = setTimeout(scan, 800); 
-    });
-    window.hhObserver.observe(document.body, { childList: true, subtree: true });
-  };
+    if (isInitializing) return;
+    isInitializing = true;
+    try {
+      loadRegistry();
+      const sync = await chrome.storage.sync.get(null);
+      KEYWORDS = sync.keywords || [];
+      SECONDARYWORDS = sync.secondarykeywords || [];
+      
+      applyStyles(sync); // Update CSS
+      stripHighlights(); // Clean DOM
+      scan();            // Re-highlight
 
+      if (window.hhObserver) window.hhObserver.disconnect();
+      if (document.body) {
+        window.hhObserver = new MutationObserver(() => {
+          clearTimeout(scanTimeout);
+          scanTimeout = setTimeout(scan, 800); 
+        });
+        window.hhObserver.observe(document.body, { childList: true, subtree: true });
+      }
+    } finally {
+      isInitializing = false;
+    }
+  };
+  
   if (document.body) init();
   else setTimeout(init, 100);
 })();
