@@ -108,7 +108,6 @@
     const p = KEYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
     const s = SECONDARYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
     const allWords = [...p, ...s].sort((a, b) => b.length - a.length);
-    if (allWords.length === 0 && !document.querySelector('.hh-idhighlight')) return;
 
     const escape = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
     const wordPattern = allWords.map(escape).join('|');
@@ -146,31 +145,63 @@
       node.replaceWith(fragment);
     });
   }
+  
+  const handleMenuClick = (ev, data, sid) => {
+    const item = ev.target.closest('.hh-menu-row, .hh-submenu-item');
+    if (!item || item.classList.contains('disabled') || item.getAttribute('data-type') === 'parent') {
+      if (ev.target.id === 'hh-close-x') actionMenu.style.display = 'none';
+      return;
+    }
 
-  // ... (contextmenu, click, mouseup listeners remain the same)
+    const type = item.getAttribute('data-type'), conn = item.getAttribute('data-conn');
+    let dur = item.getAttribute('data-dur');
+    let cmd = "";
+
+    if (type === 'kick') {
+      cmd = `kick ${conn}`;
+      chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+    } 
+    else if (type === 'ban') {
+      if (dur === "custom") {
+        dur = prompt("Enter ban duration in minutes:");
+        if (!dur || isNaN(dur)) return; 
+      }
+      
+      // v1.6 Console Command Logic
+      cmd = (dur === PERMA_DUR) ? `ban ${sid}` : `ban ${sid},${dur}`;
+      chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+      
+      const logMsg = `${data.name} (${sid}) banned by Server for ${dur} minutes`;
+      copyToClipboard(logMsg);
+    } 
+    else {
+      copyToClipboard(sid);
+    }
+    actionMenu.style.display = 'none';
+  };
+  
   document.addEventListener('contextmenu', (e) => {
     const target = e.target.closest('.hh-idhighlight');
     if (!target) return;
     e.preventDefault();
+
     if (!actionMenu) {
       actionMenu = document.createElement('div');
       actionMenu.className = 'hh-action-menu';
       document.body.appendChild(actionMenu);
     }
+
     const sid = target.textContent.trim();
     const data = NAME_MAP[sid] || { name: "Offline Player", connId: null, online: false };
+    
     actionMenu.innerHTML = `
       <div class="hh-menu-header">
-        <div style="display:flex; align-items:center;">
-          <span class="hh-status-dot ${data.online ? 'hh-status-online' : 'hh-status-offline'}"></span>
-          <span>${data.name}</span>
-        </div>
+        <div style="display:flex; align-items:center;"><span class="hh-status-dot ${data.online ? 'hh-status-online' : 'hh-status-offline'}"></span><span>${data.name}</span></div>
         <span id="hh-close-x">✕</span>
       </div>
       <div class="hh-menu-row ${!data.online ? 'disabled' : ''}" data-type="kick" data-sid="${sid}" data-conn="${data.connId || ''}">👢 Kick</div>
-      
-      <div class="hh-menu-row" data-type="parent">🔨 Ban
-        <div class="hh-submenu">
+      <div class="hh-menu-row" data-type="parent" id="hh-ban-row">🔨 Ban
+        <div class="hh-submenu" id="hh-ban-submenu">
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="${PERMA_DUR}">Permanent</div>
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="2880">2 Days (2880)</div>
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="5000">~3.5 Days (5000)</div>
@@ -178,55 +209,61 @@
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="custom">Custom...</div>
         </div>
       </div>
-    
-      <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>
-    `;
-	
-    actionMenu.onclick = (ev) => {
-      const item = ev.target.closest('.hh-menu-row, .hh-submenu-item');
-      if (!item || item.classList.contains('disabled') || item.getAttribute('data-type') === 'parent') {
-        if (ev.target.id === 'hh-close-x') actionMenu.style.display = 'none';
-        return;
-      }
-      
-      const type = item.getAttribute('data-type'), 
-            sid = item.getAttribute('data-sid'), 
-            conn = item.getAttribute('data-conn');
-      let dur = item.getAttribute('data-dur');
-      
-      let cmd = "";
-    
-      if (type === 'kick') {
-        cmd = `kick ${conn}`;
-        chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
-      } 
-      else if (type === 'ban') {
-        // Handle Custom Input
-        if (dur === "custom") {
-          dur = prompt("Enter ban duration in minutes:");
-          if (!dur || isNaN(dur)) return; // Exit if cancelled or not a number
-        }
-    
-        if (dur === PERMA_DUR) {
-          cmd = `ban ${sid}`; // Simple command for console
-        } else {
-          cmd = `ban ${sid},${dur}`; // Duration command for timed bans
-        }
-        chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
-    
-        const logMsg = `${data.name} (${sid}) banned by Server for ${dur} minutes`;
-        copyToClipboard(logMsg);
-      } 
-      else {
-        // Just Copy ID
-        copyToClipboard(sid);
-      }
-      
-      actionMenu.style.display = 'none';
-    };
-	actionMenu.style.left = e.pageX + "px";
-    actionMenu.style.top = e.pageY + "px";
+      <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>`;
+
+    actionMenu.onclick = (ev) => handleMenuClick(ev, data, sid);
+
+    // --- REVISED VIEWPORT CLAMPING ---
     actionMenu.style.display = 'flex';
+    actionMenu.style.visibility = 'hidden'; 
+
+    const menuWidth = 180;
+    const menuHeight = actionMenu.offsetHeight;
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const scrollY = window.pageYOffset;
+
+    let x = e.pageX;
+    let y = e.pageY;
+
+    // 1. Clamp Main Menu Y (Vertical)
+    if (y + menuHeight > scrollY + viewportHeight) {
+        y = (scrollY + viewportHeight) - menuHeight - 10;
+    }
+    if (y < scrollY) y = scrollY + 10;
+
+    // 2. Clamp Main Menu X (Horizontal)
+    if (x + menuWidth > viewportWidth) {
+        x = viewportWidth - menuWidth - 10;
+    }
+
+    // 3. Submenu Logic (Flip Left/Right)
+    const subWidth = 160;
+    if (x + menuWidth + subWidth > viewportWidth) {
+        actionMenu.classList.add('hh-flip-submenu-x');
+    } else {
+        actionMenu.classList.remove('hh-flip-submenu-x');
+    }
+
+    // 4. Submenu Logic (Flip Up/Down)
+    const banRow = actionMenu.querySelector('#hh-ban-row');
+    const submenu = actionMenu.querySelector('#hh-ban-submenu');
+    
+    // Position menu first to get accurate offsets
+    actionMenu.style.left = x + "px";
+    actionMenu.style.top = y + "px";
+
+    // Check where the Ban row sits relative to the screen
+    const banRowRect = banRow.getBoundingClientRect();
+    const subHeight = 220; // Estimated height of 5 items
+
+    if (banRowRect.top + subHeight > viewportHeight) {
+        actionMenu.classList.add('hh-flip-submenu-y');
+    } else {
+        actionMenu.classList.remove('hh-flip-submenu-y');
+    }
+
+    actionMenu.style.visibility = 'visible';
   }, true);
 
   document.addEventListener('click', (e) => { if (actionMenu && !actionMenu.contains(e.target)) actionMenu.style.display = 'none'; });

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "=BAN Keyword Highlighter",
-  "version": "1.6",
+  "version": "1.5.1",
   "permissions": ["storage", "clipboardWrite"],
   "host_permissions": ["https://gamepanel.hosthavoc.com/*"],
   "background": { "service_worker": "background.js" },

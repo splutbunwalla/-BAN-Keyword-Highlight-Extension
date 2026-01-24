@@ -45,11 +45,47 @@ body.hh-disabled .hh-secondaryhighlight {
 
 /* Submenu Styles */
 .hh-menu-row[data-type="parent"]::after { content: '▶'; font-size: 9px; color: #666; margin-left: 10px; }
-.hh-submenu {
-    display: none; position: absolute; left: 100%; top: -1px; 
-    background: #111; border: 1px solid #444; min-width: 150px; 
-    flex-direction: column; box-shadow: 5px 0 15px #000; z-index: 2147483647;
-}
 .hh-menu-row[data-type="parent"]:hover .hh-submenu { display: flex; }
 .hh-submenu-item { padding: 12px; color: #ddd; font-size: 12px; border-bottom: 1px solid #222; white-space: nowrap; }
 .hh-submenu-item:hover { background: #ff0033; color: #fff; }
+
+/* Submenu Position: Right side by default */
+.hh-submenu {
+    display: none; 
+    position: absolute; 
+    left: 100%; 
+    top: -1px; 
+    background: #111; 
+    border: 1px solid #444; 
+    min-width: 160px; 
+    flex-direction: column; 
+    box-shadow: 5px 0 15px #000;
+	z-index: 2147483647;
+}
+
+/* Flip logic: If the main menu is near the right edge, show submenu on the left */
+.hh-flip-submenu .hh-submenu {
+    left: auto;
+    right: 100%;
+    box-shadow: -5px 0 15px #000;
+}
+
+/* Existing Submenu Base */
+.hh-submenu {
+    display: none;
+    position: absolute;
+    left: 100%;
+    top: -1px; /* Default: align with top of Ban row */
+    background: #111;
+    border: 1px solid #444;
+    min-width: 160px;
+    flex-direction: column;
+    box-shadow: 5px 0 15px #000;
+    z-index: 2147483647;
+}
+
+/* Vertical Flip: Align bottom of submenu with bottom of Ban row */
+.hh-flip-submenu-y .hh-submenu {
+    top: auto;
+    bottom: -1px; 
+}
