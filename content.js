@@ -6,7 +6,6 @@
   let isRacing = false;
   let banQueue = []; // Format: { sid: "", name: "", dur: "" }
   let isProcessingQueue = false; // Internal flag to track batch processing
-  let autoSubBanDelay = 200
   
   const checkRaceStatus = (text) => {
     if (/race\s+started/i.test(text)) {
@@ -179,8 +178,8 @@
       }
     }
 
-	// Messages from popup now only trigger light updates for colors
-	if (msg.action === "updateColors") applyStyles(msg);
+    // Messages from popup now only trigger light updates for colors
+    if (msg.action === "updateColors") applyStyles(msg);
     if (msg.action === "toggle" || msg.action === "updateKeywords") init();
   });
   
@@ -191,7 +190,7 @@
     document.querySelectorAll('tr, div.log-line, span, td').forEach(el => {
       const txt = (el.innerText || "").trim();
       if (!txt) return;
-	  
+      
       if (['vip', 'admin', 'moderator', 'default'].includes(txt.toLowerCase())) el.classList.add('hh-role-force-white');
       const tableMatch = txt.match(/^(\d+)\s+(.+?)\s+(\d{17})$/);
       const logMatch = txt.match(/(joined|left).*?(\d+),?\s+(.*?)\s*\(id:\s*(\d{17})\)/i);
@@ -266,19 +265,27 @@
     if (type === 'kick') {
       chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: `kick ${conn}` });
     }
-	else if (type === 'unban') {
+    else if (type === 'unban') {
       chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: `unban ${sid}` });
-	}
-	else if (type === 'role') {
-      chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: `role ${sid}` });
-	}
+    }
+    // --- NEW ROLE SUBMENU LOGIC ---
+    else if (type === 'role') {
+      const roleArg = item.getAttribute('data-role'); // Read the role value (vip, moderator, etc)
+      let cmd = `role ${sid}`;
+      // Append the role if one was selected; otherwise it stays "role <sid>" (Status check)
+      if (roleArg) {
+        cmd += `,${roleArg}`;
+      }
+      chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+      showToast(roleArg ? `Setting Role: ${roleArg}` : `Checking Role Status`);
+    }
     else if (type === 'ban') {
       if (dur === "custom") {
         dur = prompt("Enter ban duration in minutes:");
         if (!dur || isNaN(dur)) return; 
       }
 
-	  if (isRacing) {
+      if (isRacing) {
         banQueue.push({ sid, name: currentData.name, dur });
         
         if (currentData.online && currentData.connId) {
@@ -321,17 +328,28 @@
         <span id="hh-close-x">✕</span>
       </div>
       <div class="hh-menu-row ${!data.online ? 'disabled' : ''}" data-type="kick" data-sid="${sid}" data-conn="${data.connId || ''}">👢 Kick</div>
+      
       <div class="hh-menu-row" data-type="parent" id="hh-ban-row">🔨 Ban
         <div class="hh-submenu" id="hh-ban-submenu">
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="${PERMA_DUR}">Permanent</div>
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="2880">2 Days (2880)</div>
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="5000">~3.5 Days (5000)</div>
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="10000">7 Days (10000)</div>
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="custom">Custom...</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="${PERMA_DUR}">🔨 Permanent</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="2880">🔨 2 Days (2880)</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="5000">🔨 ~3.5 Days (5000)</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="10000">🔨 7 Days (10000)</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="custom">🔨 Custom...</div>
         </div>
       </div>
-      <div class="hh-menu-row" data-type="unban" data-sid="${sid}">📋 Unban ID</div>
-      <div class="hh-menu-row" data-type="role" data-sid="${sid}">📋 Set Role ID</div>
+      
+      <div class="hh-menu-row" data-type="unban" data-sid="${sid}">🔓 Unban ID</div>
+      
+      <div class="hh-menu-row" data-type="parent" id="hh-role-row">👤 Role
+         <div class="hh-submenu" id="hh-role-submenu">
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="">❔ Check Status</div>
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="vip">⭐ VIP</div>
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="moderator">🛡️ Moderator</div>
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="admin">👑 Admin</div>
+         </div>
+      </div>
+
       <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>`;
 
     actionMenu.onclick = (ev) => handleMenuClick(ev, data, sid);
@@ -369,22 +387,21 @@
     }
 
     // 4. Submenu Logic (Flip Up/Down)
-    const banRow = actionMenu.querySelector('#hh-ban-row');
-    const submenu = actionMenu.querySelector('#hh-ban-submenu');
-    
-    // Position menu first to get accurate offsets
-    actionMenu.style.left = x + "px";
-    actionMenu.style.top = y + "px";
+    // We check the Role row because it is lower down the list. 
+    // If the Role row's submenu won't fit, we flip everything up.
+    const roleRow = actionMenu.querySelector('#hh-role-row');
+    const roleRowRect = roleRow.getBoundingClientRect();
+    const subHeight = 220; // Estimated height of longest submenu
 
-    // Check where the Ban row sits relative to the screen
-    const banRowRect = banRow.getBoundingClientRect();
-    const subHeight = 220; // Estimated height of 5 items
-
-    if (banRowRect.top + subHeight > viewportHeight) {
+    if (roleRowRect.top + subHeight > viewportHeight) {
         actionMenu.classList.add('hh-flip-submenu-y');
     } else {
         actionMenu.classList.remove('hh-flip-submenu-y');
     }
+
+    // Position menu first to get accurate offsets
+    actionMenu.style.left = x + "px";
+    actionMenu.style.top = y + "px";
 
     actionMenu.style.visibility = 'visible';
   }, true);
@@ -434,7 +451,7 @@
           // 1. Check for Race Status in new nodes only (Efficient)
           mutations.forEach(mutation => {
             mutation.addedNodes.forEach(node => {
-			  // console.log(node)
+              // console.log(node)
               if (node.nodeType === 3) { // Text node
                 checkRaceStatus(node.textContent);
               } else if (node.innerText) { // Element node
