@@ -2,6 +2,7 @@
   let KEYWORDS = [], SECONDARYWORDS = [], NAME_MAP = {};
   let actionMenu = null, scanTimeout = null;
   let isInitializing = false;
+  const PERMA_DUR = "307445734561825"; // Hardcoded duration for logging
 
   const loadRegistry = () => {
     try {
@@ -170,7 +171,7 @@
       
       <div class="hh-menu-row" data-type="parent">🔨 Ban
         <div class="hh-submenu">
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="307445734561825">Permanent</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="${PERMA_DUR}">Permanent</div>
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="2880">2 Days (2880)</div>
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="5000">~3.5 Days (5000)</div>
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="10000">7 Days (10000)</div>
@@ -206,11 +207,13 @@
           if (!dur || isNaN(dur)) return; // Exit if cancelled or not a number
         }
     
-        // 1. Prepare Command for Game Console
-        cmd = `ban ${sid},${dur}`;
+        if (dur === PERMA_DUR) {
+          cmd = `ban ${sid}`; // Simple command for console
+        } else {
+          cmd = `ban ${sid},${dur}`; // Duration command for timed bans
+        }
         chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
     
-        // 2. Prepare Log Message for Clipboard
         const logMsg = `${data.name} (${sid}) banned by Server for ${dur} minutes`;
         copyToClipboard(logMsg);
       } 
