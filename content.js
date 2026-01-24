@@ -167,35 +167,61 @@
         <span id="hh-close-x">✕</span>
       </div>
       <div class="hh-menu-row ${!data.online ? 'disabled' : ''}" data-type="kick" data-sid="${sid}" data-conn="${data.connId || ''}">👢 Kick</div>
+      
       <div class="hh-menu-row" data-type="parent">🔨 Ban
         <div class="hh-submenu">
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="">Permanent</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="307445734561825">Permanent</div>
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="2880">2 Days (2880)</div>
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="5000">~3.5 Days (5000)</div>
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="10000">7 Days (10000)</div>
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="custom">Custom...</div>
         </div>
       </div>
-      <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>`;
-
+    
+      <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>
+    `;
+	
     actionMenu.onclick = (ev) => {
       const item = ev.target.closest('.hh-menu-row, .hh-submenu-item');
       if (!item || item.classList.contains('disabled') || item.getAttribute('data-type') === 'parent') {
         if (ev.target.id === 'hh-close-x') actionMenu.style.display = 'none';
         return;
       }
-      const type = item.getAttribute('data-type'), sid = item.getAttribute('data-sid'), conn = item.getAttribute('data-conn'), dur = item.getAttribute('data-dur');
+      
+      const type = item.getAttribute('data-type'), 
+            sid = item.getAttribute('data-sid'), 
+            conn = item.getAttribute('data-conn');
+      let dur = item.getAttribute('data-dur');
+      
       let cmd = "";
-      if (type === 'kick') cmd = `kick ${conn}`;
+    
+      if (type === 'kick') {
+        cmd = `kick ${conn}`;
+        chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+      } 
       else if (type === 'ban') {
-        if (dur === "custom") cmd = `ban ${sid},`;
-        else cmd = (dur === "") ? `ban ${sid}` : `ban ${sid},${dur}`;
-      } else cmd = sid;
-      copyToClipboard(cmd);
-      if (type !== 'copy') chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+        // Handle Custom Input
+        if (dur === "custom") {
+          dur = prompt("Enter ban duration in minutes:");
+          if (!dur || isNaN(dur)) return; // Exit if cancelled or not a number
+        }
+    
+        // 1. Prepare Command for Game Console
+        cmd = `ban ${sid},${dur}`;
+        chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+    
+        // 2. Prepare Log Message for Clipboard
+        const logMsg = `${data.name} (${sid}) banned by Server for ${dur} minutes`;
+        copyToClipboard(logMsg);
+      } 
+      else {
+        // Just Copy ID
+        copyToClipboard(sid);
+      }
+      
       actionMenu.style.display = 'none';
     };
-    actionMenu.style.left = e.pageX + "px";
+	actionMenu.style.left = e.pageX + "px";
     actionMenu.style.top = e.pageY + "px";
     actionMenu.style.display = 'flex';
   }, true);
