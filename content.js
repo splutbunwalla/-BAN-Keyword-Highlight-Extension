@@ -2,17 +2,101 @@
   let KEYWORDS = [], SECONDARYWORDS = [], NAME_MAP = {};
   let actionMenu = null, scanTimeout = null;
   let isInitializing = false;
-  const PERMA_DUR = "307445734561825"; // Hardcoded duration for logging
+  const PERMA_DUR = "307445734561825"; 
   let isRacing = false;
   let banQueue = []; // Format: { sid: "", name: "", dur: "" }
-  let isProcessingQueue = false; // Internal flag to track batch processing
+  let isProcessingQueue = false; 
   
+  // --- UI: QUEUE DISPLAY LOGIC ---
+  const updateQueueDisplay = () => {
+    let container = document.getElementById('hh-queue-container');
+    
+    // Create container if it doesn't exist
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'hh-queue-container';
+      container.style = `
+        position: fixed; top: 10px; right: 10px; width: 260px;
+        background: rgba(16, 16, 16, 0.95); color: #ccc; 
+        z-index: 999999; border: 1px solid #444; border-radius: 4px;
+        font-family: 'Segoe UI', sans-serif; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        display: none; flex-direction: column; overflow: hidden;
+      `;
+      
+      const header = document.createElement('div');
+      header.id = 'hh-queue-header';
+      header.style = `
+        padding: 8px 12px; background: #222; border-bottom: 1px solid #444;
+        font-weight: bold; font-size: 13px; color: #fff; display: flex; 
+        justify-content: space-between; align-items: center;
+      `;
+      header.innerHTML = `<span>Ban Queue</span><span id="hh-queue-count" style="color:#ff0033">0</span>`;
+      
+      const list = document.createElement('div');
+      list.id = 'hh-queue-list';
+      list.style = `max-height: 300px; overflow-y: auto; padding: 0;`;
+      
+      container.appendChild(header);
+      container.appendChild(list);
+      document.body.appendChild(container);
+    }
+
+    // Toggle Visibility
+    if (banQueue.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+    container.style.display = 'flex';
+    
+    // Update Count
+    document.getElementById('hh-queue-count').textContent = banQueue.length;
+
+    // Render List
+    const list = document.getElementById('hh-queue-list');
+    list.innerHTML = ''; // Clear current list
+
+    banQueue.forEach((item, index) => {
+      const row = document.createElement('div');
+      row.style = `
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 8px 12px; border-bottom: 1px solid #333; font-size: 12px;
+      `;
+      
+      const info = document.createElement('div');
+      info.style = `display: flex; flex-direction: column; overflow: hidden;`;
+      info.innerHTML = `
+        <span style="color: #fff; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.name}</span>
+        <span style="color: #888; font-size: 10px;">${item.sid}</span>
+      `;
+
+      const removeBtn = document.createElement('span');
+      removeBtn.innerHTML = '&times;';
+      removeBtn.style = `
+        color: #ff4444; cursor: pointer; font-size: 18px; font-weight: bold;
+        padding: 0 5px; margin-left: 10px; flex-shrink: 0;
+      `;
+      removeBtn.title = "Remove from Queue";
+      
+      // Remove Handler
+      removeBtn.onclick = () => {
+        banQueue.splice(index, 1);
+        updateQueueDisplay();
+      };
+
+      row.appendChild(info);
+      row.appendChild(removeBtn);
+      list.appendChild(row);
+    });
+  };
+
+  // --- CORE LOGIC ---
+
   const checkRaceStatus = (text) => {
     if (/race\s+started/i.test(text)) {
       if (!isRacing) {
         isRacing = true;
         chrome.runtime.sendMessage({ action: "SET_RACE_MODE", value: true });
-        showToast("Race Mode Active: Kicks/Bans Automated");
+        showToast("🏁 Race Mode Active: Bans will be queued");
       }
     } else if (/race\s+finished/i.test(text) || /race\s+abandoned/i.test(text)) {
       if (isRacing) {
@@ -29,6 +113,7 @@
     chrome.runtime.sendMessage({ action: "SET_QUEUE_MODE", value: true });
     let combinedLogs = [];
     
+    // Process the queue
     banQueue.forEach((item, index) => {
       setTimeout(() => {
         const cmd = (item.dur === PERMA_DUR) ? `ban ${item.sid}` : `ban ${item.sid},${item.dur}`;
@@ -39,14 +124,17 @@
             chrome.runtime.sendMessage({ action: "SET_QUEUE_MODE", value: false }); 
           }, 1000);
         }
-      }, index * 2000); // Increased to 2 seconds to allow site to refresh
+      }, index * 2000); 
 
       combinedLogs.push(`${item.name} (${item.sid}) banned for ${item.dur} mins`);
     });
 
     copyToClipboard(combinedLogs.join("\n"));
     showToast(`Processing ${banQueue.length} queued bans...`);
+    
+    // Clear Queue and UI
     banQueue = []; 
+    updateQueueDisplay();
   };
   
   const showToast = (msg) => {
@@ -59,7 +147,7 @@
       box-shadow: 0 4px 15px rgba(0,0,0,0.5); font-family: sans-serif;
     `;
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000); // Disappears after 3 seconds
+    setTimeout(() => toast.remove(), 3000);
   };
   
   const loadRegistry = () => {
@@ -91,33 +179,21 @@
     if (!input) return;
 
     input.focus();
-    
-    // 1. reliable value setting
     const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
     if (nativeSetter) nativeSetter.call(input, cmd);
     else input.value = cmd;
 
-    // 2. Notify the page the text changed
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
 
-    // 3. AUTO-SUBMIT LOGIC (No Button Version)
     if (autoSubmit) {
       setTimeout(() => {
-        // Simulate pressing "Enter"
-        const enterDown = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, keyCode: 13, which: 13, key: 'Enter' });
-        const enterPress = new KeyboardEvent('keypress', { bubbles: true, cancelable: true, keyCode: 13, which: 13, key: 'Enter' });
-        const enterUp = new KeyboardEvent('keyup', { bubbles: true, cancelable: true, keyCode: 13, which: 13, key: 'Enter' });
-
-        input.dispatchEvent(enterDown);
-        input.dispatchEvent(enterPress);
-        input.dispatchEvent(enterUp);
-
-        // Simulate "Clicking Away" (Blur) - Use user's observation as backup
+        input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, keyCode: 13, which: 13, key: 'Enter' }));
+        input.dispatchEvent(new KeyboardEvent('keypress', { bubbles: true, cancelable: true, keyCode: 13, which: 13, key: 'Enter' }));
+        input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, cancelable: true, keyCode: 13, which: 13, key: 'Enter' }));
         input.blur();
-        
         console.log(`🚀 Auto-submitted: ${cmd}`);
-      }, 100); // Short delay to let the value 'settle'
+      }, 100); 
     }
   };
 
@@ -131,14 +207,12 @@
     });
   };
 
-  // LIGHTWEIGHT UPDATE: Only changes CSS variables
   const updateStylesOnly = (data) => {
     if (!document.body) return;
     const root = document.documentElement;
     if (data.steamidColor) root.style.setProperty('--hh-id-bg', hexToRGBA(data.steamidColor, data.steamidAlpha ?? 1));
     if (data.primaryColor) root.style.setProperty('--hh-p-bg', hexToRGBA(data.primaryColor, data.primaryAlpha ?? 1));
     if (data.secondaryColor) root.style.setProperty('--hh-s-bg', hexToRGBA(data.secondaryColor, data.secondaryAlpha ?? 1));
-    
     if (data.enabled === false) document.body.classList.add('hh-disabled');
     else if (data.enabled === true) document.body.classList.remove('hh-disabled');
   };
@@ -147,38 +221,23 @@
     if (area === 'sync') {
       const keys = Object.keys(changes);
       const isColorChange = keys.every(k => k.includes('Color') || k.includes('Alpha') || k === 'enabled');
-      
-      if (isColorChange) {
-        // Just update CSS variables, no scanning
-        chrome.storage.sync.get(null, (data) => applyStyles(data));
-      } else {
-        init(); // Full re-scan for keyword changes
-      }
+      if (isColorChange) chrome.storage.sync.get(null, (data) => applyStyles(data));
+      else init(); 
     }
   });
 
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.action === "EXECUTE_COMMAND") {
       let shouldAutoSubmit = false;
+      if (msg.cmd.startsWith('kick') && msg.isRacing) shouldAutoSubmit = true;
+      if (msg.cmd.startsWith('ban') && msg.isProcessingQueue) shouldAutoSubmit = true;
 
-      // Use the states passed directly from the background "brain"
-      if (msg.cmd.startsWith('kick') && msg.isRacing) {
-        shouldAutoSubmit = true;
-      }
-
-      if (msg.cmd.startsWith('ban') && msg.isProcessingQueue) {
-        shouldAutoSubmit = true;
-      }
-
-      // Check if this specific frame has the input box
       const input = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand");
       if (input) {
         console.log(`Console Frame executing: ${msg.cmd} | AutoSubmit: ${shouldAutoSubmit}`);
         injectToInput(msg.cmd, shouldAutoSubmit);
       }
     }
-
-    // Messages from popup now only trigger light updates for colors
     if (msg.action === "updateColors") applyStyles(msg);
     if (msg.action === "toggle" || msg.action === "updateKeywords") init();
   });
@@ -186,7 +245,6 @@
   function scan() {
     if (!document.body || document.body.classList.contains('hh-disabled')) return;
     
-    // Data harvesting logic...
     document.querySelectorAll('tr, div.log-line, span, td').forEach(el => {
       const txt = (el.innerText || "").trim();
       if (!txt) return;
@@ -254,7 +312,6 @@
     const item = ev.target.closest('.hh-menu-row, .hh-submenu-item');
     if (!item || item.classList.contains('disabled') || item.getAttribute('data-type') === 'parent') return;
 
-    // FIX: Re-load the registry and refresh 'data' to get the latest status
     loadRegistry(); 
     const currentData = NAME_MAP[sid] || data; 
 
@@ -268,14 +325,10 @@
     else if (type === 'unban') {
       chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: `unban ${sid}` });
     }
-    // --- NEW ROLE SUBMENU LOGIC ---
     else if (type === 'role') {
-      const roleArg = item.getAttribute('data-role'); // Read the role value (vip, moderator, etc)
+      const roleArg = item.getAttribute('data-role'); 
       let cmd = `role ${sid}`;
-      // Append the role if one was selected; otherwise it stays "role <sid>" (Status check)
-      if (roleArg) {
-        cmd += `,${roleArg}`;
-      }
+      if (roleArg) cmd += `,${roleArg}`;
       chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
       showToast(roleArg ? `Setting Role: ${roleArg}` : `Checking Role Status`);
     }
@@ -288,8 +341,10 @@
       if (isRacing) {
         banQueue.push({ sid, name: currentData.name, dur });
         
+        // UPDATE THE UI LIST
+        updateQueueDisplay();
+        
         if (currentData.online && currentData.connId) {
-           // This sends a PROXY_COMMAND message
            chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: `kick ${currentData.connId}` });
            showToast(`Queued Ban & Kicked: ${currentData.name}`);
         } else {
@@ -357,52 +412,31 @@
     // --- REVISED VIEWPORT CLAMPING ---
     actionMenu.style.display = 'flex';
     actionMenu.style.visibility = 'hidden'; 
-
     const menuWidth = 180;
     const menuHeight = actionMenu.offsetHeight;
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
     const scrollY = window.pageYOffset;
-
     let x = e.pageX;
     let y = e.pageY;
 
-    // 1. Clamp Main Menu Y (Vertical)
-    if (y + menuHeight > scrollY + viewportHeight) {
-        y = (scrollY + viewportHeight) - menuHeight - 10;
-    }
+    if (y + menuHeight > scrollY + viewportHeight) y = (scrollY + viewportHeight) - menuHeight - 10;
     if (y < scrollY) y = scrollY + 10;
+    if (x + menuWidth > viewportWidth) x = viewportWidth - menuWidth - 10;
 
-    // 2. Clamp Main Menu X (Horizontal)
-    if (x + menuWidth > viewportWidth) {
-        x = viewportWidth - menuWidth - 10;
-    }
-
-    // 3. Submenu Logic (Flip Left/Right)
     const subWidth = 160;
-    if (x + menuWidth + subWidth > viewportWidth) {
-        actionMenu.classList.add('hh-flip-submenu-x');
-    } else {
-        actionMenu.classList.remove('hh-flip-submenu-x');
-    }
+    if (x + menuWidth + subWidth > viewportWidth) actionMenu.classList.add('hh-flip-submenu-x');
+    else actionMenu.classList.remove('hh-flip-submenu-x');
 
-    // 4. Submenu Logic (Flip Up/Down)
-    // We check the Role row because it is lower down the list. 
-    // If the Role row's submenu won't fit, we flip everything up.
     const roleRow = actionMenu.querySelector('#hh-role-row');
     const roleRowRect = roleRow.getBoundingClientRect();
-    const subHeight = 220; // Estimated height of longest submenu
+    const subHeight = 220; 
 
-    if (roleRowRect.top + subHeight > viewportHeight) {
-        actionMenu.classList.add('hh-flip-submenu-y');
-    } else {
-        actionMenu.classList.remove('hh-flip-submenu-y');
-    }
+    if (roleRowRect.top + subHeight > viewportHeight) actionMenu.classList.add('hh-flip-submenu-y');
+    else actionMenu.classList.remove('hh-flip-submenu-y');
 
-    // Position menu first to get accurate offsets
     actionMenu.style.left = x + "px";
     actionMenu.style.top = y + "px";
-
     actionMenu.style.visibility = 'visible';
   }, true);
 
@@ -426,7 +460,6 @@
     if (sync.steamidColor) root.style.setProperty('--hh-id-bg', hexToRGBA(sync.steamidColor, sync.steamidAlpha ?? 1));
     if (sync.primaryColor) root.style.setProperty('--hh-p-bg', hexToRGBA(sync.primaryColor, sync.primaryAlpha ?? 1));
     if (sync.secondaryColor) root.style.setProperty('--hh-s-bg', hexToRGBA(sync.secondaryColor, sync.secondaryAlpha ?? 1));
-    
     if (sync.enabled === false) document.body.classList.add('hh-disabled');
     else if (sync.enabled === true) document.body.classList.remove('hh-disabled');
   };
@@ -448,19 +481,12 @@
       if (window.hhObserver) window.hhObserver.disconnect();
       if (document.body) {
         window.hhObserver = new MutationObserver((mutations) => {
-          // 1. Check for Race Status in new nodes only (Efficient)
           mutations.forEach(mutation => {
             mutation.addedNodes.forEach(node => {
-              // console.log(node)
-              if (node.nodeType === 3) { // Text node
-                checkRaceStatus(node.textContent);
-              } else if (node.innerText) { // Element node
-                checkRaceStatus(node.innerText);
-              }
+              if (node.nodeType === 3) checkRaceStatus(node.textContent);
+              else if (node.innerText) checkRaceStatus(node.innerText);
             });
           });
-
-          // 2. Schedule the highlighter
           clearTimeout(scanTimeout);
           scanTimeout = setTimeout(scan, 800); 
         });
