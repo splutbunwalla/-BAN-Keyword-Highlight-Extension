@@ -2,137 +2,238 @@
 <html>
 <head>
   <style>
-    body { font-family: sans-serif; width: 240px; padding: 10px; margin: 0; overflow: hidden; background: #ddd; }
-    .control-group { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
-    .color-container { display: flex; align-items: center; justify-content: space-between; font-size: 12px; margin-top: 5px; }
-    .alpha-container { display: flex; align-items: center; gap: 10px; font-size: 11px; margin-top: 5px; }
-    input[type="color"] { border: none; width: 30px; height: 30px; cursor: pointer; background: none; }
-    input[type="range"] { flex-grow: 1; cursor: pointer; }
-    button { width: 100%; margin-top: 5px; padding: 5px; cursor: pointer; }
-    .keyword-list { max-height: 120px; overflow-y: auto; border: 1px solid #ccc; margin-bottom: 8px; padding: 5px; background: #f9f9f9; }
-    .keyword-item { display: flex; align-items: center; font-size: 12px; margin-bottom: 2px; }
-    .keyword-item span { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; }
+
+@keyframes popupIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.main-container.closing {
+  animation: popupOut 500ms ease-in forwards;
+}
+
+@keyframes popupOut {
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.95);
+  }
+}
+
+.main-container.disabled {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+  transform: scale(0.98);
+  transition: 120ms ease;
+}
+
+html {
+  background: #181a1d;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  width: 280px;
+  margin: 0;
+  padding: 8px;
+  background: #181a1d;
+  overflow: hidden;
+}
+
+.main-container { 
+  background-color: #1e2124; 
+  color: #ffffff; 
+  border-radius: 16px; 
+  border: 1px solid #333; 
+  padding: 12px; 
+  /* A subtle shadow makes the edge look crisp against the background */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.6); 
+  display: flex; 
+  flex-direction: column; 
+  gap: 10px;
+  overflow: hidden; 
+  position: relative;
+  animation: popupIn 500ms cubic-bezier(.2,.9,.3,1);
+  transform-origin: top center;
+}
+
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent !important;
+}
+
+    /* 3. ALIGNMENT: Force Sliders/Colors to the Right Edge */
+    .control-group { 
+      margin-bottom: 5px; 
+      padding-bottom: 10px; 
+      border-bottom: 1px solid #333; 
+    }
+
+    .setting-row {
+      display: grid;
+      /* Label takes available space | Color box 30px | Slider 110px */
+      grid-template-columns: 1fr 30px 110px; 
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      width: 100%;
+    }
+
+    .setting-row label { font-size: 11px; color: #bbb; }
+
+    input[type="color"] { 
+      width: 24px; height: 24px; padding: 0; 
+      border: 1px solid #111; border-radius: 4px; 
+      background: none; cursor: pointer;
+      justify-self: center;
+    }   
+    
+    input[type="range"] { 
+      width: 100%; margin: 0; cursor: pointer; 
+      accent-color: #2196F3; 
+    }
+
+    input[type="text"] { 
+      background-color: #40444b; border: 1px solid #222; 
+      color: white; border-radius: 4px; padding: 4px;
+    }
+    
+    input[type="text"]::placeholder { color: #888; }
+
+    /* 4. LISTS & THEME SCROLLBAR */
+    .keyword-list { 
+      max-height: 100px; overflow-y: auto; 
+      background-color: #2f3136; border-radius: 8px; 
+      border: 1px solid #444; margin-bottom: 8px;
+    }
+
+    /* Dark slim scrollbar */
+    .keyword-list::-webkit-scrollbar { width: 4px; display: block; }
+    .keyword-list::-webkit-scrollbar-track { background: transparent; }
+    .keyword-list::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+
+    .keyword-item { 
+      padding: 4px 8px; background-color: #2f3136; 
+      border-bottom: 1px solid #1e2124; display: flex; 
+      align-items: center; gap: 8px; 
+    }
+
     .add-keyword { display: flex; gap: 5px; margin-bottom: 5px; }
-    .add-keyword input { flex-grow: 1; padding: 2px; }
-    .add-keyword button { width: auto; margin-top: 0; padding: 2px 8px; }
-    .keyword-item button { width: 24px !important; height: 24px; padding: 0 !important; margin: 0 0 0 5px !important; cursor: pointer; flex-shrink: 0;}
-    
-    /* Message specific formatting */
-    .section-title { font-size: 12px; font-weight: bold; margin-bottom: 5px; }
-    .section-title-big { font-size: 14px; font-weight: bold; margin-bottom: 5px; }
-    .msg-input-group { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
-    .msg-input-group input { padding: 4px; font-size: 11px; }
-    .item-info { flex-grow: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    
-	/* Container for the scrollable message list */
-	#message-list { max-height: 150px; }
+    .add-keyword input { flex-grow: 1; }
 
-    .msg-input-group { display: flex; flex-direction: column; gap: 4px; margin-top: 5px; }
-    .msg-input-group input { padding: 5px; border: 1px solid #ccc; border-radius: 3px; font-size: 11px; }
+    /* Buttons */
+    .add-keyword button, #add-msg-btn { 
+      width: 24px !important; min-width: 24px; height: 24px;
+      background-color: #4CAF50; color: white; border: none; 
+      border-radius: 4px; font-weight: bold; cursor: pointer; 
+    }
 
-	/* Formatting the items inside the list */
-	.keyword-item .item-info { display: flex; flex-direction: column; /* Stack label over text for better readability */ gap: 1px; line-height: 1.2; }
+    .delete-btn { 
+      background: transparent; border: none; color: #888; 
+      cursor: pointer; font-size: 14px; 
+    }
+    .delete-btn:hover { color: #ff4d4d; }
 
-	.item-label-text { font-weight: bold; color: #333; font-size: 11px; }
+    /* Header */
+    .toggle-section { 
+      display: flex; justify-content: space-between; 
+      align-items: center; padding-bottom: 10px; border-bottom: 1px solid #333; 
+    }
+    .section-title-big { font-size: 14px; font-weight: bold; }
+    .version-tag { font-size: 10px; color: #888; font-style: italic; }
 
-	.item-text-val { color: #666; font-size: 10px; font-style: italic; }
-	
-    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+    /* Toggle Switch */
+    .switch { position: relative; display: inline-block; width: 34px; height: 18px; }
     .switch input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
-    .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-    
+    .slider { 
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; 
+      background-color: #ccc; transition: .4s; border-radius: 20px; 
+    }
+    .slider:before { 
+      position: absolute; content: ""; height: 12px; width: 12px; 
+      left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; 
+    }
     input:checked + .slider { background-color: #2196F3; }
-    input:focus + .slider { box-shadow: 0 0 1px #2196F3; }
-    input:checked + .slider:before { transform: translateX(20px); }
-	
-    .title-wrapper { display: flex; flex-direction: column; justify-content: center; }
-    .toggle-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
-    .section-title { font-size: 12px; font-weight: bold; line-height: 1.2; }
-    .version-tag { font-size: 10px; color: #888; text-align: left; margin-top: 2px; font-style: italic; }
-	
-	/* Container to hold inputs and the button side-by-side */
-    .msg-grid-container { display: flex; gap: 5px; align-items: stretch; /* This makes the button span the full height */ margin-top: 5px; }
-    .msg-inputs { display: flex; flex-direction: column; gap: 3px; flex: 1; /* Takes up all available horizontal space */}
-    .msg-inputs input { padding: 4px; font-size: 11px; border: 1px solid #ccc; border-radius: 2px; }
-    
-    #add-msg-btn { width: 30px !important; /* Slightly wider for better click area */ margin: 0 !important; padding: 0 !important; background-color: #4CAF50; color: white; border: none; border-radius: 3px; font-size: 18px; /* Larger + sign */ font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    #add-msg-btn:hover { background-color: #45a049; }
-	
+    input:checked + .slider:before { transform: translateX(16px); }
+
+    /* Message Spanning Button */
+    .msg-grid-container { display: flex; gap: 5px; align-items: stretch; margin-top: 5px; }
+    .msg-inputs { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    #add-msg-btn { height: auto; width: 30px !important; font-size: 18px; }
+
+    .item-label-text { font-weight: bold; color: #2196F3; font-size: 10px; text-transform: uppercase; }
+    .item-text-val { color: #bbb; font-size: 11px; font-style: italic; }
+
   </style>
 </head>
 <body>
-  <div class="toggle-section">
-    <div class="title-wrapper">
-      <span class="section-title-big">Wreckfest 2 Admin Tool (HH)</span>
-      <div class="version-tag">v1.6</div>
-    </div>
+  <div class="main-container">
     
-    <label class="switch">
-      <input type="checkbox" id="toggleCheckbox">
-      <span class="slider round"></span>
-    </label>
-  </div>
-  
-  
-  <div class="control-group">
-    <div class="section-title">Primary Keywords:</div>
-    <div id="primary-list" class="keyword-list"></div>
-    <div class="add-keyword">
-      <input type="text" id="new-primary" placeholder="Add word...">
-      <button id="add-primary-btn">+</button>
-    </div>
-    <div class="color-container">
-      <label for="primaryColor">Primary Color:</label>
-      <input type="color" id="primaryColor" value="#ffff00">
-    </div>
-    <div class="alpha-container">
-      <label>Opacity:</label>
-      <input type="range" id="primaryAlpha" min="0" max="1" step="0.1" value="0.5">
-    </div>
-  </div>
-
-  <div class="control-group">
-    <div class="section-title">Secondary Keywords:</div>
-    <div id="secondary-list" class="keyword-list"></div>
-    <div class="add-keyword">
-      <input type="text" id="new-secondary" placeholder="Add word...">
-      <button id="add-secondary-btn">+</button>
-    </div>
-    <div class="color-container">
-      <label for="secondaryColor">Secondary Color:</label>
-      <input type="color" id="secondaryColor" value="#00ff00">
-    </div>
-    <div class="alpha-container">
-      <label>Opacity:</label>
-      <input type="range" id="secondaryAlpha" min="0" max="1" step="0.1" value="0.5">
-    </div>
-  </div>
-
-  <div class="control-group">
-    <div class="color-container">
-      <label for="steamidColor">SteamID Color:</label>
-      <input type="color" id="steamidColor" value="#ff8c00">
-    </div>
-    <div class="alpha-container">
-      <label>Opacity:</label>
-      <input type="range" id="steamidAlpha" min="0" max="1" step="0.1" value="0.5">
-    </div>
-  </div>
-
-  <div class="control-group">
-    <div class="section-title">Messages</div>
-    <div id="message-list" class="keyword-list msg-compact"></div>
-    
-    <div class="msg-grid-container">
-      <div class="msg-inputs">
-        <input type="text" id="new-msg-label" placeholder="Label (e.g. Warning)">
-        <input type="text" id="new-msg-text" placeholder="Message text...">
+    <div class="toggle-section">
+      <div class="title-wrapper">
+        <span class="section-title-big">Wreckfest 2 Admin Tool (HH)</span>
+        <div class="version-tag">v1.6</div>
       </div>
-      <button id="add-msg-btn">+</button>
+      <label class="switch">
+        <input type="checkbox" id="toggleCheckbox">
+        <span class="slider round"></span>
+      </label>
     </div>
-  </div>
 
+    <div class="control-group">
+      <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">Primary Keywords</div>
+      <div id="primary-list" class="keyword-list"></div>
+      <div class="add-keyword">
+        <input type="text" id="new-primary" placeholder="Add word...">
+        <button id="add-primary-btn">+</button>
+      </div>
+      <div class="setting-row">
+        <label>Primary Style</label>
+        <input type="color" id="primaryColor" value="#ffff00">
+        <input type="range" id="primaryAlpha" min="0" max="1" step="0.1" value="0.5">
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">Secondary Keywords</div>
+      <div id="secondary-list" class="keyword-list"></div>
+      <div class="add-keyword">
+        <input type="text" id="new-secondary" placeholder="Add word...">
+        <button id="add-secondary-btn">+</button>
+      </div>
+      <div class="setting-row">
+        <label>Secondary Style</label>
+        <input type="color" id="secondaryColor" value="#00ff00">
+        <input type="range" id="secondaryAlpha" min="0" max="1" step="0.1" value="0.5">
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="setting-row">
+        <label>SteamID Style</label>
+        <input type="color" id="steamidColor" value="#ff8c00">
+        <input type="range" id="steamidAlpha" min="0" max="1" step="0.1" value="0.5">
+      </div>
+    </div>
+
+    <div class="control-group" style="border-bottom: none;">
+      <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">Messages</div>
+      <div id="message-list" class="keyword-list" style="max-height: 80px;"></div>
+      <div class="msg-grid-container">
+        <div class="msg-inputs">
+          <input type="text" id="new-msg-label" placeholder="Label">
+          <input type="text" id="new-msg-text" placeholder="Message text...">
+        </div>
+        <button id="add-msg-btn">+</button>
+      </div>
+    </div>
+    
+  </div>
   <script src="popup.js"></script>
 </body>
 </html>

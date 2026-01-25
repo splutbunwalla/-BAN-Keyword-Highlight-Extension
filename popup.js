@@ -5,8 +5,36 @@ const secondaryAlphaInput = document.getElementById('secondaryAlpha');
 const steamidColorInput = document.getElementById("steamidColor");
 const steamidAlphaInput = document.getElementById('steamidAlpha');
 const toggleCheckbox = document.getElementById("toggleCheckbox");
+const container = document.querySelector('.main-container');
+const toggle = document.getElementById('toggleCheckbox');
+
+
 
 let enabled = true;
+let isClosing = false;
+
+function closePopup() {
+  if (isClosing) return;
+  isClosing = true;
+
+  container.classList.add('closing');
+
+  setTimeout(() => {
+    window.close();
+  }, 140);
+}
+
+document.addEventListener('click', (e) => {
+  if (!container.contains(e.target)) {
+    closePopup();
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closePopup();
+  }
+});
 
 function updateContentScript() {
   const settings = {
@@ -113,8 +141,11 @@ function renderMessages(messages) {
 
     const info = document.createElement("div");
     info.className = "item-info";
+    // Tooltip: shows the full message when hovering
+    info.setAttribute('title', m.text); 
+    
     info.innerHTML = `
-      <span class="item-label-text">${m.label}:</span>
+      <span class="item-label-text">${m.label}</span>
       <span class="item-text-val">${m.text}</span>
     `;
 
@@ -124,10 +155,9 @@ function renderMessages(messages) {
     
     del.onclick = () => {
       messages.splice(index, 1);
-      // Explicitly set storage here to ensure it persists
       chrome.storage.sync.set({ messages: messages }, () => {
         renderMessages(messages);
-        saveSettingsSilently();
+        saveSettingsSilently(); // Update the broadcast to content script
       });
     };
 
@@ -207,6 +237,7 @@ function loadSettings() {
 // Fixed: The change listener is now correctly attached to the checkbox
 toggleCheckbox.addEventListener("change", () => {
   enabled = toggleCheckbox.checked;
+  container.classList.toggle('disabled', !toggleCheckbox.checked);
   chrome.storage.sync.set({ enabled: enabled }, () => {
     console.log(`State saved: ${enabled}`);
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
