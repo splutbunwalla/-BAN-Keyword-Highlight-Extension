@@ -198,9 +198,34 @@ body.hh-disabled .hh-secondaryhighlight {
     font-family: sans-serif;
 }
 
+
+top: auto !important;
+    bottom: -1px !important;
+
 #hh-message-submenu .hh-submenu-item {
     max-width: 250px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+#hh-message-submenu {
+    /* 1. Force it to open UPWARDS */
+    top: auto !important;
+    bottom: -1px !important;
+    
+    /* 2. Limit the height so it never exceeds the screen height */
+    max-height: 450px; 
+    overflow-y: auto;
+    
+    /* 3. Flip the shadow for better visuals when opening upwards */
+    box-shadow: 5px -5px 15px #000 !important;
+}
+
+#hh-message-submenu::-webkit-scrollbar {
+    width: 4px;
+}
+#hh-message-submenu::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 10px;
 }

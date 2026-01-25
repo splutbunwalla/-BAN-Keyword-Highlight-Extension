@@ -118,9 +118,14 @@ body {
     .keyword-list::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
 
     .keyword-item { 
-      padding: 4px 8px; background-color: #2f3136; 
-      border-bottom: 1px solid #1e2124; display: flex; 
-      align-items: center; gap: 8px; 
+      padding: 6px 8px;
+      background-color: #2f3136; 
+      border-bottom: 1px solid #1e2124; 
+      display: flex; 
+      align-items: center; 
+      gap: 8px; 
+      width: 100%; 
+      box-sizing: border-box;
     }
 
     .add-keyword { display: flex; gap: 5px; margin-bottom: 5px; }
@@ -136,6 +141,8 @@ body {
     .delete-btn { 
       background: transparent; border: none; color: #888; 
       cursor: pointer; font-size: 14px; 
+      flex-shrink: 0; 
+      margin-left: auto; 
     }
     .delete-btn:hover { color: #ff4d4d; }
 
@@ -168,6 +175,15 @@ body {
 
     .item-label-text { font-weight: bold; color: #2196F3; font-size: 10px; text-transform: uppercase; }
     .item-text-val { color: #bbb; font-size: 11px; font-style: italic; }
+
+    .item-info { 
+      flex: 1; /* This is the magic property */
+      min-width: 0; /* Allows text truncation to work properly */
+      display: flex; 
+      flex-direction: column; 
+      gap: 2px;
+    }
+
 
   </style>
 </head>

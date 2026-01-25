@@ -8,8 +8,6 @@ const toggleCheckbox = document.getElementById("toggleCheckbox");
 const container = document.querySelector('.main-container');
 const toggle = document.getElementById('toggleCheckbox');
 
-
-
 let enabled = true;
 let isClosing = false;
 
@@ -46,11 +44,13 @@ function updateContentScript() {
     steamidAlpha: parseFloat(steamidAlphaInput.value)
   };
 
+  chrome.storage.sync.set(settings);
+  
   chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-    if (tabs[0]) {
-      chrome.tabs.sendMessage(tabs[0].id, {
-        action: "updateColors",
-        ...settings
+	if (tabs[0] && tabs[0].id) {
+      chrome.tabs.sendMessage(tabs[0].id, { action: "update", settings: settings }, (response) => {
+        if (chrome.runtime.lastError) {
+        }
       });
     }
   });
@@ -216,6 +216,7 @@ function loadSettings() {
     const pWords = (data.keywords || []).map(k => typeof k === 'string' ? {text: k, enabled: true} : k);
     const sWords = (data.secondarykeywords || []).map(k => typeof k === 'string' ? {text: k, enabled: true} : k);
     const mList = data.messages || [];
+	console.log(`message list : ${mList}`);
 
     renderKeywords("primary-list", pWords, "keywords");
     renderKeywords("secondary-list", sWords, "secondarykeywords");
@@ -238,11 +239,13 @@ function loadSettings() {
 toggleCheckbox.addEventListener("change", () => {
   enabled = toggleCheckbox.checked;
   container.classList.toggle('disabled', !toggleCheckbox.checked);
+  
   chrome.storage.sync.set({ enabled: enabled }, () => {
-    console.log(`State saved: ${enabled}`);
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-      if (tabs[0]) {
-        chrome.tabs.sendMessage(tabs[0].id, { action: "toggle" });
+      if (tabs[0] && tabs[0].id) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: "toggle" }, (response) => {
+          if (chrome.runtime.lastError) { /* Ignore error */ }
+        });
       }
     });
   });

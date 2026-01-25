@@ -213,9 +213,10 @@
     if (!document.body || document.body.classList.contains('hh-disabled')) return;
     
     document.querySelectorAll('tr, div.log-line, span, td').forEach(el => {
-      const txt = (el.innerText || "").trim();
+	  const txt = (el.innerText || "").trim();
       if (!txt) return;
-      
+      if (el.closest('#hh-queue-container, .hh-action-menu')) return;
+       
       if (['vip', 'admin', 'moderator', 'default'].includes(txt.toLowerCase())) el.classList.add('hh-role-force-white');
       const tableMatch = txt.match(/^(\d+)\s+(.+?)\s+(\d{17})$/);
       const logMatch = txt.match(/(joined|left).*?(\d+),?\s+(.*?)\s*\(id:\s*(\d{17})\)/i);
@@ -243,7 +244,16 @@
     const regex = new RegExp(`(\\b\\d{17}\\b${wordPattern ? '|' + wordPattern : ''})`, "gi");
 
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
-      acceptNode: (n) => n.parentElement.closest(".hh-highlight, .hh-idhighlight, .hh-secondaryhighlight, script, style, textarea, input") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+      acceptNode: (n) => {
+        // Check if the text is inside any of our protected UI elements
+        const isUI = n.parentElement.closest(
+          ".hh-highlight, .hh-idhighlight, .hh-secondaryhighlight, " +
+          "#hh-queue-container, .hh-action-menu, " + // <--- ADDED THESE
+          "script, style, textarea, input"
+        );
+        
+        return isUI ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+      }
     });
 
     let nodes = [], n;
@@ -440,7 +450,7 @@
       const sync = await chrome.storage.sync.get(null);
       KEYWORDS = sync.keywords || [];
       SECONDARYWORDS = sync.secondarykeywords || [];
-      MESSAGES = sync.messages || []; // Fixed: Actually loading messages from sync
+      MESSAGES = sync.messages || [];
       
       applyStyles(sync);
       stripHighlights();
@@ -448,16 +458,20 @@
 
       if (window.hhObserver) window.hhObserver.disconnect();
       if (document.body) {
-        window.hhObserver = new MutationObserver((mutations) => {
-          mutations.forEach(mutation => {
-            mutation.addedNodes.forEach(node => {
-              if (node.nodeType === 3) checkRaceStatus(node.textContent);
-              else if (node.innerText) checkRaceStatus(node.innerText);
-            });
-          });
-          clearTimeout(scanTimeout);
-          scanTimeout = setTimeout(scan, 800); 
-        });
+		window.hhObserver = new MutationObserver((mutations) => {
+		  mutations.forEach(mutation => {
+			mutation.addedNodes.forEach(node => {
+              if (node.id === 'hh-queue-container' || node.classList?.contains('hh-action-menu') ||
+                       (node.parentElement && node.parentElement.closest('#hh-queue-container, .hh-action-menu'))) {
+                  return;
+                }
+			  if (node.nodeType === 3) checkRaceStatus(node.textContent);
+			  else if (node.innerText) checkRaceStatus(node.innerText);
+			});
+		  });
+		  clearTimeout(scanTimeout);
+		  scanTimeout = setTimeout(scan, 800);
+		});
         window.hhObserver.observe(document.body, { childList: true, subtree: true });
       }
     } finally {
