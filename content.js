@@ -4,80 +4,55 @@
   let isInitializing = false;
   const PERMA_DUR = "307445734561825"; 
   let isRacing = false;
-  let banQueue = []; // Format: { sid: "", name: "", dur: "" }
+  let banQueue = []; 
   let isProcessingQueue = false; 
   
   // --- UI: QUEUE DISPLAY LOGIC ---
   const updateQueueDisplay = () => {
     let container = document.getElementById('hh-queue-container');
     
-    // Create container if it doesn't exist
     if (!container) {
       container = document.createElement('div');
       container.id = 'hh-queue-container';
-      container.style = `
-        position: fixed; top: 10px; right: 10px; width: 260px;
-        background: rgba(16, 16, 16, 0.95); color: #ccc; 
-        z-index: 999999; border: 1px solid #444; border-radius: 4px;
-        font-family: 'Segoe UI', sans-serif; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        display: none; flex-direction: column; overflow: hidden;
-      `;
       
       const header = document.createElement('div');
       header.id = 'hh-queue-header';
-      header.style = `
-        padding: 8px 12px; background: #222; border-bottom: 1px solid #444;
-        font-weight: bold; font-size: 13px; color: #fff; display: flex; 
-        justify-content: space-between; align-items: center;
-      `;
-      header.innerHTML = `<span>Ban Queue</span><span id="hh-queue-count" style="color:#ff0033">0</span>`;
+      header.innerHTML = `<span>Ban Queue</span><span id="hh-queue-count">0</span>`;
       
       const list = document.createElement('div');
       list.id = 'hh-queue-list';
-      list.style = `max-height: 300px; overflow-y: auto; padding: 0;`;
       
       container.appendChild(header);
       container.appendChild(list);
       document.body.appendChild(container);
     }
 
-    // Toggle Visibility
     if (banQueue.length === 0) {
       container.style.display = 'none';
       return;
     }
     container.style.display = 'flex';
-    
-    // Update Count
     document.getElementById('hh-queue-count').textContent = banQueue.length;
 
-    // Render List
     const list = document.getElementById('hh-queue-list');
-    list.innerHTML = ''; // Clear current list
+    list.innerHTML = ''; 
 
     banQueue.forEach((item, index) => {
       const row = document.createElement('div');
-      row.style = `
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 8px 12px; border-bottom: 1px solid #333; font-size: 12px;
-      `;
+      row.className = 'hh-queue-row';
       
       const info = document.createElement('div');
-      info.style = `display: flex; flex-direction: column; overflow: hidden;`;
+      info.className = 'hh-queue-info';
       info.innerHTML = `
-        <span style="color: #fff; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.name}</span>
-        <span style="color: #888; font-size: 10px;">${item.sid}</span>
+        <span class="hh-queue-name">${item.name}</span>
+        <span class="hh-queue-sid">${item.sid}</span>
       `;
 
       const removeBtn = document.createElement('span');
+      removeBtn.className = 'hh-queue-remove';
       removeBtn.innerHTML = '&times;';
-      removeBtn.style = `
-        color: #ff4444; cursor: pointer; font-size: 18px; font-weight: bold;
-        padding: 0 5px; margin-left: 10px; flex-shrink: 0;
-      `;
       removeBtn.title = "Remove from Queue";
       
-      // Remove Handler
       removeBtn.onclick = () => {
         banQueue.splice(index, 1);
         updateQueueDisplay();
@@ -90,7 +65,6 @@
   };
 
   // --- CORE LOGIC ---
-
   const checkRaceStatus = (text) => {
     if (/race\s+started/i.test(text)) {
       if (!isRacing) {
@@ -109,11 +83,9 @@
 
   const processBanQueue = () => {
     if (banQueue.length === 0) return;
-
     chrome.runtime.sendMessage({ action: "SET_QUEUE_MODE", value: true });
     let combinedLogs = [];
     
-    // Process the queue
     banQueue.forEach((item, index) => {
       setTimeout(() => {
         const cmd = (item.dur === PERMA_DUR) ? `ban ${item.sid}` : `ban ${item.sid},${item.dur}`;
@@ -131,21 +103,14 @@
 
     copyToClipboard(combinedLogs.join("\n"));
     showToast(`Processing ${banQueue.length} queued bans...`);
-    
-    // Clear Queue and UI
     banQueue = []; 
     updateQueueDisplay();
   };
   
   const showToast = (msg) => {
     const toast = document.createElement('div');
+    toast.className = 'hh-toast';
     toast.textContent = msg;
-    toast.style = `
-      position: fixed; bottom: 20px; right: 20px; 
-      background: #ff0033; color: white; padding: 12px 20px; 
-      border-radius: 5px; z-index: 999999; font-weight: bold;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5); font-family: sans-serif;
-    `;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
   };
@@ -207,14 +172,14 @@
     });
   };
 
-  const updateStylesOnly = (data) => {
+  const applyStyles = (sync) => {
     if (!document.body) return;
     const root = document.documentElement;
-    if (data.steamidColor) root.style.setProperty('--hh-id-bg', hexToRGBA(data.steamidColor, data.steamidAlpha ?? 1));
-    if (data.primaryColor) root.style.setProperty('--hh-p-bg', hexToRGBA(data.primaryColor, data.primaryAlpha ?? 1));
-    if (data.secondaryColor) root.style.setProperty('--hh-s-bg', hexToRGBA(data.secondaryColor, data.secondaryAlpha ?? 1));
-    if (data.enabled === false) document.body.classList.add('hh-disabled');
-    else if (data.enabled === true) document.body.classList.remove('hh-disabled');
+    if (sync.steamidColor) root.style.setProperty('--hh-id-bg', hexToRGBA(sync.steamidColor, sync.steamidAlpha ?? 1));
+    if (sync.primaryColor) root.style.setProperty('--hh-p-bg', hexToRGBA(sync.primaryColor, sync.primaryAlpha ?? 1));
+    if (sync.secondaryColor) root.style.setProperty('--hh-s-bg', hexToRGBA(sync.secondaryColor, sync.secondaryAlpha ?? 1));
+    if (sync.enabled === false) document.body.classList.add('hh-disabled');
+    else if (sync.enabled === true) document.body.classList.remove('hh-disabled');
   };
 
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -340,8 +305,6 @@
 
       if (isRacing) {
         banQueue.push({ sid, name: currentData.name, dur });
-        
-        // UPDATE THE UI LIST
         updateQueueDisplay();
         
         if (currentData.online && currentData.connId) {
@@ -379,11 +342,10 @@
     
     actionMenu.innerHTML = `
       <div class="hh-menu-header">
-        <div style="display:flex; align-items:center;"><span class="hh-status-dot ${data.online ? 'hh-status-online' : 'hh-status-offline'}"></span><span>${data.name}</span></div>
+        <div class="hh-header-left"><span class="hh-status-dot ${data.online ? 'hh-status-online' : 'hh-status-offline'}"></span><span>${data.name}</span></div>
         <span id="hh-close-x">✕</span>
       </div>
       <div class="hh-menu-row ${!data.online ? 'disabled' : ''}" data-type="kick" data-sid="${sid}" data-conn="${data.connId || ''}">👢 Kick</div>
-      
       <div class="hh-menu-row" data-type="parent" id="hh-ban-row">🔨 Ban
         <div class="hh-submenu" id="hh-ban-submenu">
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="${PERMA_DUR}">🔨 Permanent</div>
@@ -393,9 +355,7 @@
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="custom">🔨 Custom...</div>
         </div>
       </div>
-      
       <div class="hh-menu-row" data-type="unban" data-sid="${sid}">🔓 Unban ID</div>
-      
       <div class="hh-menu-row" data-type="parent" id="hh-role-row">👤 Role
          <div class="hh-submenu" id="hh-role-submenu">
              <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="">❔ Check Status</div>
@@ -404,12 +364,10 @@
              <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="admin">👑 Admin</div>
          </div>
       </div>
-
       <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>`;
 
     actionMenu.onclick = (ev) => handleMenuClick(ev, data, sid);
 
-    // --- REVISED VIEWPORT CLAMPING ---
     actionMenu.style.display = 'flex';
     actionMenu.style.visibility = 'hidden'; 
     const menuWidth = 180;
@@ -454,17 +412,6 @@
     }
   }, true);
   
-  const applyStyles = (sync) => {
-    if (!document.body) return;
-    const root = document.documentElement;
-    if (sync.steamidColor) root.style.setProperty('--hh-id-bg', hexToRGBA(sync.steamidColor, sync.steamidAlpha ?? 1));
-    if (sync.primaryColor) root.style.setProperty('--hh-p-bg', hexToRGBA(sync.primaryColor, sync.primaryAlpha ?? 1));
-    if (sync.secondaryColor) root.style.setProperty('--hh-s-bg', hexToRGBA(sync.secondaryColor, sync.secondaryAlpha ?? 1));
-    if (sync.enabled === false) document.body.classList.add('hh-disabled');
-    else if (sync.enabled === true) document.body.classList.remove('hh-disabled');
-  };
-  
-
   const init = async () => {
     if (isInitializing) return;
     isInitializing = true;
