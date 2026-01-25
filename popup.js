@@ -18,7 +18,6 @@ function updateContentScript() {
     steamidAlpha: parseFloat(steamidAlphaInput.value)
   };
 
-  // 1. Send message for instant visual feedback (this hits applyStyles)
   chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
     if (tabs[0]) {
       chrome.tabs.sendMessage(tabs[0].id, {
@@ -28,14 +27,13 @@ function updateContentScript() {
     }
   });
 
-  // 2. Debounce the storage save to avoid hitting Chrome's sync limits
   clearTimeout(window.saveTimeout);
   window.saveTimeout = setTimeout(() => {
     chrome.storage.sync.set(settings);
   }, 100); 
 }
 
-
+// Updated to include messages in the silent save/broadcast
 function saveSettingsSilently() {
   const pList = Array.from(document.querySelectorAll("#primary-list .keyword-item")).map(item => ({
     text: item.querySelector("span").textContent,
@@ -47,17 +45,28 @@ function saveSettingsSilently() {
     enabled: item.querySelector("input[type='checkbox']").checked
   }));
 
+  // Map the message items
+  const mList = Array.from(document.querySelectorAll("#message-list .keyword-item")).map(item => {
+    const labelSpan = item.querySelector(".item-label-text");
+    const textSpan = item.querySelector(".item-text-val");
+    return {
+      label: labelSpan ? labelSpan.textContent.replace(':', '') : "",
+      text: textSpan ? textSpan.textContent : ""
+    };
+  });
+
   chrome.storage.sync.set({
     keywords: pList,
-    secondarykeywords: sList
+    secondarykeywords: sList,
+    messages: mList
   }, () => {
-    // Tell the content script to update its keyword lists immediately
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
       if (tabs[0]) {
         chrome.tabs.sendMessage(tabs[0].id, {
-          action: "updateKeywords", // You may need to add this listener to content.js
+          action: "updateKeywords",
           keywords: pList,
-          secondarykeywords: sList
+          secondarykeywords: sList,
+          messages: mList
         });
       }
     });
@@ -84,7 +93,7 @@ function renderKeywords(containerId, words, storageKey) {
 
     const del = document.createElement("button");
     del.innerHTML = "&times;";
-    del.className = "delete-btn"; // Use a class for CSS sizing
+    del.className = "delete-btn";
     del.onclick = () => {
       words.splice(index, 1);
       renderKeywords(containerId, words, storageKey);
@@ -92,6 +101,40 @@ function renderKeywords(containerId, words, storageKey) {
     };
 
     div.append(cb, span, del);
+    container.appendChild(div);
+  });
+}
+
+// New specialized renderer for Messages
+function renderMessages(messages) {
+  const container = document.getElementById("message-list");
+  container.innerHTML = "";
+  
+  messages.forEach((m, index) => {
+    const div = document.createElement("div");
+    div.className = "keyword-item";
+
+    const info = document.createElement("div");
+    info.className = "item-info";
+    info.innerHTML = `
+      <span class="item-label-text">${m.label}:</span>
+      <span class="item-text-val">${m.text}</span>
+    `;
+
+    const del = document.createElement("button");
+    del.innerHTML = "&times;";
+    del.className = "delete-btn";
+    
+    del.onclick = () => {
+      messages.splice(index, 1);
+      
+      chrome.storage.sync.set({ messages: messages }, () => {
+        renderMessages(messages);
+        saveSettingsSilently();
+      });
+    };
+
+    div.append(info, del);
     container.appendChild(div);
   });
 }
@@ -109,7 +152,28 @@ function addKeyword(inputId, storageKey, containerId) {
       chrome.storage.sync.set({ [storageKey]: words }, () => {
         renderKeywords(containerId, words, storageKey);
         input.value = "";
-		saveSettingsSilently();
+        saveSettingsSilently();
+      });
+    });
+  }
+}
+
+// New helper for adding messages
+function addMessage() {
+  const labelInput = document.getElementById("new-msg-label");
+  const textInput = document.getElementById("new-msg-text");
+  const label = labelInput.value.trim();
+  const text = textInput.value.trim();
+
+  if (text) {
+    chrome.storage.sync.get(["messages"], data => {
+      const msgs = data.messages || [];
+      msgs.push({ label: label || "Msg", text: text });
+      chrome.storage.sync.set({ messages: msgs }, () => {
+        renderMessages(msgs);
+        labelInput.value = "";
+        textInput.value = "";
+        saveSettingsSilently();
       });
     });
   }
@@ -117,7 +181,7 @@ function addKeyword(inputId, storageKey, containerId) {
 
 function loadSettings() {
   chrome.storage.sync.get([
-    "keywords", "secondarykeywords", 
+    "keywords", "secondarykeywords", "messages",
     "primaryColor", "primaryAlpha", 
     "secondaryColor", "secondaryAlpha", 
     "steamidColor", "steamidAlpha", 
@@ -125,8 +189,11 @@ function loadSettings() {
   ], data => {
     const pWords = (data.keywords || []).map(k => typeof k === 'string' ? {text: k, enabled: true} : k);
     const sWords = (data.secondarykeywords || []).map(k => typeof k === 'string' ? {text: k, enabled: true} : k);
+    const mList = data.messages || [];
+
     renderKeywords("primary-list", pWords, "keywords");
     renderKeywords("secondary-list", sWords, "secondarykeywords");
+    renderMessages(mList);
 
     primaryColorInput.value = data.primaryColor || "#ffff00";
     primaryAlphaInput.value = data.primaryAlpha !== undefined ? data.primaryAlpha : 0.5;
@@ -151,11 +218,10 @@ toggleBtn.addEventListener("click", () => {
 
 document.getElementById("add-primary-btn").addEventListener("click", () => addKeyword("new-primary", "keywords", "primary-list"));
 document.getElementById("add-secondary-btn").addEventListener("click", () => addKeyword("new-secondary", "secondarykeywords", "secondary-list"));
+document.getElementById("add-msg-btn").addEventListener("click", addMessage);
 
-// Run on popup open
 loadSettings();
 
-// Live Update Listeners
 [primaryColorInput, primaryAlphaInput, secondaryColorInput, secondaryAlphaInput, steamidColorInput, steamidAlphaInput].forEach(input => {
   input.addEventListener('input', updateContentScript);
 });

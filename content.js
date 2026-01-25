@@ -1,5 +1,5 @@
 (() => {
-  let KEYWORDS = [], SECONDARYWORDS = [], NAME_MAP = {};
+  let KEYWORDS = [], SECONDARYWORDS = [], NAME_MAP = {}, MESSAGES = [];
   let actionMenu = null, scanTimeout = null;
   let isInitializing = false;
   const PERMA_DUR = "307445734561825"; 
@@ -196,6 +196,8 @@
       let shouldAutoSubmit = false;
       if (msg.cmd.startsWith('kick') && msg.isRacing) shouldAutoSubmit = true;
       if (msg.cmd.startsWith('ban') && msg.isProcessingQueue) shouldAutoSubmit = true;
+      // Fixed: msg.cmd.startsWith typo
+      if (msg.cmd.startsWith('message')) shouldAutoSubmit = true;
 
       const input = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand");
       if (input) {
@@ -320,6 +322,13 @@
         showToast(`Banned: ${currentData.name}`);
       }
     }
+    else if (type === 'msg') {
+      const msgText = item.getAttribute('data-text');
+      // Added sid to the command so it targets the right player: message <sid>,<text>
+      const cmd = `message ${msgText}`;
+      chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+      showToast(`Message Sent`);
+    }     
     else {
       copyToClipboard(sid);
     }
@@ -363,6 +372,17 @@
              <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="moderator">🛡️ Moderator</div>
              <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="admin">👑 Admin</div>
          </div>
+      </div>
+      <div class="hh-menu-row" data-type="parent" id="hh-message-row">💬 Message
+        <div class="hh-submenu" id="hh-message-submenu">
+          ${MESSAGES.length > 0 
+            ? MESSAGES.map(m => {
+                const safeText = m.text.replace(/"/g, '&quot;');
+                return `<div class="hh-submenu-item" data-type="msg" data-sid="${sid}" data-text="${safeText}">${m.label}</div>`;
+              }).join('')
+            : '<div class="hh-submenu-item disabled">No messages set</div>'
+          }
+        </div>
       </div>
       <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>`;
 
@@ -420,6 +440,7 @@
       const sync = await chrome.storage.sync.get(null);
       KEYWORDS = sync.keywords || [];
       SECONDARYWORDS = sync.secondarykeywords || [];
+      MESSAGES = sync.messages || []; // Fixed: Actually loading messages from sync
       
       applyStyles(sync);
       stripHighlights();
