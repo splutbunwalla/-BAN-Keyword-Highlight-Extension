@@ -2,7 +2,7 @@
 <html>
 <head>
   <style>
-    body { font-family: sans-serif; width: 240px; padding: 10px; margin: 0; overflow: hidden; }
+    body { font-family: sans-serif; width: 240px; padding: 10px; margin: 0; overflow: hidden; background: #ddd; }
     .control-group { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
     .color-container { display: flex; align-items: center; justify-content: space-between; font-size: 12px; margin-top: 5px; }
     .alpha-container { display: flex; align-items: center; gap: 10px; font-size: 11px; margin-top: 5px; }
@@ -19,6 +19,7 @@
     
     /* Message specific formatting */
     .section-title { font-size: 12px; font-weight: bold; margin-bottom: 5px; }
+    .section-title-big { font-size: 14px; font-weight: bold; margin-bottom: 5px; }
     .msg-input-group { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
     .msg-input-group input { padding: 4px; font-size: 11px; }
     .item-info { flex-grow: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -29,10 +30,6 @@
     .msg-input-group { display: flex; flex-direction: column; gap: 4px; margin-top: 5px; }
     .msg-input-group input { padding: 5px; border: 1px solid #ccc; border-radius: 3px; font-size: 11px; }
 
-	#add-msg-btn { background-color: #4CAF50; color: white; order: none; font-weight: bold; transition: background 0.2s; }
-
-	#add-msg-btn:hover { background-color: #45a049; }
-
 	/* Formatting the items inside the list */
 	.keyword-item .item-info { display: flex; flex-direction: column; /* Stack label over text for better readability */ gap: 1px; line-height: 1.2; }
 
@@ -40,13 +37,46 @@
 
 	.item-text-val { color: #666; font-size: 10px; font-style: italic; }
 	
-    .version-tag { font-size: 10px; color: #888; text-align: right; margin-top: 10px; font-style: italic; }
+    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+    .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+    
+    input:checked + .slider { background-color: #2196F3; }
+    input:focus + .slider { box-shadow: 0 0 1px #2196F3; }
+    input:checked + .slider:before { transform: translateX(20px); }
+	
+    .title-wrapper { display: flex; flex-direction: column; justify-content: center; }
+    .toggle-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+    .section-title { font-size: 12px; font-weight: bold; line-height: 1.2; }
+    .version-tag { font-size: 10px; color: #888; text-align: left; margin-top: 2px; font-style: italic; }
+	
+	/* Container to hold inputs and the button side-by-side */
+    .msg-grid-container { display: flex; gap: 5px; align-items: stretch; /* This makes the button span the full height */ margin-top: 5px; }
+    .msg-inputs { display: flex; flex-direction: column; gap: 3px; flex: 1; /* Takes up all available horizontal space */}
+    .msg-inputs input { padding: 4px; font-size: 11px; border: 1px solid #ccc; border-radius: 2px; }
+    
+    #add-msg-btn { width: 30px !important; /* Slightly wider for better click area */ margin: 0 !important; padding: 0 !important; background-color: #4CAF50; color: white; border: none; border-radius: 3px; font-size: 18px; /* Larger + sign */ font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    #add-msg-btn:hover { background-color: #45a049; }
+	
   </style>
 </head>
 <body>
+  <div class="toggle-section">
+    <div class="title-wrapper">
+      <span class="section-title-big">Wreckfest 2 Admin Tool (HH)</span>
+      <div class="version-tag">v1.6</div>
+    </div>
+    
+    <label class="switch">
+      <input type="checkbox" id="toggleCheckbox">
+      <span class="slider round"></span>
+    </label>
+  </div>
+  
   
   <div class="control-group">
-    <label>Primary Keywords:</label>
+    <div class="section-title">Primary Keywords:</div>
     <div id="primary-list" class="keyword-list"></div>
     <div class="add-keyword">
       <input type="text" id="new-primary" placeholder="Add word...">
@@ -63,7 +93,7 @@
   </div>
 
   <div class="control-group">
-    <label>Secondary Keywords:</label>
+    <div class="section-title">Secondary Keywords:</div>
     <div id="secondary-list" class="keyword-list"></div>
     <div class="add-keyword">
       <input type="text" id="new-secondary" placeholder="Add word...">
@@ -91,17 +121,18 @@
   </div>
 
   <div class="control-group">
-    <div class="section-title">Custom Messages</div>
-    <div id="message-list" class="keyword-list"></div>
-    <div class="msg-input-group">
-      <input type="text" id="new-msg-label" placeholder="Label (e.g. Warning)">
-      <input type="text" id="new-msg-text" placeholder="Message text...">
-      <button id="add-msg-btn">Add Message</button>
+    <div class="section-title">Messages</div>
+    <div id="message-list" class="keyword-list msg-compact"></div>
+    
+    <div class="msg-grid-container">
+      <div class="msg-inputs">
+        <input type="text" id="new-msg-label" placeholder="Label (e.g. Warning)">
+        <input type="text" id="new-msg-text" placeholder="Message text...">
+      </div>
+      <button id="add-msg-btn">+</button>
     </div>
   </div>
 
-  <button id="toggle">Toggle Detector</button>
-  <div class="version-tag">v1.6</div>
   <script src="popup.js"></script>
 </body>
 </html>

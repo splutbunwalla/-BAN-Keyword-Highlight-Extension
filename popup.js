@@ -4,7 +4,7 @@ const secondaryColorInput = document.getElementById("secondaryColor");
 const secondaryAlphaInput = document.getElementById('secondaryAlpha');
 const steamidColorInput = document.getElementById("steamidColor");
 const steamidAlphaInput = document.getElementById('steamidAlpha');
-const toggleBtn = document.getElementById("toggle");
+const toggleCheckbox = document.getElementById("toggleCheckbox");
 
 let enabled = true;
 
@@ -33,7 +33,6 @@ function updateContentScript() {
   }, 100); 
 }
 
-// Updated to include messages in the silent save/broadcast
 function saveSettingsSilently() {
   const pList = Array.from(document.querySelectorAll("#primary-list .keyword-item")).map(item => ({
     text: item.querySelector("span").textContent,
@@ -45,7 +44,6 @@ function saveSettingsSilently() {
     enabled: item.querySelector("input[type='checkbox']").checked
   }));
 
-  // Map the message items
   const mList = Array.from(document.querySelectorAll("#message-list .keyword-item")).map(item => {
     const labelSpan = item.querySelector(".item-label-text");
     const textSpan = item.querySelector(".item-text-val");
@@ -105,7 +103,6 @@ function renderKeywords(containerId, words, storageKey) {
   });
 }
 
-// New specialized renderer for Messages
 function renderMessages(messages) {
   const container = document.getElementById("message-list");
   container.innerHTML = "";
@@ -127,7 +124,7 @@ function renderMessages(messages) {
     
     del.onclick = () => {
       messages.splice(index, 1);
-      
+      // Explicitly set storage here to ensure it persists
       chrome.storage.sync.set({ messages: messages }, () => {
         renderMessages(messages);
         saveSettingsSilently();
@@ -158,7 +155,6 @@ function addKeyword(inputId, storageKey, containerId) {
   }
 }
 
-// New helper for adding messages
 function addMessage() {
   const labelInput = document.getElementById("new-msg-label");
   const textInput = document.getElementById("new-msg-text");
@@ -202,17 +198,22 @@ function loadSettings() {
     steamidColorInput.value = data.steamidColor || "#ff8c00";
     steamidAlphaInput.value = data.steamidAlpha !== undefined ? data.steamidAlpha : 0.5;
 
+    // Fixed: Only use the toggleCheckbox since toggleBtn is gone
     enabled = data.enabled !== false;
-    toggleBtn.textContent = enabled ? "Disable" : "Enable";
+    toggleCheckbox.checked = enabled;
   });
 }
 
-toggleBtn.addEventListener("click", () => {
-  enabled = !enabled;
-  chrome.storage.sync.set({ enabled });
-  toggleBtn.textContent = enabled ? "Disable" : "Enable";
-  chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-    if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { action: "toggle" });
+// Fixed: The change listener is now correctly attached to the checkbox
+toggleCheckbox.addEventListener("change", () => {
+  enabled = toggleCheckbox.checked;
+  chrome.storage.sync.set({ enabled: enabled }, () => {
+    console.log(`State saved: ${enabled}`);
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: "toggle" });
+      }
+    });
   });
 });
 
