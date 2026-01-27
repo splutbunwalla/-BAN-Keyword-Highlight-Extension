@@ -76,6 +76,7 @@
       if (isRacing) {
         isRacing = false;
         chrome.runtime.sendMessage({ action: "SET_RACE_MODE", value: false });
+		showToast("🏁 Race Mode Disabled: Bans no longer queued");
         processBanQueue();
       }
     }
