@@ -3,12 +3,26 @@
   "name": "=BAN Wreckfest 2 Admin Tool for Host Havoc Servers",
   "version": "1.6",
   "permissions": ["storage", "clipboardWrite"],
-  "host_permissions": ["https://gamepanel.hosthavoc.com/*"],
+  "host_permissions": ["https://gamepanel.hosthavoc.com/*", "https://*.dyn.tcadmin.net:8881/*"],
   "background": { "service_worker": "background.js" },
-  "action": { "default_popup": "popup.html" },
+  "action": { "default_popup": "popup.html",	
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "content_scripts": [
     {
-      "matches": ["https://gamepanel.hosthavoc.com/*"],
+      "matches": ["https://gamepanel.hosthavoc.com/*","https://*.dyn.tcadmin.net:8881/*"],
       "js": ["content.js"],
       "css": ["content.css"],
       "all_frames": true,

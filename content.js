@@ -196,7 +196,6 @@
       let shouldAutoSubmit = false;
       if (msg.cmd.startsWith('kick') && msg.isRacing) shouldAutoSubmit = true;
       if (msg.cmd.startsWith('ban') && msg.isProcessingQueue) shouldAutoSubmit = true;
-      // Fixed: msg.cmd.startsWith typo
       if (msg.cmd.startsWith('message')) shouldAutoSubmit = true;
 
       const input = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand");
@@ -248,7 +247,7 @@
         // Check if the text is inside any of our protected UI elements
         const isUI = n.parentElement.closest(
           ".hh-highlight, .hh-idhighlight, .hh-secondaryhighlight, " +
-          "#hh-queue-container, .hh-action-menu, " + // <--- ADDED THESE
+          "#hh-queue-container, .hh-action-menu, " + 
           "script, style, textarea, input"
         );
         
@@ -334,8 +333,11 @@
     }
     else if (type === 'msg') {
       const msgText = item.getAttribute('data-text');
-      // Added sid to the command so it targets the right player: message <sid>,<text>
-      const cmd = `message ${msgText}`;
+	  
+	  let testText = msgText.replace('{name}',currentData.name);
+	  console.log(testText);
+	  
+      const cmd = `message ${testText}`;
       chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
       showToast(`Message Sent`);
     }     
