@@ -64,18 +64,28 @@
     });
   };
 
+  const safeSendMessage = (msg) => {
+    try {
+  	  if (chrome?.runtime?.id) {
+  	    chrome.runtime.sendMessage(msg);
+  	  }
+    } catch (e) {
+  	  // Extension context invalidated — safe to ignore
+    }
+  };
+
   // --- CORE LOGIC ---
   const checkRaceStatus = (text) => {
     if (/race\s+started/i.test(text)) {
       if (!isRacing) {
         isRacing = true;
-        chrome.runtime.sendMessage({ action: "SET_RACE_MODE", value: true });
+        safeSendMessage({ action: "SET_RACE_MODE", value: true });
         showToast("🏁 Race Mode Active: Bans will be queued");
       }
     } else if (/race\s+finished/i.test(text) || /race\s+abandoned/i.test(text)) {
       if (isRacing) {
         isRacing = false;
-        chrome.runtime.sendMessage({ action: "SET_RACE_MODE", value: false });
+        safeSendMessage({ action: "SET_RACE_MODE", value: false });
 		showToast("🏁 Race Mode Disabled: Bans no longer queued");
         processBanQueue();
       }
@@ -84,17 +94,17 @@
 
   const processBanQueue = () => {
     if (banQueue.length === 0) return;
-    chrome.runtime.sendMessage({ action: "SET_QUEUE_MODE", value: true });
+      safeSendMessage({ action: "SET_QUEUE_MODE", value: true });
     let combinedLogs = [];
     
     banQueue.forEach((item, index) => {
       setTimeout(() => {
         const cmd = (item.dur === PERMA_DUR) ? `ban ${item.sid}` : `ban ${item.sid},${item.dur}`;
-        chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+        safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd });
         
         if (index === banQueue.length - 1) {
           setTimeout(() => { 
-            chrome.runtime.sendMessage({ action: "SET_QUEUE_MODE", value: false }); 
+            safeSendMessage({ action: "SET_QUEUE_MODE", value: false }); 
           }, 1000);
         }
       }, index * 2000); 
@@ -297,16 +307,16 @@
     let dur = item.getAttribute('data-dur');
 
     if (type === 'kick') {
-      chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: `kick ${conn}` });
+      safeSendMessage({ action: "PROXY_COMMAND", cmd: `kick ${conn}` });
     }
     else if (type === 'unban') {
-      chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: `unban ${sid}` });
+      safeSendMessage({ action: "PROXY_COMMAND", cmd: `unban ${sid}` });
     }
     else if (type === 'role') {
       const roleArg = item.getAttribute('data-role'); 
       let cmd = `role ${sid}`;
       if (roleArg) cmd += `,${roleArg}`;
-      chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+      safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd });
       showToast(roleArg ? `Setting Role: ${roleArg}` : `Checking Role Status`);
     }
     else if (type === 'ban') {
@@ -320,14 +330,14 @@
         updateQueueDisplay();
         
         if (currentData.online && currentData.connId) {
-           chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: `kick ${currentData.connId}` });
+           safeSendMessage({ action: "PROXY_COMMAND", cmd: `kick ${currentData.connId}` });
            showToast(`Queued Ban & Kicked: ${currentData.name}`);
         } else {
            showToast(`Queued Ban: ${currentData.name} (Offline)`);
         }
       } else {
         const cmd = (dur === PERMA_DUR) ? `ban ${sid}` : `ban ${sid},${dur}`;
-        chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+        safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd });
         copyToClipboard(`${currentData.name} (${sid}) banned by Server for ${dur} minutes`);
         showToast(`Banned: ${currentData.name}`);
       }
@@ -335,11 +345,11 @@
     else if (type === 'msg') {
       const msgText = item.getAttribute('data-text');
 	  
-	  let testText = msgText.replace('{name}',currentData.name);
+	  let finalText = msgText.replace('{player}',currentData.name);
 	  console.log(testText);
 	  
-      const cmd = `message ${testText}`;
-      chrome.runtime.sendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+      const cmd = `message ${finalText}`;
+      safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd });
       showToast(`Message Sent`);
     }     
     else {
