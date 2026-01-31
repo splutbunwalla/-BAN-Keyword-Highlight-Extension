@@ -14,14 +14,13 @@ const getUIWrapper = () => {
     wrapper = document.createElement('div');
     wrapper.id = 'hh-ui-wrapper';
     
-    // Position fixed to the TOP RIGHT of the Console Log Frame
     Object.assign(wrapper.style, {
       position: 'fixed',
       top: '10px',
-      right: '25px',       // Standard padding
+      right: '25px',
       display: 'flex',
-      flexDirection: 'column', // Vertical stack is fine for the main log window
-      alignItems: 'flex-end',  // Align items to the right
+      flexDirection: 'column', // Stacks Toolbar on top, Queue below
+      alignItems: 'flex-end',
       gap: '10px',
       zIndex: '2147483647',
       pointerEvents: 'none'
@@ -137,12 +136,18 @@ const updateToolbarMessages = (messages, container) => {
   
   // --- UI: QUEUE DISPLAY ---
   const updateQueueDisplay = () => {
-    const wrapper = getUIWrapper();
-    if (!wrapper) return;
+  // Ensure we only draw the queue in the same frame as the toolbar
+  const isLogArea = window.location.href.includes("StreamFile") || 
+                    window.location.href.includes("Proxy.ashx") ||
+                    document.getElementById('ConsoleOutput');
+                    
+  if (!isLogArea) return;
 
-    let container = wrapper.querySelector('#hh-queue-container');
-    
-    if (!container) {
+  const wrapper = getUIWrapper();
+  if (!wrapper) return;
+
+  let container = document.getElementById('hh-queue-container');
+  if (!container) {
       container = document.createElement('div');
       container.id = 'hh-queue-container';
       container.innerHTML = `
@@ -183,8 +188,12 @@ const updateToolbarMessages = (messages, container) => {
         listEl.appendChild(row);
       });
     }
-  };
 
+	if (!document.getElementById('hh-queue-container')) {
+      wrapper.appendChild(container);
+  }
+};
+  
   const safeSendMessage = (msg) => {
     try {
   	  if (chrome?.runtime?.id) {
