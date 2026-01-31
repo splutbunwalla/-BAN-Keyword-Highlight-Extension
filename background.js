@@ -18,7 +18,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("Queue Mode set to:", queueMode);
   }
 
-  // 2. Broadcast Commands to All Frames (with current state)
   if (request.action === "PROXY_COMMAND") {
     if (sender.tab) {
       chrome.tabs.sendMessage(sender.tab.id, { 

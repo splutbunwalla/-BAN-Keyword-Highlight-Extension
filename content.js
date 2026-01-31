@@ -7,65 +7,54 @@
   let banQueue = []; 
   let isProcessingQueue = false; 
   
-  // --- UI: SHARED WRAPPER ---
 const getUIWrapper = () => {
-  // REMOVED: window.parent check that caused the SecurityError
   let wrapper = document.getElementById('hh-ui-wrapper');
   
   if (!wrapper) {
     wrapper = document.createElement('div');
     wrapper.id = 'hh-ui-wrapper';
-    // Ensure it's visible within the frame
+    
+    // Position fixed to the TOP RIGHT of the Console Log Frame
     Object.assign(wrapper.style, {
       position: 'fixed',
       top: '10px',
-      right: '10px',
+      right: '25px',       // Standard padding
       display: 'flex',
-      flexDirection: 'column',
+      flexDirection: 'column', // Vertical stack is fine for the main log window
+      alignItems: 'flex-end',  // Align items to the right
       gap: '10px',
-      zIndex: '2147483647'
+      zIndex: '2147483647',
+      pointerEvents: 'none'
     });
+    
     document.body.appendChild(wrapper);
   }
   return wrapper;
 };
   
-  // --- UI: TOOLBAR ---
-const createToolbar = () => {
-  // Check both this frame and the parent frame to prevent duplicates
-  const targetDoc = (window !== window.top) ? window.parent.document : document;
-  if (targetDoc.getElementById('hh-toolbar')) return;
-
-  // Only run in the frame that has the console input
-  const consoleInput = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand") || 
-                       document.querySelector('input[id*="TextBoxCommand"]');
-  if (!consoleInput) return;
+// --- UI: TOOLBAR (Runs in Log Frame) ---
+const createToolbar = (attempts = 0) => {
+ const isLogFrame = window.location.href.includes("StreamFile.aspx") || 
+                     window.location.href.includes("Proxy.ashx") ||
+                     document.querySelector('pre, .log-line, #ConsoleOutput');
+  if (!isLogFrame) return;
+  if (document.getElementById('hh-toolbar')) return;
 
   const wrapper = getUIWrapper();
-  if (!wrapper) return;
+  
+  if (!document.body || !wrapper) {
+	console.log("Failing to create toolbar trying again in 500");
+	setTimeout(createToolbar, 500);
+	return;
+  }
+	
 
+  console.log("Creating toolbar!");
+		
   const toolbar = document.createElement('div');
   toolbar.id = 'hh-toolbar';
   
-  // Standard Tools
-  const tools = [
-    { label: 'Users', cmd: 'users', type: 'info', icon: '👥' },
-    { label: 'Restart', cmd: 'restart', type: 'danger', icon: '🔄' }
-  ];
-
-  tools.forEach(tool => {
-    const btn = document.createElement('div');
-    btn.className = `hh-tool-btn ${tool.type}`;
-    btn.innerHTML = `<span>${tool.icon}</span> ${tool.label}`;
-    btn.onclick = () => {
-      if (tool.cmd === 'restart' && !confirm("RESTART server?")) return;
-      safeSendMessage({ action: "PROXY_COMMAND", cmd: tool.cmd });
-      showToast(`Sent: ${tool.label}`);
-    };
-    toolbar.appendChild(btn);
-  });
-
-  // --- Messages Button & Submenu ---
+  // Messages Button
   const msgBtn = document.createElement('button');
   msgBtn.className = 'hh-toolbar-btn';
   msgBtn.innerHTML = '💬 Messages';
@@ -84,46 +73,61 @@ const createToolbar = () => {
   toolbar.appendChild(msgBtn);
   toolbar.appendChild(msgSubmenu);
   
-  // prepend puts it at the top of the wrapper
+  // Standard Tools
+  const tools = [
+    { label: 'Users', cmd: 'users', type: 'info', icon: '👥' },
+    { label: 'Restart', cmd: 'restart', type: 'danger', icon: '🔄' }
+  ];
+
+  tools.forEach(tool => {
+    const btn = document.createElement('div');
+    btn.className = `hh-tool-btn ${tool.type}`;
+    btn.innerHTML = `<span>${tool.icon}</span> ${tool.label}`;
+    btn.onclick = () => {
+      if (tool.cmd === 'restart' && !confirm("RESTART server?")) return;
+      // Send message to Background -> Input Frame
+      safeSendMessage({ action: "PROXY_COMMAND", cmd: tool.cmd });
+      showToast(`Signal Sent: ${tool.label}`);
+    };
+    toolbar.appendChild(btn);
+  });
+
   wrapper.prepend(toolbar);
   
-  // Close menu if clicking elsewhere
   document.addEventListener('click', () => {
     msgSubmenu.style.display = 'none';
   });
 
   updateToolbarMessages(MESSAGES, msgSubmenu);
 };
-  
-  
-  const updateToolbarMessages = (messages, container) => {
+
+const updateToolbarMessages = (messages, container) => {
   if (!container) container = document.getElementById('hh-toolbar-msg-submenu');
   if (!container) return;
 
-  container.innerHTML = ''; // Clear old messages
+  container.innerHTML = ''; 
 
-  if (messages.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'hh-menu-item';
-    empty.textContent = 'No messages saved';
-    container.appendChild(empty);
+  const globalMessages = messages.filter(m => !m.text.includes('{player}'));
+
+  if (globalMessages.length === 0) {
+    container.innerHTML = '<div class="hh-menu-item disabled">No global messages</div>';
     return;
   }
-  const globalMessages = messages.filter(m => !m.text.includes('{player}'));
 
   globalMessages.forEach(msg => {
     const item = document.createElement('div');
     item.className = 'hh-menu-item';
     item.textContent = msg.label || msg.text.substring(0, 20);
-    item.title = msg.text; // Show full text on hover
+    item.title = msg.text;
 
     item.onclick = (e) => {
       e.stopPropagation();
       
-      const command = `message ${msg.text}`;
-      injectToInput(command, true);
+      // CRITICAL CHANGE: We cannot type directly here (wrong frame).
+      // We must send a message to the Input Frame.
+      safeSendMessage({ action: "PROXY_COMMAND", cmd: `message ${msg.text}` });
       
-      showToast(`Sent Message: ${msg.label}`);
+      showToast(`Signal Sent: ${msg.label}`);
       container.style.display = 'none';
     };
     
