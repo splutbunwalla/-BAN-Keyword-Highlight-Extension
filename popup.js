@@ -58,7 +58,8 @@ function updateContentScript() {
     steamidColorMid: document.getElementById("steamidColorMid").value,
     steamidColorEnd: document.getElementById("steamidColorEnd").value,
     steamidTextColor: document.getElementById("steamidTextColor").value,
-    steamidBorderColor: document.getElementById("steamidBorderColor").value,
+    steamidBorderColor: `#FFFFFF`,
+	// document.getElementById("steamidBorderColor").value,
     steamidAlpha: parseFloat(document.getElementById("steamidAlpha").value),
   };
 
@@ -261,7 +262,7 @@ function loadSettings() {
     document.getElementById("steamidColorMid").value = data.steamidColorMid || "#ff8c00";
     document.getElementById("steamidColorEnd").value = data.steamidColorEnd || "#ff8c00";
     document.getElementById("steamidTextColor").value = data.steamidTextColor || "#000000";
-    document.getElementById("steamidBorderColor").value = data.steamidBorderColor || "transparent";
+    // document.getElementById("steamidBorderColor").value = data.steamidBorderColor || "transparent";
     document.getElementById("steamidAlpha").value = data.steamidAlpha !== undefined ? data.steamidAlpha : 0.5;
 
     // Extension Toggle State

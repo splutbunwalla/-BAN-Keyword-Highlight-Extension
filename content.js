@@ -8,65 +8,128 @@
   let isProcessingQueue = false; 
   
   // --- UI: SHARED WRAPPER ---
-  const getUIWrapper = () => {
-    const targetDoc = (window !== window.top) ? window.parent.document : document;
-    
-    let body;
-    try {
-        body = targetDoc.body;
-    } catch(e) {
-        body = document.body;
-    }
-
-    if (!body) return null;
-
-    let wrapper = targetDoc.getElementById('hh-ui-wrapper');
-    if (!wrapper) {
-      wrapper = targetDoc.createElement('div');
-      wrapper.id = 'hh-ui-wrapper';
-      body.appendChild(wrapper);
-    }
-    return wrapper;
-  };
+const getUIWrapper = () => {
+  // REMOVED: window.parent check that caused the SecurityError
+  let wrapper = document.getElementById('hh-ui-wrapper');
+  
+  if (!wrapper) {
+    wrapper = document.createElement('div');
+    wrapper.id = 'hh-ui-wrapper';
+    // Ensure it's visible within the frame
+    Object.assign(wrapper.style, {
+      position: 'fixed',
+      top: '10px',
+      right: '10px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px',
+      zIndex: '2147483647'
+    });
+    document.body.appendChild(wrapper);
+  }
+  return wrapper;
+};
   
   // --- UI: TOOLBAR ---
-  const createToolbar = () => {
-    if (document.getElementById('hh-toolbar')) return;
-	
-	const targetDoc = (window !== window.top) ? window.parent.document : document;
-	if (targetDoc.getElementById('hh-toolbar')) return;
-    
-    // Only run in the frame that has the console input
-    const consoleInput = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand") || 
-                         document.querySelector('input[id*="TextBoxCommand"]');
-    if (!consoleInput) return;
+const createToolbar = () => {
+  // Check both this frame and the parent frame to prevent duplicates
+  const targetDoc = (window !== window.top) ? window.parent.document : document;
+  if (targetDoc.getElementById('hh-toolbar')) return;
 
-    const wrapper = getUIWrapper();
-	if (!wrapper) return;
-	
-    const toolbar = document.createElement('div');
-    toolbar.id = 'hh-toolbar';
-    
-    const tools = [
-      { label: 'Users', cmd: 'users', type: 'info', icon: '👥' },
-      { label: 'Restart', cmd: 'restart', type: 'danger', icon: '🔄' }
-    ];
+  // Only run in the frame that has the console input
+  const consoleInput = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand") || 
+                       document.querySelector('input[id*="TextBoxCommand"]');
+  if (!consoleInput) return;
+
+  const wrapper = getUIWrapper();
+  if (!wrapper) return;
+
+  const toolbar = document.createElement('div');
+  toolbar.id = 'hh-toolbar';
   
-    tools.forEach(tool => {
-      const btn = document.createElement('div');
-      btn.className = `hh-tool-btn ${tool.type}`;
-      btn.innerHTML = `<span>${tool.icon}</span> ${tool.label}`;
-      btn.onclick = () => {
-        if (tool.cmd === 'restart' && !confirm("RESTART server?")) return;
-        safeSendMessage({ action: "PROXY_COMMAND", cmd: tool.cmd });
-        showToast(`Sent: ${tool.label}`);
-      };
-      toolbar.appendChild(btn);
-    });
+  // Standard Tools
+  const tools = [
+    { label: 'Users', cmd: 'users', type: 'info', icon: '👥' },
+    { label: 'Restart', cmd: 'restart', type: 'danger', icon: '🔄' }
+  ];
+
+  tools.forEach(tool => {
+    const btn = document.createElement('div');
+    btn.className = `hh-tool-btn ${tool.type}`;
+    btn.innerHTML = `<span>${tool.icon}</span> ${tool.label}`;
+    btn.onclick = () => {
+      if (tool.cmd === 'restart' && !confirm("RESTART server?")) return;
+      safeSendMessage({ action: "PROXY_COMMAND", cmd: tool.cmd });
+      showToast(`Sent: ${tool.label}`);
+    };
+    toolbar.appendChild(btn);
+  });
+
+  // --- Messages Button & Submenu ---
+  const msgBtn = document.createElement('button');
+  msgBtn.className = 'hh-toolbar-btn';
+  msgBtn.innerHTML = '💬 Messages';
   
-    // Insert at the top of the wrapper
-    wrapper.prepend(toolbar);
+  const msgSubmenu = document.createElement('div');
+  msgSubmenu.id = 'hh-toolbar-msg-submenu';
+  msgSubmenu.className = 'hh-action-menu'; 
+  msgSubmenu.style.display = 'none';
+
+  msgBtn.onclick = (e) => {
+    e.stopPropagation();
+    const isVisible = msgSubmenu.style.display === 'block';
+    msgSubmenu.style.display = isVisible ? 'none' : 'block';
   };
+
+  toolbar.appendChild(msgBtn);
+  toolbar.appendChild(msgSubmenu);
+  
+  // prepend puts it at the top of the wrapper
+  wrapper.prepend(toolbar);
+  
+  // Close menu if clicking elsewhere
+  document.addEventListener('click', () => {
+    msgSubmenu.style.display = 'none';
+  });
+
+  updateToolbarMessages(MESSAGES, msgSubmenu);
+};
+  
+  
+  const updateToolbarMessages = (messages, container) => {
+  if (!container) container = document.getElementById('hh-toolbar-msg-submenu');
+  if (!container) return;
+
+  container.innerHTML = ''; // Clear old messages
+
+  if (messages.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'hh-menu-item';
+    empty.textContent = 'No messages saved';
+    container.appendChild(empty);
+    return;
+  }
+  const globalMessages = messages.filter(m => !m.text.includes('{player}'));
+
+  globalMessages.forEach(msg => {
+    const item = document.createElement('div');
+    item.className = 'hh-menu-item';
+    item.textContent = msg.label || msg.text.substring(0, 20);
+    item.title = msg.text; // Show full text on hover
+
+    item.onclick = (e) => {
+      e.stopPropagation();
+      
+      const command = `message ${msg.text}`;
+      injectToInput(command, true);
+      
+      showToast(`Sent Message: ${msg.label}`);
+      container.style.display = 'none';
+    };
+    
+    container.appendChild(item);
+  });
+};
   
   // --- UI: QUEUE DISPLAY ---
   const updateQueueDisplay = () => {
@@ -261,13 +324,12 @@
 	root.style.setProperty('--hh-s-border', sync.secondaryBorderColor || "#f13333");   
     
     // SteamID
-	root.style.setProperty('--hh-id-bg1', hexToRGBA(sync.steamidColor || "#a70000", sync.steamidAlpha ?? 1));
-	root.style.setProperty('--hh-id-bg-mid', hexToRGBA(sync.steamidColorMid || "#000000", sync.steamidAlpha ?? 1));
-	root.style.setProperty('--hh-id-bg-end', hexToRGBA(sync.steamidColorEnd || "#ff0000", sync.steamidAlpha ?? 1));
+	root.style.setProperty('--hh-id-bg1', hexToRGBA(sync.steamidColor || "#ff8c00", sync.steamidAlpha ?? 0.5));
+	root.style.setProperty('--hh-id-bg-mid', hexToRGBA(sync.steamidColorMid || "#ff8c00", sync.steamidAlpha ?? 0.5));
+	root.style.setProperty('--hh-id-bg-end', hexToRGBA(sync.steamidColorEnd || "#ff8c00", sync.steamidAlpha ?? 0.5));
 	root.style.setProperty('--hh-id-txt', sync.steamidTextColor || "#ffffff");
 	root.style.setProperty('--hh-id-border', sync.steamidBorderColor || "#f13333");   
 	
-    
     if (sync.enabled === false) document.body.classList.add('hh-disabled');
     else if (sync.enabled === true) document.body.classList.remove('hh-disabled');
   };
@@ -491,13 +553,13 @@
       </div>
       <div class="hh-menu-row" data-type="parent" id="hh-message-row">💬 Message
         <div class="hh-submenu" id="hh-message-submenu">
-          ${MESSAGES.length > 0 
-            ? MESSAGES.map(m => {
-                const safeText = m.text.replace(/"/g, '&quot;');
-                return `<div class="hh-submenu-item" data-type="msg" data-sid="${sid}" data-text="${safeText}">${m.label}</div>`;
-              }).join('')
-            : '<div class="hh-submenu-item disabled">No messages set</div>'
-          }
+			${MESSAGES.filter(m => m.text.includes('{player}')).length > 0 
+				  ? MESSAGES.filter(m => m.text.includes('{player}')).map(m => {
+					  const safeText = m.text.replace(/"/g, '&quot;');
+					  return `<div class="hh-submenu-item" data-type="msg" data-sid="${sid}" data-text="${safeText}">${m.label}</div>`;
+					}).join('')
+				  : '<div class="hh-submenu-item disabled">No player-specific messages</div>'
+				}
         </div>
       </div>
 	  <div class="hh-menu-row" data-type="lookup" data-sid="${sid}">🌐 Steam Profile</div>
@@ -548,6 +610,7 @@
       setTimeout(() => { line.style.backgroundColor = ''; }, 200);
     }
   }, true);
+
   
   const init = async () => {
     if (isInitializing) return;
@@ -558,7 +621,7 @@
       KEYWORDS = sync.keywords || [];
       SECONDARYWORDS = sync.secondarykeywords || [];
       MESSAGES = sync.messages || [];
-      
+      updateToolbarMessages(MESSAGES);
       applyStyles(sync);
       stripHighlights();
       scan();
