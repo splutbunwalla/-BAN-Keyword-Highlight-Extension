@@ -1,7 +1,10 @@
 :root {
-    --hh-id-bg: rgba(255, 140, 0, 1);
-    --hh-p-bg: rgba(255, 0, 51, 1);
-    --hh-s-bg: rgba(255, 255, 51, 1);
+    --hh-p-bg1: rgba(255, 255, 0, 1);
+    --hh-p-bg2: rgba(255, 255, 0, 1);
+    --hh-p-txt: #000000;
+    --hh-s-bg1: rgba(0, 255, 0, 1);
+    --hh-s-bg2: rgba(0, 255, 0, 1);
+    --hh-s-txt: #000000;
 }
 
 /* Base Interactions */
@@ -35,17 +38,21 @@ body.hh-disabled .hh-secondaryhighlight {
 .hh-idhighlight.hh-online { border-bottom: 2px solid #00ff88 !important; }
 .hh-idhighlight.hh-offline { border-bottom: 2px solid #ff0000 !important; }
 
+
 .hh-highlight { 
-    background-color: var(--hh-p-bg) !important; 
-    color: #fff !important; 
-    font-weight: bold !important; 
-    border-radius: 3px; 
+    background: linear-gradient(90deg, var(--hh-p-bg1), var(--hh-p-bg2)) !important;
+    color: var(--hh-p-txt) !important;
+    font-weight: bold !important;
+    padding: 0 3px;
+    border-radius: 3px;
 }
+
 .hh-secondaryhighlight { 
-    background-color: var(--hh-s-bg) !important; 
-    color: #000 !important; 
-    font-weight: bold !important; 
-    border-radius: 3px; 
+    background: linear-gradient(90deg, var(--hh-s-bg1), var(--hh-s-bg2)) !important;
+    color: var(--hh-s-txt) !important;
+    font-weight: bold !important;
+    padding: 0 3px;
+    border-radius: 3px;
 }
 
 /* Action Menu */

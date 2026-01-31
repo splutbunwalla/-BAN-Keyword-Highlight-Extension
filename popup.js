@@ -1,15 +1,19 @@
 const primaryColorInput = document.getElementById("primaryColor");
+const primaryColor2Input = document.getElementById("primaryColor2");
+const primaryTextColorInput = document.getElementById("primaryTextColor");
 const primaryAlphaInput = document.getElementById('primaryAlpha');
 const secondaryColorInput = document.getElementById("secondaryColor");
+const secondaryColor2Input = document.getElementById("secondaryColor2");
+const secondaryTextColorInput = document.getElementById("secondaryTextColor");
 const secondaryAlphaInput = document.getElementById('secondaryAlpha');
 const steamidColorInput = document.getElementById("steamidColor");
 const steamidAlphaInput = document.getElementById('steamidAlpha');
 const toggleCheckbox = document.getElementById("toggleCheckbox");
 const container = document.querySelector('.main-container');
 const toggle = document.getElementById('toggleCheckbox');
-
 let enabled = true;
 let isClosing = false;
+let debounceTimer;
 
 function closePopup() {
   if (isClosing) return;
@@ -36,29 +40,34 @@ document.addEventListener('keydown', (e) => {
 
 function updateContentScript() {
   const settings = {
-    primaryColor: primaryColorInput.value,
-    primaryAlpha: parseFloat(primaryAlphaInput.value),
-    secondaryColor: secondaryColorInput.value,
-    secondaryAlpha: parseFloat(secondaryAlphaInput.value),
-    steamidColor: steamidColorInput.value,
-    steamidAlpha: parseFloat(steamidAlphaInput.value)
+    primaryColor: document.getElementById("primaryColor").value,
+    primaryColor2: document.getElementById("primaryColor2").value,
+    primaryTextColor: document.getElementById("primaryTextColor").value,
+    primaryAlpha: parseFloat(document.getElementById("primaryAlpha").value),
+    secondaryColor: document.getElementById("secondaryColor").value,
+    secondaryColor2: document.getElementById("secondaryColor2").value,
+    secondaryTextColor: document.getElementById("secondaryTextColor").value,
+    secondaryAlpha: parseFloat(document.getElementById("secondaryAlpha").value),
+    steamidColor: document.getElementById("steamidColor").value,
+    steamidAlpha: parseFloat(document.getElementById("steamidAlpha").value)
   };
 
-  chrome.storage.sync.set(settings);
-  
   chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-	if (tabs[0] && tabs[0].id) {
-      chrome.tabs.sendMessage(tabs[0].id, { action: "update", settings: settings }, (response) => {
-        if (chrome.runtime.lastError) {
-        }
-      });
+    if (tabs[0]?.id) {
+      chrome.tabs.sendMessage(tabs[0].id, { action: "update", settings: settings });
     }
   });
 
-  clearTimeout(window.saveTimeout);
-  window.saveTimeout = setTimeout(() => {
-    chrome.storage.sync.set(settings);
-  }, 100); 
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    chrome.storage.sync.set(settings, () => {
+      if (chrome.runtime.lastError) {
+        console.warn("Storage Sync Error:", chrome.runtime.lastError.message);
+      } else {
+        console.log("Settings saved to sync.");
+      }
+    });
+  }, 250); // 250ms delay
 }
 
 function saveSettingsSilently() {
@@ -239,6 +248,11 @@ function loadSettings() {
     steamidColorInput.value = data.steamidColor || "#ff8c00";
     steamidAlphaInput.value = data.steamidAlpha !== undefined ? data.steamidAlpha : 0.5;
 
+	primaryColor2Input.value = data.primaryColor2 || data.primaryColor || "#ffff00";
+	primaryTextColorInput.value = data.primaryTextColor || "#000000";
+	secondaryColor2Input.value = data.secondaryColor2 || data.secondaryColor || "#00ff00";
+	secondaryTextColorInput.value = data.secondaryTextColor || "#000000";
+
     // Fixed: Only use the toggleCheckbox since toggleBtn is gone
     enabled = data.enabled !== false;
     toggleCheckbox.checked = enabled;
@@ -267,6 +281,13 @@ document.getElementById("add-msg-btn").addEventListener("click", addMessage);
 
 loadSettings();
 
-[primaryColorInput, primaryAlphaInput, secondaryColorInput, secondaryAlphaInput, steamidColorInput, steamidAlphaInput].forEach(input => {
-  input.addEventListener('input', updateContentScript);
+const inputsToWatch = [
+  "primaryColor", "primaryColor2", "primaryTextColor", "primaryAlpha",
+  "secondaryColor", "secondaryColor2", "secondaryTextColor", "secondaryAlpha",
+  "steamidColor", "steamidAlpha"
+];
+
+inputsToWatch.forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', updateContentScript);
 });

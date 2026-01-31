@@ -237,9 +237,22 @@
   const applyStyles = (sync) => {
     if (!document.body) return;
     const root = document.documentElement;
-    if (sync.steamidColor) root.style.setProperty('--hh-id-bg', hexToRGBA(sync.steamidColor, sync.steamidAlpha ?? 1));
-    if (sync.primaryColor) root.style.setProperty('--hh-p-bg', hexToRGBA(sync.primaryColor, sync.primaryAlpha ?? 1));
-    if (sync.secondaryColor) root.style.setProperty('--hh-s-bg', hexToRGBA(sync.secondaryColor, sync.secondaryAlpha ?? 1));
+    
+    // Primary
+    root.style.setProperty('--hh-p-bg1', hexToRGBA(sync.primaryColor || "#ffff00", sync.primaryAlpha ?? 0.5));
+    root.style.setProperty('--hh-p-bg2', hexToRGBA(sync.primaryColor2 || sync.primaryColor || "#ffff00", sync.primaryAlpha ?? 0.5));
+    root.style.setProperty('--hh-p-txt', sync.primaryTextColor || "#000000");
+    
+    // Secondary
+    root.style.setProperty('--hh-s-bg1', hexToRGBA(sync.secondaryColor || "#00ff00", sync.secondaryAlpha ?? 0.5));
+    root.style.setProperty('--hh-s-bg2', hexToRGBA(sync.secondaryColor2 || sync.secondaryColor || "#00ff00", sync.secondaryAlpha ?? 0.5));
+    root.style.setProperty('--hh-s-txt', sync.secondaryTextColor || "#000000");
+    
+    // SteamID
+    if (sync.steamidColor) {
+      root.style.setProperty('--hh-id-bg', hexToRGBA(sync.steamidColor, sync.steamidAlpha ?? 0.5));
+    }
+    
     if (sync.enabled === false) document.body.classList.add('hh-disabled');
     else if (sync.enabled === true) document.body.classList.remove('hh-disabled');
   };
