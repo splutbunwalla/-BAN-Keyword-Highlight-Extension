@@ -166,23 +166,33 @@ function renderMessages(messages) {
   });
 }
 
-function addKeyword(inputId, storageKey, containerId) {
+function addKeyword(inputId, storageKey, listId) {
   const input = document.getElementById(inputId);
-  const text = input.value.trim();
-  
-  if (text) {
-    chrome.storage.sync.get([storageKey], data => {
-      let words = data[storageKey] || [];
-      words = words.map(k => typeof k === 'string' ? {text: k, enabled: true} : k);
-      words.push({ text: text, enabled: true });
-      
-      chrome.storage.sync.set({ [storageKey]: words }, () => {
-        renderKeywords(containerId, words, storageKey);
-        input.value = "";
-        saveSettingsSilently();
-      });
+  const rawValue = input.value.trim();
+  if (!rawValue) return;
+
+  // Split by newlines, trim each line, and remove empty results
+  const newEntries = rawValue.split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
+
+  chrome.storage.sync.get([storageKey], (data) => {
+    let currentKeywords = data[storageKey] || [];
+    
+    // Add all new lines to the list
+    newEntries.forEach(word => {
+      // Avoid exact duplicates
+      if (!currentKeywords.some(k => (typeof k === 'string' ? k : k.text) === word)) {
+        currentKeywords.push({ text: word, enabled: true });
+      }
     });
-  }
+
+    chrome.storage.sync.set({ [storageKey]: currentKeywords }, () => {
+      input.value = ""; // Clear the textarea
+      renderKeywords(listId, currentKeywords, listId);
+      updateContentScript();
+    });
+  });
 }
 
 function addMessage() {

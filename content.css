@@ -128,9 +128,7 @@ body.hh-disabled .hh-secondaryhighlight {
 
 /* Ban Queue Container */
 #hh-queue-container {
-    position: fixed; 
-    top: 10px; 
-    right: 10px; 
+    position: relative;
     width: 260px;
     background: rgba(16, 16, 16, 0.95); 
     color: #ccc; 
@@ -142,6 +140,7 @@ body.hh-disabled .hh-secondaryhighlight {
     display: none; 
     flex-direction: column; 
     overflow: hidden;
+	margin-top: 8px;
 }
 
 #hh-queue-header {
@@ -229,3 +228,45 @@ top: auto !important;
     background: #444;
     border-radius: 10px;
 }
+
+#hh-ui-wrapper {
+    position: fixed;
+    top: 15px;
+    right: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 2147483647 !important;
+    pointer-events: none;
+}
+
+#hh-ui-wrapper > div {
+    pointer-events: auto;
+}
+
+#hh-toolbar {
+    background: #1e2124;
+	position: relative;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #444;
+    display: flex;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+.hh-tool-btn {
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: filter 0.2s;
+}
+
+.hh-tool-btn:hover { filter: brightness(1.2); }
+.hh-tool-btn.info { background: #4e5d94; }
+.hh-tool-btn.danger { background: #d9534f; }

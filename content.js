@@ -7,61 +7,112 @@
   let banQueue = []; 
   let isProcessingQueue = false; 
   
-  // --- UI: QUEUE DISPLAY LOGIC ---
+  // --- UI: SHARED WRAPPER ---
+  const getUIWrapper = () => {
+    const targetDoc = (window !== window.top) ? window.parent.document : document;
+    
+    let body;
+    try {
+        body = targetDoc.body;
+    } catch(e) {
+        body = document.body;
+    }
+
+    if (!body) return null;
+
+    let wrapper = targetDoc.getElementById('hh-ui-wrapper');
+    if (!wrapper) {
+      wrapper = targetDoc.createElement('div');
+      wrapper.id = 'hh-ui-wrapper';
+      body.appendChild(wrapper);
+    }
+    return wrapper;
+  };
+  
+  // --- UI: TOOLBAR ---
+  const createToolbar = () => {
+    if (document.getElementById('hh-toolbar')) return;
+    
+    // Only run in the frame that has the console input
+    const consoleInput = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand") || 
+                         document.querySelector('input[id*="TextBoxCommand"]');
+    if (!consoleInput) return;
+
+    const wrapper = getUIWrapper();
+	if (!wrapper) return;
+	
+    const toolbar = document.createElement('div');
+    toolbar.id = 'hh-toolbar';
+    
+    const tools = [
+      { label: 'Users', cmd: 'users', type: 'info', icon: '👥' },
+      { label: 'Restart', cmd: 'restart', type: 'danger', icon: '🔄' }
+    ];
+  
+    tools.forEach(tool => {
+      const btn = document.createElement('div');
+      btn.className = `hh-tool-btn ${tool.type}`;
+      btn.innerHTML = `<span>${tool.icon}</span> ${tool.label}`;
+      btn.onclick = () => {
+        if (tool.cmd === 'restart' && !confirm("RESTART server?")) return;
+        safeSendMessage({ action: "PROXY_COMMAND", cmd: tool.cmd });
+        showToast(`Sent: ${tool.label}`);
+      };
+      toolbar.appendChild(btn);
+    });
+  
+    // Insert at the top of the wrapper
+    wrapper.prepend(toolbar);
+  };
+  
+  // --- UI: QUEUE DISPLAY ---
   const updateQueueDisplay = () => {
-    let container = document.getElementById('hh-queue-container');
+    const wrapper = getUIWrapper();
+    if (!wrapper) return;
+
+    let container = wrapper.querySelector('#hh-queue-container');
     
     if (!container) {
       container = document.createElement('div');
       container.id = 'hh-queue-container';
-      
-      const header = document.createElement('div');
-      header.id = 'hh-queue-header';
-      header.innerHTML = `<span>Ban Queue</span><span id="hh-queue-count">0</span>`;
-      
-      const list = document.createElement('div');
-      list.id = 'hh-queue-list';
-      
-      container.appendChild(header);
-      container.appendChild(list);
-      document.body.appendChild(container);
+      container.innerHTML = `
+        <div id="hh-queue-header"><span>Ban Queue</span><span id="hh-queue-count">0</span></div>
+        <div id="hh-queue-list"></div>
+      `;
+      wrapper.appendChild(container); // Queue goes below toolbar
     }
 
     if (banQueue.length === 0) {
       container.style.display = 'none';
       return;
     }
+    
     container.style.display = 'flex';
-    document.getElementById('hh-queue-count').textContent = banQueue.length;
+    
+    // Use the container to find sub-elements to avoid null errors
+    const countEl = container.querySelector('#hh-queue-count');
+    const listEl = container.querySelector('#hh-queue-list');
 
-    const list = document.getElementById('hh-queue-list');
-    list.innerHTML = ''; 
-
-    banQueue.forEach((item, index) => {
-      const row = document.createElement('div');
-      row.className = 'hh-queue-row';
-      
-      const info = document.createElement('div');
-      info.className = 'hh-queue-info';
-      info.innerHTML = `
-        <span class="hh-queue-name">${item.name}</span>
-        <span class="hh-queue-sid">${item.sid}</span>
-      `;
-
-      const removeBtn = document.createElement('span');
-      removeBtn.className = 'hh-queue-remove';
-      removeBtn.innerHTML = '&times;';
-      removeBtn.title = "Remove from Queue";
-      
-      removeBtn.onclick = () => {
-        banQueue.splice(index, 1);
-        updateQueueDisplay();
-      };
-
-      row.appendChild(info);
-      row.appendChild(removeBtn);
-      list.appendChild(row);
-    });
+    if (countEl) countEl.textContent = banQueue.length;
+    if (listEl) {
+      listEl.innerHTML = '';banQueue.forEach((item, index) => {
+        const row = document.createElement('div');
+        row.className = 'hh-queue-row';
+        row.innerHTML = `
+          <div class="hh-queue-info">
+            <span class="hh-queue-name">${item.name}</span>
+            <span class="hh-queue-sid">${item.sid}</span>
+          </div>
+          <span class="hh-queue-remove">&times;</span>
+        `;
+        
+        row.querySelector('.hh-queue-remove').onclick = () => {
+          banQueue.splice(index, 1);
+          updateQueueDisplay();
+        };
+        listEl.appendChild(row);
+      });
+    }
   };
 
   const safeSendMessage = (msg) => {
@@ -358,6 +409,9 @@
       safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd });
       showToast(`Server restarting....`);
 	}
+	else if (type === 'lookup') {
+      safeSendMessage({ action: "OPEN_TAB", url: `https://steamcommunity.com/profiles/${sid}` });
+	}
 	else if (type === 'users') {
       const cmd = `users`
       safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd });
@@ -418,8 +472,7 @@
           }
         </div>
       </div>
-      <div class="hh-menu-row" data-type="restart" data-sid="${sid}">🔄 Restart</div>
-      <div class="hh-menu-row" data-type="users" data-sid="${sid}">🧑 users</div>	  
+	  <div class="hh-menu-row" data-type="lookup" data-sid="${sid}">🌐 Steam Profile</div>
       <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>`;
 
     actionMenu.onclick = (ev) => handleMenuClick(ev, data, sid);
@@ -482,6 +535,9 @@
       stripHighlights();
       scan();
 
+      createToolbar();
+      updateQueueDisplay();
+
       if (window.hhObserver) window.hhObserver.disconnect();
       if (document.body) {
 		window.hhObserver = new MutationObserver((mutations) => {
@@ -505,6 +561,20 @@
     }
   };
   
-  if (document.body) init();
-  else setTimeout(init, 100);
+  const startExtension = () => {
+    // If body isn't ready, wait 200ms and try again
+    if (!document.body) {
+      setTimeout(startExtension, 200);
+      return;
+    }
+
+    // Body exists, now we can safely init
+    init();
+  };
+
+  startExtension();
 })();
+  
+  // if (document.body) init();
+  // else setTimeout(init, 100);
+// })();

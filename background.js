@@ -29,4 +29,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       });
     }
   }
+  
+  if (request.action === "OPEN_TAB") {
+    chrome.tabs.create({ url: request.url });
+  }
 });

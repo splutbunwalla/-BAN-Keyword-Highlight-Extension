@@ -132,7 +132,7 @@ body {
     .add-keyword input { flex-grow: 1; }
 
     /* Buttons */
-    .add-keyword button, #add-msg-btn { 
+    #add-msg-btn { 
       width: 24px !important; min-width: 24px; height: 24px;
       background-color: #4CAF50; color: white; border: none; 
       border-radius: 4px; font-weight: bold; cursor: pointer; 
@@ -184,7 +184,28 @@ body {
       gap: 2px;
     }
 
-
+    .add-keyword.multiline {
+        display: flex;
+        gap: 5px;
+    }
+    
+    .add-keyword textarea {
+        flex: 1;
+        background: #181a1d;
+        border: 1px solid #444;
+        color: white;
+        padding: 5px;
+        border-radius: 4px;
+        resize: vertical; /* Allows user to drag it larger if needed */
+        font-family: inherit;
+        font-size: 12px;
+    }
+    
+    .add-keyword button { 
+	  height: auto; width: 30px !important; font-size: 18px;
+      background-color: #4CAF50; color: white; border: none; 
+      border-radius: 4px; font-weight: bold; cursor: pointer; 
+    }
   </style>
 </head>
 <body>
@@ -204,10 +225,10 @@ body {
     <div class="control-group">
       <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">Primary Keywords</div>
       <div id="primary-list" class="keyword-list"></div>
-      <div class="add-keyword">
-        <input type="text" id="new-primary" placeholder="Add word...">
-        <button id="add-primary-btn">+</button>
-      </div>
+	  <div class="add-keyword multiline">
+		<textarea id="new-primary" placeholder="Add words (one per line)..." rows="3"></textarea>
+		<button id="add-primary-btn">+</button>
+	  </div>
       <div class="setting-row">
         <label>Primary Style</label>
         <input type="color" id="primaryColor" value="#ffff00">
@@ -218,10 +239,10 @@ body {
     <div class="control-group">
       <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">Secondary Keywords</div>
       <div id="secondary-list" class="keyword-list"></div>
-      <div class="add-keyword">
-        <input type="text" id="new-secondary" placeholder="Add word...">
-        <button id="add-secondary-btn">+</button>
-      </div>
+  	  <div class="add-keyword multiline">
+		<textarea id="new-secondary" placeholder="Add words (one per line)..." rows="3"></textarea>
+		<button id="add-secondary-btn">+</button>
+	  </div>
       <div class="setting-row">
         <label>Secondary Style</label>
         <input type="color" id="secondaryColor" value="#00ff00">
