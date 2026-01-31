@@ -370,3 +370,176 @@ top: auto !important;
     color: #777;
     cursor: default;
 }
+
+#hh-player-panel {
+    background: #1e2124;
+    border: 1px solid #444;
+    border-radius: 8px;
+    width: 250px;
+    max-height: 400px;
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    overflow: hidden;
+}
+
+.hh-panel-header {
+    background: #2f3136;
+    padding: 10px;
+    font-size: 12px;
+    font-weight: bold;
+    border-bottom: 1px solid #444;
+}
+
+#hh-player-search {
+    width: 90%;
+    margin-top: 8px;
+    background: #181a1d;
+    border: 1px solid #444;
+    color: white;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+#hh-player-list-content {
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.hh-player-row {
+    padding: 8px 10px;
+    border-bottom: 1px solid #2f3136;
+    display: flex;
+    justify-content: space-between;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.2s;
+}
+
+.hh-player-row:hover {
+    background: #40444b;
+}
+
+.hh-player-id {
+    color: #888;
+    font-family: monospace;
+    font-size: 10px;
+}
+
+#hh-panel-close {
+    float: right;
+    background: none;
+    border: none;
+    color: #ff4444;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.hh-player-row {
+    padding: 6px 10px;
+    border-bottom: 1px solid #2f3136;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+}
+
+.hh-player-info {
+    cursor: pointer;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.hh-player-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #fff;
+}
+
+.hh-player-actions {
+    display: flex;
+    gap: 4px;
+    margin-left: 8px;
+}
+
+.hh-player-actions button {
+    border: none;
+    border-radius: 3px;
+    color: white;
+    font-weight: bold;
+    padding: 2px 6px;
+    cursor: pointer;
+    font-size: 10px;
+}
+
+.hh-btn-profile {
+    background: #5c2e2e; 
+}
+
+.hh-btn-profile:hover { background: #a87a7a; }
+
+.hh-btn-kick {
+    background: #f0ad4e; /* Orange */
+}
+
+.hh-btn-kick:hover { background: #ed9c28; }
+
+
+.hh-btn-ban {
+    background: #d9534f; /* Red */
+}
+
+.hh-btn-ban:hover { background: #c9302c; }
+
+#hh-player-search {
+    width: calc(100% - 20px);
+    margin: 8px 10px;
+    background: #181a1d;
+    border: 1px solid #444;
+    color: white;
+    padding: 5px;
+    border-radius: 4px;
+}
+
+/* Prevent the scanner/browser from treating UI text as highlightable content */
+#hh-ui-wrapper, 
+#hh-player-panel, 
+.hh-toast {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Force-disable any highlight spans if they somehow get injected into our UI */
+#hh-ui-wrapper span[style*="background-color"],
+#hh-player-panel span[style*="background-color"] {
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+}
+
+.hh-highlight {
+    border-radius: 3px;
+    padding: 0 2px;
+    font-weight: bold;
+    cursor: help;
+}
+
+.hh-type-primary { 
+    background-color: var(--hh-p-bg1, red); 
+    color: var(--hh-p-txt, white); 
+}
+
+.hh-type-secondary { 
+    background-color: var(--hh-s-bg1, yellow); 
+    color: var(--hh-s-txt, black); 
+}
+
+.hh-type-steamid { 
+    background-color: var(--hh-id-bg1, gray); 
+    color: var(--hh-id-txt, white); 
+}

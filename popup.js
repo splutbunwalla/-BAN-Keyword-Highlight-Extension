@@ -323,7 +323,7 @@ document.querySelectorAll('input, select, textarea').forEach(input => {
         steamidColorMid: document.getElementById("steamidColorMid").value,
         steamidColorEnd: document.getElementById("steamidColorEnd").value,
         steamidTextColor: document.getElementById("steamidTextColor").value,
-        steamidBorderColor: document.getElementById("steamidBorderColor").value,
+        // steamidBorderColor: document.getElementById("steamidBorderColor").value,
         steamidAlpha: parseFloat(document.getElementById("steamidAlpha").value),
       };
       chrome.storage.sync.set(settings);

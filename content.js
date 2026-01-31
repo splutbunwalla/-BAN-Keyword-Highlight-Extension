@@ -1,5 +1,5 @@
 (() => {
-  let KEYWORDS = [], SECONDARYWORDS = [], NAME_MAP = {}, MESSAGES = [];
+  let KEYWORDS = [], SECONDARYWORDS = [], NAME_MAP = {}, MESSAGES = [], renderList = null;
   let actionMenu = null, scanTimeout = null;
   let isInitializing = false;
   const PERMA_DUR = "307445734561825"; 
@@ -74,6 +74,7 @@ const createToolbar = (attempts = 0) => {
   
   // Standard Tools
   const tools = [
+	{ label: 'Players', action: 'togglePlayers', type: 'info', icon: '📋' },
     { label: 'Users', cmd: 'users', type: 'info', icon: '👥' },
     { label: 'Restart', cmd: 'restart', type: 'danger', icon: '🔄' }
   ];
@@ -82,13 +83,16 @@ const createToolbar = (attempts = 0) => {
     const btn = document.createElement('div');
     btn.className = `hh-tool-btn ${tool.type}`;
     btn.innerHTML = `<span>${tool.icon}</span> ${tool.label}`;
-    btn.onclick = () => {
-      if (tool.cmd === 'restart' && !confirm("RESTART server?")) return;
-      // Send message to Background -> Input Frame
-      safeSendMessage({ action: "PROXY_COMMAND", cmd: tool.cmd });
-      showToast(`Signal Sent: ${tool.label}`);
-    };
-    toolbar.appendChild(btn);
+	btn.onclick = () => {
+		if (tool.action === 'togglePlayers') {
+		  togglePlayerList();
+		} else {
+		  if (tool.cmd === 'restart' && !confirm("RESTART server?")) return;
+		  safeSendMessage({ action: "PROXY_COMMAND", cmd: tool.cmd });
+		  showToast(`Sent: ${tool.label}`);
+		}
+	  };
+	  toolbar.appendChild(btn);
   });
 
   wrapper.prepend(toolbar);
@@ -98,6 +102,106 @@ const createToolbar = (attempts = 0) => {
   });
 
   updateToolbarMessages(MESSAGES, msgSubmenu);
+};
+
+// Keep renderList = null in your top-level 'let' declarations
+
+const togglePlayerList = () => {
+  let panel = document.getElementById('hh-player-panel');
+  if (panel) { 
+    panel.remove(); 
+    renderList = null; 
+    return; 
+  }
+
+  panel = document.createElement('div');
+  panel.id = 'hh-player-panel';
+  panel.innerHTML = `
+    <div class="hh-panel-header">
+      <span>Online Players</span>
+      <button id="hh-panel-close">×</button>
+      <input type="text" id="hh-player-search" placeholder="Search...">
+    </div>
+    <div id="hh-player-list-content"></div>
+  `;
+
+  getUIWrapper().appendChild(panel);
+
+  // Define the logic and assign it to the persistent variable
+  renderList = (filter = "") => {
+    const content = document.getElementById('hh-player-list-content');
+    
+    // Guard Clause: If the panel was closed, kill the reference
+    if (!content) {
+      renderList = null;
+      return;
+    }
+
+    content.innerHTML = "";
+    
+    // 1. Filter only ONLINE players
+    // 2. Sort them alphabetically
+    Object.keys(NAME_MAP)
+      .filter(id => NAME_MAP[id].online === true)
+      .sort((a, b) => (NAME_MAP[a].name || "").localeCompare(NAME_MAP[b].name || ""))
+      .forEach(id => {
+        const data = NAME_MAP[id];
+        // 3. Apply the search filter
+        if (data.name.toLowerCase().includes(filter.toLowerCase())) {
+          const row = document.createElement('div');
+          row.className = 'hh-player-row';
+          row.innerHTML = `
+            <div class="hh-player-info" title="Click to copy ID">
+              <span class="hh-player-name">${data.name}</span>
+              <span class="hh-player-id">${id}</span>
+            </div>
+            <div class="hh-player-actions">
+              <button class="hh-btn-profile" title="Profile">P</button>
+              <button class="hh-btn-kick" title="Kick">K</button>
+              <button class="hh-btn-ban" title="Ban (Perma)">B</button>
+            </div>
+          `;
+
+          // Copy ID logic
+          row.querySelector('.hh-player-info').onclick = () => {
+            navigator.clipboard.writeText(id);
+            showToast(`Copied ID: ${id}`);
+          };
+
+          // Profile Action
+          row.querySelector('.hh-btn-profile').onclick = (e) => {
+            e.stopPropagation();
+            safeSendMessage({ action: "OPEN_TAB", url: `https://steamcommunity.com/profiles/${id}` });
+          };
+          
+          // Kick Action
+          row.querySelector('.hh-btn-kick').onclick = (e) => {
+            e.stopPropagation();
+            safeSendMessage({ action: "PROXY_COMMAND", cmd: `kick ${data.connId}` });
+          };
+
+          // Ban Action
+          row.querySelector('.hh-btn-ban').onclick = (e) => {
+            e.stopPropagation();
+            if (confirm(`PERMA BAN ${data.name}?`)) {
+              safeSendMessage({ action: "PROXY_COMMAND", cmd: `ban ${id} ${PERMA_DUR}` });
+            }
+          };
+
+          content.appendChild(row);
+        }
+      });
+  };
+
+  // Setup UI Events
+  document.getElementById('hh-player-search').oninput = (e) => renderList(e.target.value);
+  document.getElementById('hh-panel-close').onclick = () => {
+    panel.remove();
+    renderList = null;
+  };
+
+  // Initial render
+  renderList();
 };
 
 const updateToolbarMessages = (messages, container) => {
@@ -415,7 +519,8 @@ const updateToolbarMessages = (messages, container) => {
         const isUI = n.parentElement.closest(
           ".hh-highlight, .hh-idhighlight, .hh-secondaryhighlight, " +
           "#hh-queue-container, .hh-action-menu, " + 
-          "script, style, textarea, input"
+          "script, style, textarea, input," + 
+		  "#hh-ui-wrapper, #hh-player-panel, .hh-toast "
         );
         
         return isUI ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
@@ -449,6 +554,10 @@ const updateToolbarMessages = (messages, container) => {
       fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
       node.replaceWith(fragment);
     });
+	
+	if (typeof renderList === 'function') {
+		renderList(document.getElementById('hh-player-search')?.value || "");
+	}
   }
   
   const handleMenuClick = (ev, data, sid) => {
