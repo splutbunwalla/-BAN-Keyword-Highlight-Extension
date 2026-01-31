@@ -208,6 +208,8 @@
       if (msg.cmd.startsWith('kick') && msg.isRacing) shouldAutoSubmit = true;
       if (msg.cmd.startsWith('ban') && msg.isProcessingQueue) shouldAutoSubmit = true;
       if (msg.cmd.startsWith('message')) shouldAutoSubmit = true;
+      if (msg.cmd.startsWith('restart')) shouldAutoSubmit = true;
+      if (msg.cmd.startsWith('users')) shouldAutoSubmit = true;
 
       const input = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand");
       if (input) {
@@ -346,12 +348,21 @@
       const msgText = item.getAttribute('data-text');
 	  
 	  let finalText = msgText.replace('{player}',currentData.name);
-	  console.log(testText);
 	  
       const cmd = `message ${finalText}`;
       safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd });
       showToast(`Message Sent`);
-    }     
+    }
+	else if (type === 'restart') {
+      const cmd = `restart`
+      safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+      showToast(`Server restarting....`);
+	}
+	else if (type === 'users') {
+      const cmd = `users`
+      safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd });
+      showToast(`User listing`);
+	}
     else {
       copyToClipboard(sid);
     }
@@ -407,6 +418,8 @@
           }
         </div>
       </div>
+      <div class="hh-menu-row" data-type="restart" data-sid="${sid}">🔄 Restart</div>
+      <div class="hh-menu-row" data-type="users" data-sid="${sid}">🧑 users</div>	  
       <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>`;
 
     actionMenu.onclick = (ev) => handleMenuClick(ev, data, sid);
