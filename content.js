@@ -32,6 +32,9 @@
   // --- UI: TOOLBAR ---
   const createToolbar = () => {
     if (document.getElementById('hh-toolbar')) return;
+	
+	const targetDoc = (window !== window.top) ? window.parent.document : document;
+	if (targetDoc.getElementById('hh-toolbar')) return;
     
     // Only run in the frame that has the console input
     const consoleInput = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand") || 
@@ -237,21 +240,33 @@
   const applyStyles = (sync) => {
     if (!document.body) return;
     const root = document.documentElement;
-    
+    const hexToRGBA = (hex, alpha) => {
+		const r = parseInt(hex.slice(1, 3), 16);
+		const g = parseInt(hex.slice(3, 5), 16);
+		const b = parseInt(hex.slice(5, 7), 16);
+		return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+	  };
     // Primary
-    root.style.setProperty('--hh-p-bg1', hexToRGBA(sync.primaryColor || "#ffff00", sync.primaryAlpha ?? 0.5));
-    root.style.setProperty('--hh-p-bg2', hexToRGBA(sync.primaryColor2 || sync.primaryColor || "#ffff00", sync.primaryAlpha ?? 0.5));
-    root.style.setProperty('--hh-p-txt', sync.primaryTextColor || "#000000");
+	root.style.setProperty('--hh-p-bg1', hexToRGBA(sync.primaryColor || "#a70000", sync.primaryAlpha ?? 1));
+	root.style.setProperty('--hh-p-bg-mid', hexToRGBA(sync.primaryColorMid || "#000000", sync.primaryAlpha ?? 1));
+	root.style.setProperty('--hh-p-bg-end', hexToRGBA(sync.primaryColorEnd || "#ff0000", sync.primaryAlpha ?? 1));
+	root.style.setProperty('--hh-p-txt', sync.primaryTextColor || "#ffffff");
+	root.style.setProperty('--hh-p-border', sync.primaryBorderColor || "#f13333");   
     
-    // Secondary
-    root.style.setProperty('--hh-s-bg1', hexToRGBA(sync.secondaryColor || "#00ff00", sync.secondaryAlpha ?? 0.5));
-    root.style.setProperty('--hh-s-bg2', hexToRGBA(sync.secondaryColor2 || sync.secondaryColor || "#00ff00", sync.secondaryAlpha ?? 0.5));
-    root.style.setProperty('--hh-s-txt', sync.secondaryTextColor || "#000000");
+	// Secondary
+	root.style.setProperty('--hh-s-bg1', hexToRGBA(sync.secondaryColor || "#a70000", sync.secondaryAlpha ?? 1));
+	root.style.setProperty('--hh-s-bg-mid', hexToRGBA(sync.secondaryColorMid || "#000000", sync.secondaryAlpha ?? 1));
+	root.style.setProperty('--hh-s-bg-end', hexToRGBA(sync.secondaryColorEnd || "#ff0000", sync.secondaryAlpha ?? 1));
+	root.style.setProperty('--hh-s-txt', sync.secondaryTextColor || "#ffffff");
+	root.style.setProperty('--hh-s-border', sync.secondaryBorderColor || "#f13333");   
     
     // SteamID
-    if (sync.steamidColor) {
-      root.style.setProperty('--hh-id-bg', hexToRGBA(sync.steamidColor, sync.steamidAlpha ?? 0.5));
-    }
+	root.style.setProperty('--hh-id-bg1', hexToRGBA(sync.steamidColor || "#a70000", sync.steamidAlpha ?? 1));
+	root.style.setProperty('--hh-id-bg-mid', hexToRGBA(sync.steamidColorMid || "#000000", sync.steamidAlpha ?? 1));
+	root.style.setProperty('--hh-id-bg-end', hexToRGBA(sync.steamidColorEnd || "#ff0000", sync.steamidAlpha ?? 1));
+	root.style.setProperty('--hh-id-txt', sync.steamidTextColor || "#ffffff");
+	root.style.setProperty('--hh-id-border', sync.steamidBorderColor || "#f13333");   
+	
     
     if (sync.enabled === false) document.body.classList.add('hh-disabled');
     else if (sync.enabled === true) document.body.classList.remove('hh-disabled');

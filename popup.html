@@ -67,36 +67,59 @@ body {
   background: transparent !important;
 }
 
-    /* 3. ALIGNMENT: Force Sliders/Colors to the Right Edge */
     .control-group { 
       margin-bottom: 5px; 
       padding-bottom: 10px; 
       border-bottom: 1px solid #333; 
     }
 
-    .setting-row {
-      display: grid;
-      /* Label takes available space | Color box 30px | Slider 110px */
-      grid-template-columns: 1fr 30px 110px; 
-      align-items: center;
-      gap: 8px;
-      margin-top: 6px;
-      width: 100%;
-    }
+.setting-row {
+  display: flex;         /* Changed from grid to flex for better control */
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  width: 100%;
+}
 
-    .setting-row label { font-size: 11px; color: #bbb; }
+.setting-row label { 
+  font-size: 11px; 
+  color: #bbb; 
+  flex: 0 0 70px; /* Fixed width for labels so inputs align */
+}
 
-    input[type="color"] { 
-      width: 24px; height: 24px; padding: 0; 
-      border: 1px solid #111; border-radius: 4px; 
-      background: none; cursor: pointer;
-      justify-self: center;
-    }   
-    
-    input[type="range"] { 
-      width: 100%; margin: 0; cursor: pointer; 
-      accent-color: #2196F3; 
-    }
+/* The vertical container for the two rows of inputs */
+.input-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1; /* Take up all remaining horizontal space */
+}
+
+/* Horizontal rows inside the stack */
+.input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+input[type="range"] { 
+  flex: 1; 
+  margin: 0; 
+  cursor: pointer; 
+  accent-color: #2196F3; 
+}
+
+input[type="color"] { 
+  width: 24px; 
+  height: 24px; 
+  flex-shrink: 0; /* Prevent them from squishing */
+  border: 1px solid #111; 
+  border-radius: 4px; 
+  background: none; 
+  cursor: pointer;
+}
+
 
     input[type="text"] { 
       background-color: #40444b; border: 1px solid #222; 
@@ -105,7 +128,6 @@ body {
     
     input[type="text"]::placeholder { color: #888; }
 
-    /* 4. LISTS & THEME SCROLLBAR */
     .keyword-list { 
       max-height: 100px; overflow-y: auto; 
       background-color: #2f3136; border-radius: 8px; 
@@ -229,14 +251,21 @@ body {
 		<textarea id="new-primary" placeholder="Add words (one per line)..." rows="3"></textarea>
 		<button id="add-primary-btn">+</button>
 	  </div>
-	<div class="setting-row">
-	<label>Primary Background</label>
-	<input type="color" id="primaryColor" value="#ff0033">
-	<input type="color" id="primaryColor2" value="#ff0033"> </div>
-	<div class="setting-row">
-	<label>Primary Text Color</label>
-	<input type="color" id="primaryTextColor" value="#ffffff"> <input type="range" id="primaryAlpha" min="0" max="1" step="0.1" value="1">
-	</div>
+		<div class="setting-row multi-input">
+		  <label>Primary Highlight</label>
+		  <div class="input-stack">
+			<div class="input-group">
+			  <input type="color" id="primaryColor" title="Gradient Top">
+			  <input type="color" id="primaryColorMid" title="Gradient Middle">
+			  <input type="color" id="primaryColorEnd" title="Gradient Bottom">
+			</div>
+			<div class="input-group">
+			  <input type="color" id="primaryTextColor" title="Text Color">
+			  <input type="color" id="primaryBorderColor" title="Border Color">
+			  <input type="range" id="primaryAlpha" min="0" max="1" step="0.1" title="Opacity">
+			</div>
+		  </div>
+		</div>
 	</div>
 
 
@@ -247,22 +276,40 @@ body {
 		<textarea id="new-secondary" placeholder="Add words (one per line)..." rows="3"></textarea>
 		<button id="add-secondary-btn">+</button>
 	  </div>
-		<div class="setting-row">
-		<label>Secondary Background</label>
-		<input type="color" id="secondaryColor" value="#ffff33">
-		<input type="color" id="secondaryColor2" value="#ffff33"> </div>
-		<div class="setting-row">
-		<label>Secondary Text Color</label>
-		<input type="color" id="secondaryTextColor" value="#000000"> <input type="range" id="secondaryAlpha" min="0" max="1" step="0.1" value="0.5">
+	  
+		<div class="setting-row multi-input">
+		  <label>Secondary Highlight</label>
+		  <div class="input-stack">
+			<div class="input-group">
+			  <input type="color" id="secondaryColor" title="Gradient Top">
+			  <input type="color" id="secondaryColorMid" title="Gradient Middle">
+			  <input type="color" id="secondaryColorEnd" title="Gradient Bottom">
+			</div>
+			<div class="input-group">
+			  <input type="color" id="secondaryTextColor" title="Text Color">
+			  <input type="color" id="secondaryBorderColor" title="Border Color">
+			  <input type="range" id="secondaryAlpha" min="0" max="1" step="0.1" title="Opacity">
+			</div>
+		  </div>
 		</div>
     </div>
 
     <div class="control-group">
-      <div class="setting-row">
+		<div class="setting-row multi-input">
         <label>SteamID Style</label>
-        <input type="color" id="steamidColor" value="#ff8c00">
-        <input type="range" id="steamidAlpha" min="0" max="1" step="0.1" value="0.5">
-      </div>
+		  <div class="input-stack">
+			<div class="input-group">
+			  <input type="color" id="steamidColor" title="Gradient Top">
+			  <input type="color" id="steamidColorMid" title="Gradient Middle">
+			  <input type="color" id="steamidColorEnd" title="Gradient Bottom">
+			</div>
+			<div class="input-group">
+			  <input type="color" id="steamidTextColor" title="Text Color">
+			  <input type="color" id="steamidBorderColor" title="Border Color">
+			  <input type="range" id="steamidAlpha" min="0" max="1" step="0.1" title="Opacity" value="0.5">
+			</div>
+		  </div>
+		</div>
     </div>
 
     <div class="control-group" style="border-bottom: none;">

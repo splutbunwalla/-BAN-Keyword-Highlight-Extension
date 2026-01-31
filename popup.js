@@ -41,15 +41,25 @@ document.addEventListener('keydown', (e) => {
 function updateContentScript() {
   const settings = {
     primaryColor: document.getElementById("primaryColor").value,
-    primaryColor2: document.getElementById("primaryColor2").value,
+    primaryColorMid: document.getElementById("primaryColorMid").value,
+    primaryColorEnd: document.getElementById("primaryColorEnd").value,
     primaryTextColor: document.getElementById("primaryTextColor").value,
+    primaryBorderColor: document.getElementById("primaryBorderColor").value,
     primaryAlpha: parseFloat(document.getElementById("primaryAlpha").value),
+    
     secondaryColor: document.getElementById("secondaryColor").value,
-    secondaryColor2: document.getElementById("secondaryColor2").value,
+    secondaryColorMid: document.getElementById("secondaryColorMid").value,
+    secondaryColorEnd: document.getElementById("secondaryColorEnd").value,
     secondaryTextColor: document.getElementById("secondaryTextColor").value,
+    secondaryBorderColor: document.getElementById("secondaryBorderColor").value,
     secondaryAlpha: parseFloat(document.getElementById("secondaryAlpha").value),
-    steamidColor: document.getElementById("steamidColor").value,
-    steamidAlpha: parseFloat(document.getElementById("steamidAlpha").value)
+    
+	steamidColor: document.getElementById("steamidColor").value,
+    steamidColorMid: document.getElementById("steamidColorMid").value,
+    steamidColorEnd: document.getElementById("steamidColorEnd").value,
+    steamidTextColor: document.getElementById("steamidTextColor").value,
+    steamidBorderColor: document.getElementById("steamidBorderColor").value,
+    steamidAlpha: parseFloat(document.getElementById("steamidAlpha").value),
   };
 
   chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
@@ -60,14 +70,8 @@ function updateContentScript() {
 
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
-    chrome.storage.sync.set(settings, () => {
-      if (chrome.runtime.lastError) {
-        console.warn("Storage Sync Error:", chrome.runtime.lastError.message);
-      } else {
-        console.log("Settings saved to sync.");
-      }
-    });
-  }, 250); // 250ms delay
+    chrome.storage.sync.set(settings);
+  }, 250);
 }
 
 function saveSettingsSilently() {
@@ -226,36 +230,44 @@ function addMessage() {
 
 function loadSettings() {
   chrome.storage.sync.get([
-    "keywords", "secondarykeywords", "messages",
-    "primaryColor", "primaryAlpha", 
-    "secondaryColor", "secondaryAlpha", 
-    "steamidColor", "steamidAlpha", 
-    "enabled"
-  ], data => {
-    const pWords = (data.keywords || []).map(k => typeof k === 'string' ? {text: k, enabled: true} : k);
-    const sWords = (data.secondarykeywords || []).map(k => typeof k === 'string' ? {text: k, enabled: true} : k);
-    const mList = data.messages || [];
-	console.log(`message list : ${mList}`);
+    "keywords", "secondarykeywords", "messages", "enabled",
+    "primaryColor", "primaryColorMid", "primaryColorEnd", "primaryTextColor", "primaryBorderColor", "primaryAlpha",
+    "secondaryColor", "secondaryColorMid", "secondaryColorEnd", "secondaryTextColor", "secondaryBorderColor", "secondaryAlpha",
+    "steamidColor", "steamidColorMid", "steamidColorEnd", "steamidTextColor", "steamidBorderColor", "steamidAlpha"
+  ], (data) => {
+    // Load Lists
+    renderKeywords( "primary-list", data.keywords || [],"keywords");
+    renderKeywords("secondary-list", data.secondarykeywords || [], "secondarykeywords");
+    renderMessages(data.messages || []);
 
-    renderKeywords("primary-list", pWords, "keywords");
-    renderKeywords("secondary-list", sWords, "secondarykeywords");
-    renderMessages(mList);
+    // Load Primary Styles (with defaults to match your specific CSS request)
+    document.getElementById("primaryColor").value = data.primaryColor || "#a70000";
+    document.getElementById("primaryColorMid").value = data.primaryColorMid || "#000000";
+    document.getElementById("primaryColorEnd").value = data.primaryColorEnd || "#ff0000";
+    document.getElementById("primaryTextColor").value = data.primaryTextColor || "#ffffff";
+    document.getElementById("primaryBorderColor").value = data.primaryBorderColor || "#f13333";
+    document.getElementById("primaryAlpha").value = data.primaryAlpha !== undefined ? data.primaryAlpha : 1;
 
-    primaryColorInput.value = data.primaryColor || "#ffff00";
-    primaryAlphaInput.value = data.primaryAlpha !== undefined ? data.primaryAlpha : 0.5;
-    secondaryColorInput.value = data.secondaryColor || "#00ff00";
-    secondaryAlphaInput.value = data.secondaryAlpha !== undefined ? data.secondaryAlpha : 0.5;
-    steamidColorInput.value = data.steamidColor || "#ff8c00";
-    steamidAlphaInput.value = data.steamidAlpha !== undefined ? data.steamidAlpha : 0.5;
+    // Load Secondary Styles
+    document.getElementById("secondaryColor").value = data.secondaryColor || "#ffff33";
+    document.getElementById("secondaryColorMid").value = data.secondaryColorMid || "#ffff33";
+    document.getElementById("secondaryColorEnd").value = data.secondaryColorEnd || "#ffff33";
+    document.getElementById("secondaryTextColor").value = data.secondaryTextColor || "#000000";
+    document.getElementById("secondaryBorderColor").value = data.secondaryBorderColor || "transparent";
+    document.getElementById("secondaryAlpha").value = data.secondaryAlpha !== undefined ? data.secondaryAlpha : 0.5;
 
-	primaryColor2Input.value = data.primaryColor2 || data.primaryColor || "#ffff00";
-	primaryTextColorInput.value = data.primaryTextColor || "#000000";
-	secondaryColor2Input.value = data.secondaryColor2 || data.secondaryColor || "#00ff00";
-	secondaryTextColorInput.value = data.secondaryTextColor || "#000000";
+    // Load SteamID Styles
+	document.getElementById("steamidColor").value = data.steamidColor || "#ff8c00";
+    document.getElementById("steamidColorMid").value = data.steamidColorMid || "#ff8c00";
+    document.getElementById("steamidColorEnd").value = data.steamidColorEnd || "#ff8c00";
+    document.getElementById("steamidTextColor").value = data.steamidTextColor || "#000000";
+    document.getElementById("steamidBorderColor").value = data.steamidBorderColor || "transparent";
+    document.getElementById("steamidAlpha").value = data.steamidAlpha !== undefined ? data.steamidAlpha : 0.5;
 
-    // Fixed: Only use the toggleCheckbox since toggleBtn is gone
+    // Extension Toggle State
     enabled = data.enabled !== false;
     toggleCheckbox.checked = enabled;
+    container.classList.toggle('disabled', !enabled);
   });
 }
 
@@ -281,13 +293,39 @@ document.getElementById("add-msg-btn").addEventListener("click", addMessage);
 
 loadSettings();
 
-const inputsToWatch = [
-  "primaryColor", "primaryColor2", "primaryTextColor", "primaryAlpha",
-  "secondaryColor", "secondaryColor2", "secondaryTextColor", "secondaryAlpha",
-  "steamidColor", "steamidAlpha"
-];
+// Attach listeners to ALL inputs for live-updating and debounced saving
+let saveTimeout;
+document.querySelectorAll('input, select, textarea').forEach(input => {
+  input.addEventListener('input', () => {
+    // 1. Instant visual update to the active tab
+    updateContentScript(); 
 
-inputsToWatch.forEach(id => {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('input', updateContentScript);
+    // 2. Debounced save to storage (waits 500ms after last move)
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+      const settings = {
+        primaryColor: document.getElementById("primaryColor").value,
+        primaryColorMid: document.getElementById("primaryColorMid").value,
+        primaryColorEnd: document.getElementById("primaryColorEnd").value,
+        primaryTextColor: document.getElementById("primaryTextColor").value,
+        primaryBorderColor: document.getElementById("primaryBorderColor").value,
+        primaryAlpha: parseFloat(document.getElementById("primaryAlpha").value),
+        
+        secondaryColor: document.getElementById("secondaryColor").value,
+        secondaryColorMid: document.getElementById("secondaryColorMid").value,
+        secondaryColorEnd: document.getElementById("secondaryColorEnd").value,
+        secondaryTextColor: document.getElementById("secondaryTextColor").value,
+        secondaryBorderColor: document.getElementById("secondaryBorderColor").value,
+        secondaryAlpha: parseFloat(document.getElementById("secondaryAlpha").value),
+        
+        steamidColor: document.getElementById("steamidColor").value,
+        steamidColorMid: document.getElementById("steamidColorMid").value,
+        steamidColorEnd: document.getElementById("steamidColorEnd").value,
+        steamidTextColor: document.getElementById("steamidTextColor").value,
+        steamidBorderColor: document.getElementById("steamidBorderColor").value,
+        steamidAlpha: parseFloat(document.getElementById("steamidAlpha").value),
+      };
+      chrome.storage.sync.set(settings);
+    }, 100);
+  });
 });

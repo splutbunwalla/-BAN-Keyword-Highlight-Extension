@@ -1,10 +1,22 @@
 :root {
-    --hh-p-bg1: rgba(255, 255, 0, 1);
-    --hh-p-bg2: rgba(255, 255, 0, 1);
-    --hh-p-txt: #000000;
-    --hh-s-bg1: rgba(0, 255, 0, 1);
-    --hh-s-bg2: rgba(0, 255, 0, 1);
+    /* Primary */
+    --hh-p-bg1: rgba(167, 0, 0, 1);
+    --hh-p-bg-mid: rgba(0, 0, 0, 1);
+    --hh-p-bg-end: rgba(255, 0, 0, 1);
+    --hh-p-txt: #ffffff;
+    --hh-p-border: #f13333;
+    /* Secondary */
+    --hh-s-bg1: rgba(255, 255, 51, 1);
+    --hh-s-bg-mid: rgba(255, 255, 51, 1);
+    --hh-s-bg-end: rgba(255, 255, 51, 1);
     --hh-s-txt: #000000;
+    --hh-s-border: transparent;
+	/* steamid */
+	--hh-id-bg1: rgba(255, 255, 51, 1);
+    --hh-id-bg-mid: rgba(255, 255, 51, 1);
+    --hh-id-bg-end: rgba(255, 255, 51, 1);
+    --hh-id-txt: #000000;
+    --hh-id-border: transparent;
 }
 
 /* Base Interactions */
@@ -28,8 +40,9 @@ body.hh-disabled .hh-secondaryhighlight {
 }
 
 .hh-idhighlight { 
-    background-color: var(--hh-id-bg) !important; 
-    color: #000 !important; 
+    background: linear-gradient(var(--hh-id-bg1), var(--hh-id-bg-mid) 40%, var(--hh-id-bg-end)) !important;
+    color: var(--hh-id-txt) !important;
+    border-bottom: 1px solid var(--hh-id-border) !important;
     font-weight: bold !important; 
     padding: 0 3px; 
     border-radius: 3px; 
@@ -40,19 +53,21 @@ body.hh-disabled .hh-secondaryhighlight {
 
 
 .hh-highlight { 
-    background: linear-gradient(90deg, var(--hh-p-bg1), var(--hh-p-bg2)) !important;
+    background: linear-gradient(var(--hh-p-bg1), var(--hh-p-bg-mid) 40%, var(--hh-p-bg-end)) !important;
     color: var(--hh-p-txt) !important;
+    border-bottom: 1px solid var(--hh-p-border) !important;
     font-weight: bold !important;
-    padding: 0 3px;
-    border-radius: 3px;
+    padding: 2px !important;
+    border-radius: 2px;
 }
 
 .hh-secondaryhighlight { 
-    background: linear-gradient(90deg, var(--hh-s-bg1), var(--hh-s-bg2)) !important;
+    background: linear-gradient(var(--hh-s-bg1), var(--hh-s-bg-mid) 40%, var(--hh-s-bg-end)) !important;
     color: var(--hh-s-txt) !important;
+    border-bottom: 1px solid var(--hh-s-border) !important;
     font-weight: bold !important;
-    padding: 0 3px;
-    border-radius: 3px;
+    padding: 2px !important;
+    border-radius: 2px;
 }
 
 /* Action Menu */
