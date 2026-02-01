@@ -1,6 +1,7 @@
 (() => {
   let KEYWORDS = [], SECONDARYWORDS = [], NAME_MAP = {}, MESSAGES = [], renderList = null;
   let actionMenu = null, scanTimeout = null;
+  let restartClickTimer = null;
   let isInitializing = false;
   const PERMA_DUR = "307445734561825"; 
   let isRacing = false;
@@ -69,30 +70,7 @@ const createToolbar = (attempts = 0) => {
 		
   const toolbar = document.createElement('div');
   toolbar.id = 'hh-toolbar';
-  
-  // Inside createToolbar, before wrapper.prepend(toolbar)
-  // const statusIndicator = document.createElement('div');
-  // statusIndicator.id = 'hh-race-status';
-  // statusIndicator.className = 'hh-status-tag';
-  // statusIndicator.innerHTML = '🏁 Waiting';
-  // toolbar.appendChild(statusIndicator);
- 
-  // const trackIndicator = document.createElement('div');
-  // trackIndicator.id = 'hh-track-name';
-  // trackIndicator.style.fontSize = '12px';
-  // trackIndicator.style.color = '#aaa';
-  // trackIndicator.style.marginTop = '2px';
-  // trackIndicator.style.paddingRight = '5px';
-  // trackIndicator.innerHTML = 'Unknown Track';
-
-  
-  // infoGroup.appendChild(statusIndicator);
-  // infoGroup.appendChild(trackIndicator);
-  // toolbar.appendChild(infoGroup);
-
-  // Call update once to set initial state
-  
-  
+    
   // Standard Tools
   const tools = [
     { label: 'Messages', type: 'info', icon: '💬', id: 'hh-msg-trigger' },
@@ -113,8 +91,23 @@ const createToolbar = (attempts = 0) => {
         menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
       } else if (tool.action === 'togglePlayers') {
         togglePlayerList();
-      } else {
-        if (tool.cmd === 'restart' && !confirm("RESTART server?")) return;
+      } else if (tool.cmd === 'restart') {
+          if (!restartClickTimer) {
+          // First click
+          restartClickTimer = setTimeout(() => {
+            restartClickTimer = null;
+            showToast("Double-click to RESTART");
+          }, 500); // Window for the second click
+        } else {
+          // Second click within 500ms
+          clearTimeout(restartClickTimer);
+          restartClickTimer = null;
+          safeSendMessage({ action: "PROXY_COMMAND", cmd: "restart" });
+          showToast("🚀 Restarting server...");
+        }
+      }
+	  else {
+        // Standard commands (users, etc.)
         safeSendMessage({ action: "PROXY_COMMAND", cmd: tool.cmd });
         showToast(`Sent: ${tool.label}`);
       }
