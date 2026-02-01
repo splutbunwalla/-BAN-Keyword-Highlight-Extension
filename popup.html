@@ -227,7 +227,40 @@ input[type="color"] {
 	  height: auto; width: 30px !important; font-size: 18px;
       background-color: #4CAF50; color: white; border: none; 
       border-radius: 4px; font-weight: bold; cursor: pointer; 
-    }
+    }	
+	.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px; /* Space between header and the list */
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.message-actions {
+  display: flex;
+  gap: 4px; /* Space between Export and Import buttons */
+}
+
+.mini-btn {
+  background: #36393f;
+  border: 1px solid #444;
+  color: #ccc;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.mini-btn:hover {
+  background: #4e5d6e;
+  color: white;
+}
+	
   </style>
 </head>
 <body>
@@ -311,9 +344,17 @@ input[type="color"] {
 		  </div>
 		</div>
     </div>
-
-    <div class="control-group" style="border-bottom: none;">
-      <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">Messages</div>
+	
+	<div class="control-group" style="border-bottom: none;">
+	  <div class="section-header">
+		<div class="section-title">Messages</div>
+		<div class="message-actions">
+		  <button id="export-messages" class="mini-btn" title="Export to JSON">Export</button>
+		  <button id="import-messages" class="mini-btn" title="Import from JSON">Import</button>
+		  <input type="file" id="import-file" style="display: none;" accept=".json">
+		</div>
+	  </div>
+  
       <div id="message-list" class="keyword-list" style="max-height: 160px;"></div>
       <div class="msg-grid-container">
         <div class="msg-inputs">

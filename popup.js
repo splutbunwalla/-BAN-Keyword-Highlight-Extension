@@ -292,6 +292,59 @@ document.getElementById("add-primary-btn").addEventListener("click", () => addKe
 document.getElementById("add-secondary-btn").addEventListener("click", () => addKeyword("new-secondary", "secondarykeywords", "secondary-list"));
 document.getElementById("add-msg-btn").addEventListener("click", addMessage);
 
+document.getElementById('export-messages').addEventListener('click', () => {
+  chrome.storage.sync.get('messages', (data) => {
+    const messages = data.messages || [];
+    const blob = new Blob([JSON.stringify(messages, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hh-messages-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+});
+
+document.getElementById('import-messages').addEventListener('click', () => {
+  document.getElementById('import-file').click();
+});
+
+document.getElementById('import-file').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const importedMessages = JSON.parse(event.target.result);
+      
+      if (!Array.isArray(importedMessages)) {
+        alert("Invalid format: Messages must be an array.");
+        return;
+      }
+
+      if (confirm(`Import ${importedMessages.length} messages? This will overwrite your current list.`)) {
+        chrome.storage.sync.set({ messages: importedMessages }, () => {
+          // Refresh the UI list
+          renderMessages(importedMessages);
+          // Notify content script
+          updateContentScript();
+          alert("Messages imported successfully!");
+        });
+      }
+    } catch (err) {
+      alert("Error parsing JSON file.");
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
+  // Reset input so the same file can be imported again if needed
+  e.target.value = '';
+});
+
 loadSettings();
 
 // Attach listeners to ALL inputs for live-updating and debounced saving
