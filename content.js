@@ -7,6 +7,24 @@
   let isRacing = false;
   let banQueue = []; 
   let isProcessingQueue = false; 
+  let chatHistory = [];
+  const seenChatLines = new Set();
+  const ROLE_WORDS = new Set(['vip', 'admin', 'moderator', 'default']);  
+  const ROLE_PATTERN = '\\b(?:vip|admin|moderator|default)\\b';
+  
+const buildChatHistoryFromDOM = () => {
+  chatHistory = []; // reset so reloads don’t duplicate
+
+  document.querySelectorAll('tr, div.log-line, pre, span').forEach(el => {
+    const text = (el.innerText || "").trim();
+    if (!text) return;
+
+    processChatLog(text);
+  });
+
+  console.log(`💬 Rebuilt chat history: ${chatHistory.length} messages`);
+};
+
   
 const getUIWrapper = () => {
   let wrapper = document.getElementById('hh-ui-wrapper');
@@ -239,6 +257,77 @@ const togglePlayerList = () => {
   renderList();
 };
 
+const openPlayerChat = (steamId, name) => {
+    currentViewedId = steamId;
+    const chatView = document.getElementById('hh-chat-view') || createChatView();
+    const title = chatView.querySelector('.hh-panel-title');
+    const searchInput = chatView.querySelector('.hh-chat-search');
+    
+    title.innerText = `Chat: ${name}`;
+    searchInput.value = ''; // Clear search on open
+    
+    renderChatLines();
+    chatView.style.display = 'flex';
+};
+
+const renderChatLines = () => {
+    const chatView = document.getElementById('hh-chat-view');
+    if (!chatView) return;
+
+    const content = chatView.querySelector('.hh-chat-content');
+    const searchTerm = chatView.querySelector('.hh-chat-search').value.toLowerCase();
+
+    // Filter by the SteamID of the person we opened, then by the search term
+    const filteredLines = chatHistory
+        .filter(line => line.steamId === currentViewedId)
+        .filter(line => 
+            searchTerm === "" || 
+            line.message.toLowerCase().includes(searchTerm)
+        )
+        .map(line => line.fullLine);
+   
+   content.innerText = "";
+    if (filteredLines.length === 0) {
+        content.innerText = "No matching messages found.";
+        return;
+    }
+    content.innerText = filteredLines.join('\n');
+
+};
+
+function createChatView() {
+    const el = document.createElement('div');
+    el.id = 'hh-chat-view';
+    el.innerHTML = `
+        <div class="hh-panel-header">
+            <div class="hh-header-left">
+                <span class="hh-panel-title">Chat History</span>
+            </div>
+            <div style="display:flex; align-items:center;">
+                <input type="text" class="hh-chat-search" placeholder="Search keywords...">
+                <span id="hh-chat-close" style="cursor:pointer;color:#ff4444;font-weight:bold;">✖</span>
+            </div>
+        </div>
+        <div class="hh-chat-content"></div>
+        <div class="hh-chat-footer">
+            <button id="hh-copy-chat" class="hh-tool-btn info">Copy Visible</button>
+        </div>
+    `;
+    
+    // Search listener
+    el.querySelector('.hh-chat-search').oninput = renderChatLines;
+    // Add copy logic
+    el.querySelector('#hh-copy-chat').onclick = () => {
+      const content = el.querySelector('.hh-chat-content').innerText;
+      navigator.clipboard.writeText(content);
+      showToast("Copied filtered logs!");
+    };
+
+    document.body.appendChild(el);
+    el.querySelector('#hh-chat-close').onclick = () => el.style.display = 'none';
+    return el;
+}
+
 const updateToolbarMessages = (messages, container) => {
   if (!container) container = document.getElementById('hh-toolbar-msg-submenu');
   if (!container) return;
@@ -373,6 +462,29 @@ const updateToolbarMessages = (messages, container) => {
       }
     }
   };
+	
+const processChatLog = (text) => {
+  const line = text.trim();
+  if (!line) return;
+
+  // 🚫 PREVENT DUPLICATES
+  if (seenChatLines.has(line)) return;
+  seenChatLines.add(line);
+
+  const chatMatch = line.match(
+    /(\d{2}:\d{2}:\d{2}\.\d{3}):\s*Chat:\s*(.*?)\s*\(id:\s*(\d{17})\):\s*(.*)/i
+  );
+  if (!chatMatch) return;
+
+  chatHistory.push({
+    fullLine: line,
+    timestamp: chatMatch[1],
+    name: chatMatch[2],
+    steamId: chatMatch[3],
+    message: chatMatch[4]
+  });
+};
+
 
   const processBanQueue = () => {
     if (banQueue.length === 0) return;
@@ -535,7 +647,6 @@ const updateToolbarMessages = (messages, container) => {
       if (!txt) return;
       if (el.closest('#hh-queue-container, .hh-action-menu')) return;
        
-      if (['vip', 'admin', 'moderator', 'default'].includes(txt.toLowerCase())) el.classList.add('hh-role-force-white');
       const tableMatch = txt.match(/^(\d+)\s+(.+?)\s+(\d{17})$/);
       const logMatch = txt.match(/(joined|left).*?(\d+),?\s+(.*?)\s*\(id:\s*(\d{17})\)/i);
       if (tableMatch) {
@@ -555,11 +666,11 @@ const updateToolbarMessages = (messages, container) => {
 
     const p = KEYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
     const s = SECONDARYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
-    const allWords = [...p, ...s].sort((a, b) => b.length - a.length);
+	const allWords = [...p, ...s].sort((a, b) => b.length - a.length);
 
     const escape = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
     const wordPattern = allWords.map(escape).join('|');
-    const regex = new RegExp(`(\\b\\d{17}\\b${wordPattern ? '|' + wordPattern : ''})`, "gi");
+	const regex = new RegExp(`(\\b\\d{17}\\b|${ROLE_PATTERN}${wordPattern ? '|' + wordPattern : ''})`, "gi");
 
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
       acceptNode: (n) => {
@@ -568,7 +679,7 @@ const updateToolbarMessages = (messages, container) => {
           ".hh-highlight, .hh-idhighlight, .hh-secondaryhighlight, " +
           "#hh-queue-container, .hh-action-menu, " + 
           "script, style, textarea, input," + 
-		  "#hh-ui-wrapper, #hh-player-panel, .hh-toast "
+		  "#hh-ui-wrapper, #hh-player-panel, .hh-toast, " + "#hh-chat-view"
         );
         
         return isUI ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
@@ -587,16 +698,29 @@ const updateToolbarMessages = (messages, container) => {
         fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
         const span = document.createElement('span');
         const m = match[0];
+        const lower = m.toLowerCase();
+        
+        // ── SteamID ───────────────────────────────
         if (m.length === 17 && /^\d+$/.test(m)) {
-           const data = NAME_MAP[m];
-           span.className = `hh-idhighlight ${(data && data.online) ? 'hh-online' : 'hh-offline'}`;
-           span.textContent = m;
-        } else {
-           const isPrimary = p.some(k => new RegExp(escape(k), 'i').test(m));
-           span.className = isPrimary ? 'hh-highlight' : 'hh-secondaryhighlight';
-           span.textContent = m;
+          const data = NAME_MAP[m];
+          span.className = `hh-idhighlight ${(data && data.online) ? 'hh-online' : 'hh-offline'}`;
+          span.textContent = m;
         }
-        fragment.appendChild(span);
+        
+        // ── Role words (NO background) ────────────
+        else if (ROLE_WORDS.has(lower)) {
+          span.className = 'hh-role-force-white';
+          span.textContent = m;
+        }
+        
+        // ── Normal keyword highlighting ───────────
+        else {
+          const isPrimary = p.some(k => new RegExp(escape(k), 'i').test(m));
+          span.className = isPrimary ? 'hh-highlight' : 'hh-secondaryhighlight';
+          span.textContent = m;
+        }
+
+		fragment.appendChild(span);
         lastIndex = regex.lastIndex;
       }
       fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
@@ -677,6 +801,9 @@ const updateToolbarMessages = (messages, container) => {
       safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd });
       showToast(`User listing`);
 	}
+	else if (type === 'chatlog') {
+	  openPlayerChat(sid, currentData.name);
+	}
     else {
       copyToClipboard(sid);
     }
@@ -733,7 +860,8 @@ const updateToolbarMessages = (messages, container) => {
         </div>
       </div>
 	  <div class="hh-menu-row" data-type="lookup" data-sid="${sid}">🌐 Steam Profile</div>
-      <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>`;
+      <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>
+      <div class="hh-menu-row" data-type="chatlog" data-sid="${sid}">💬 View Chat Logs</div>`;
 
     actionMenu.onclick = (ev) => handleMenuClick(ev, data, sid);
 
@@ -796,6 +924,8 @@ const updateToolbarMessages = (messages, container) => {
       stripHighlights();
       scan();
 
+	  buildChatHistoryFromDOM();
+
       createToolbar();
       updateQueueDisplay();
 
@@ -808,8 +938,10 @@ const updateToolbarMessages = (messages, container) => {
                        (node.parentElement && node.parentElement.closest('#hh-queue-container, .hh-action-menu'))) {
                   return;
                 }
-			  if (node.nodeType === 3) checkRaceStatus(node.textContent);
-			  else if (node.innerText) checkRaceStatus(node.innerText);
+			  const text = node.nodeType === 3 ? node.textContent : node.innerText;
+			  if (text) processChatLog(text);
+			  if (text) checkRaceStatus(text);
+
 			});
 		  });
 		  clearTimeout(scanTimeout);
@@ -835,7 +967,3 @@ const updateToolbarMessages = (messages, container) => {
 
   startExtension();
 })();
-  
-  // if (document.body) init();
-  // else setTimeout(init, 100);
-// })();
