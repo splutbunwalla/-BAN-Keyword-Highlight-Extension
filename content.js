@@ -65,7 +65,6 @@ const createToolbar = (attempts = 0) => {
 	return;
   }
 	
-
   console.log("Creating toolbar!");
 		
   const toolbar = document.createElement('div');
@@ -73,17 +72,18 @@ const createToolbar = (attempts = 0) => {
     
   // Standard Tools
   const tools = [
-    { label: 'Messages', type: 'info', icon: '💬', id: 'hh-msg-trigger' },
-    { label: 'Players', type: 'info', icon: '📋', action: 'togglePlayers' },
-    { label: 'Users', type: 'info', icon: '👥', cmd: 'users' },
-    { label: 'Restart', type: 'danger', icon: '🔄', cmd: 'restart' }
+	{ label: 'Messages', type: 'info', icon: '💬', id: 'hh-msg-trigger', desc: 'Send global announcements' },
+    { label: 'Players', type: 'info', icon: '📋', action: 'togglePlayers', desc: 'Show/hide online player list' },
+    { label: 'Users', type: 'info', icon: '👥', cmd: 'users', desc: 'List all connected users in console' },
+    { label: 'Restart', type: 'danger', icon: '🔄', cmd: 'restart', desc: 'Double-click to RESTART server' }
   ];
   
   tools.forEach(tool => {
     const btn = document.createElement('div');
     btn.className = `hh-tool-btn ${tool.type}`;
     btn.innerHTML = `<span>${tool.icon}</span> ${tool.label}`;
-    
+    btn.title = tool.desc;
+	
     btn.onclick = (e) => {
       if (tool.id === 'hh-msg-trigger') {
         e.stopPropagation();
@@ -116,33 +116,22 @@ const createToolbar = (attempts = 0) => {
   });
   
   const infoGroup = document.createElement('div');
-  infoGroup.className = 'hh-info-group'; 
-  
+  infoGroup.className = 'hh-info-group';
   infoGroup.innerHTML = `
-    <div id="hh-race-status" class="hh-status-tag">🏁 Waiting</div>
-    <div id="hh-track-name" class="hh-track-display">Unknown Track</div>
+    <div id="hh-race-status" class="hh-status-tag" title="Current race state detected from logs">🏁 No Race</div>
+    <div id="hh-track-name" class="hh-track-display" title="Last loaded track name">Waiting for track...</div>
   `;
   
-  
   updateRaceUI(isRacing);
-  
   toolbar.appendChild(infoGroup);
 
   const msgSubmenu = document.createElement('div');
   msgSubmenu.id = 'hh-toolbar-msg-submenu';
   msgSubmenu.className = 'hh-action-menu'; 
   msgSubmenu.style.display = 'none';
-
-  // msgBtn.onclick = (e) => {
-    // e.stopPropagation();
-    // const isVisible = msgSubmenu.style.display === 'block';
-    // msgSubmenu.style.display = isVisible ? 'none' : 'block';
-  // };
-
+  
   toolbar.appendChild(msgSubmenu);
-
-
-
+  
   wrapper.prepend(toolbar);
   
   document.addEventListener('click', () => {
@@ -151,8 +140,6 @@ const createToolbar = (attempts = 0) => {
 
   updateToolbarMessages(MESSAGES, msgSubmenu);
 };
-
-// Keep renderList = null in your top-level 'let' declarations
 
 const togglePlayerList = () => {
   let panel = document.getElementById('hh-player-panel');
@@ -167,8 +154,8 @@ const togglePlayerList = () => {
   panel.innerHTML = `
     <div class="hh-panel-header">
       <span>Online Players</span>
-      <button id="hh-panel-close">×</button>
       <input type="text" id="hh-player-search" placeholder="Search...">
+      <button id="hh-panel-close">×</button>
     </div>
     <div id="hh-player-list-content"></div>
   `;
