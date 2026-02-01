@@ -15,7 +15,8 @@
   
 const buildChatHistoryFromDOM = () => {
   chatHistory = []; // reset so reloads don’t duplicate
-
+  seenChatLines.clear();
+  
   document.querySelectorAll('tr, div.log-line, pre, span').forEach(el => {
     const text = (el.innerText || "").trim();
     if (!text) return;
@@ -91,6 +92,7 @@ const createToolbar = (attempts = 0) => {
     
   // Standard Tools
   const tools = [
+	{ label: 'Chat', type: 'info', icon: '💬', action: 'openChat', desc: 'View player chat logs' },
 	{ label: 'Messages', type: 'info', icon: '💬', id: 'hh-msg-trigger', desc: 'Send global announcements' },
     { label: 'Players', type: 'info', icon: '📋', action: 'togglePlayers', desc: 'Show/hide online player list' },
     { label: 'Users', type: 'info', icon: '👥', cmd: 'users', desc: 'List all connected users in console' },
@@ -125,6 +127,9 @@ const createToolbar = (attempts = 0) => {
           showToast("🚀 Restarting server...");
         }
       }
+	  else if (tool.action === 'openChat') {
+        openChatSelector();
+	  }
 	  else {
         // Standard commands (users, etc.)
         safeSendMessage({ action: "PROXY_COMMAND", cmd: tool.cmd });
@@ -158,6 +163,88 @@ const createToolbar = (attempts = 0) => {
   });
 
   updateToolbarMessages(MESSAGES, msgSubmenu);
+};
+
+const openChatSelector = () => {
+  const chatView = document.getElementById('hh-chat-view') || createChatView();
+
+  injectChatPlayerDropdown(chatView);
+
+  // Auto-select first online player if none selected
+  if (!window.currentViewedId) {
+    const firstOnline = Object.entries(NAME_MAP)
+      .find(([_, v]) => v.online);
+
+    if (firstOnline) {
+      openPlayerChat(firstOnline[0], firstOnline[1].name);
+      chatView.querySelector('.hh-chat-player-select').value = firstOnline[0];
+    }
+  }
+
+  chatView.style.display = 'flex';
+};
+
+const injectChatPlayerDropdown = (chatView) => {
+  if (chatView.querySelector('.hh-chat-player-select')) return;
+
+  const headerLeft = chatView.querySelector('.hh-header-left');
+
+  const select = document.createElement('select');
+  select.className = 'hh-chat-player-select';
+  const filter = document.createElement('input');
+  filter.type = 'text';
+  filter.placeholder = 'filter…';
+  filter.className = 'hh-chat-player-filter';
+  
+
+  const rebuildOptions = () => {
+    const term = filter.value.toLowerCase().trim();
+    const prev = window.currentViewedId;
+  
+    select.innerHTML = '';
+  
+    const entries = Object.entries(NAME_MAP)
+      .filter(([, d]) =>
+        !term || (d.name || '').toLowerCase().includes(term)
+      )
+      .sort(([, a], [, b]) => {
+        if (a.online !== b.online) return a.online ? -1 : 1;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+  
+    entries.forEach(([sid, d]) => {
+      const opt = document.createElement('option');
+      opt.value = sid;
+      opt.textContent = d.name;
+      select.appendChild(opt);
+    });
+  
+    // 🔑 Restore selection if possible
+    if (prev && select.querySelector(`option[value="${prev}"]`)) {
+      select.value = prev;
+    } else if (select.options.length) {
+      // 🔑 Otherwise select first visible option
+      select.selectedIndex = 0;
+      window.currentViewedId = select.value;
+    }
+  
+    renderChatLines();
+  };
+  
+  rebuildOptions();
+
+  select.onchange = () => {
+    const sid = select.value;
+    window.currentViewedId = sid;
+    renderChatLines();
+  };
+
+  filter.oninput = () => rebuildOptions();
+  filter.focus();
+	
+  headerLeft.prepend(filter);
+  headerLeft.prepend(select);
+
 };
 
 const togglePlayerList = () => {
@@ -271,29 +358,83 @@ const openPlayerChat = (steamId, name) => {
     chatView.style.display = 'flex';
 };
 
+const buildChatLine = (m) => {
+  const line = document.createElement('div');
+  line.className = 'hh-chat-line';
+
+  const time = document.createElement('span');
+  time.className = 'hh-chat-time';
+  time.textContent = `[${m.timestamp}]`;
+
+  const name = document.createElement('span');
+  name.className = 'hh-chat-name';
+  name.textContent = ` ${m.name}: `;
+
+  const msg = document.createElement('span');
+  msg.className = 'hh-chat-message';
+  msg.textContent = m.message;
+
+  line.append(time, name, msg);
+  return line;
+};
+
+
 const renderChatLines = () => {
-    const chatView = document.getElementById('hh-chat-view');
-    if (!chatView) return;
+  const chatView = document.getElementById('hh-chat-view');
+  if (!chatView) return;
 
-    const content = chatView.querySelector('.hh-chat-content');
-    const searchTerm = chatView.querySelector('.hh-chat-search').value.toLowerCase();
+  const content = chatView.querySelector('.hh-chat-content');
+  content.textContent = '';
 
-    // Filter by the SteamID of the person we opened, then by the search term
-    const filteredLines = chatHistory
-        .filter(line => line.steamId === currentViewedId)
-        .filter(line => 
-            searchTerm === "" || 
-            line.message.toLowerCase().includes(searchTerm)
-        )
-        .map(line => line.fullLine);
-   
-   content.innerText = "";
-    if (filteredLines.length === 0) {
-        content.innerText = "No matching messages found.";
-        return;
-    }
-    content.innerText = filteredLines.join('\n');
+  const sid = window.currentViewedId;
+  const term = chatView
+    .querySelector('.hh-chat-search')
+    .value
+    .toLowerCase()
+    .trim();
 
+  chatHistory
+    .filter(m =>
+      m.steamId === sid &&
+      (!term || m.message.toLowerCase().includes(term))
+    )
+    .forEach(m => {
+      content.appendChild(buildChatLine(m));
+    });
+};
+
+const getVisibleChatText = () => {  
+  const chatView = document.getElementById('hh-chat-view');
+  if (!chatView) return '';
+
+  const select = chatView.querySelector('.hh-chat-player-select');
+  const sid = select ? select.value : window.currentViewedId;
+  
+  const searchInput = chatView.querySelector('.hh-chat-search');
+  const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+  return chatHistory
+    .filter(m =>
+      m.steamId === sid &&                     // <-- use 'steamId', not 'sid'
+      (!term || (m.message || '').toLowerCase().includes(term))
+    )
+    .map(m => `[${m.timestamp}] ${m.name}: ${m.message}`)
+    .join('\n');
+};
+
+
+const downloadTextFile = (text, filename) => {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 };
 
 function createChatView() {
@@ -311,6 +452,7 @@ function createChatView() {
         </div>
         <div class="hh-chat-content"></div>
         <div class="hh-chat-footer">
+			<button id="hh-export-chat" class="hh-tool-btn info">Export</button>
             <button id="hh-copy-chat" class="hh-tool-btn info">Copy Visible</button>
         </div>
     `;
@@ -322,6 +464,28 @@ function createChatView() {
       const content = el.querySelector('.hh-chat-content').innerText;
       navigator.clipboard.writeText(content);
       showToast("Copied filtered logs!");
+    };
+
+    el.querySelector('#hh-export-chat').onclick = () => {
+      const contentEl = el.querySelector('.hh-chat-content');
+      const text = getVisibleChatText();
+      if (!text) {
+        showToast("No chat content to export");
+        return;
+      }
+    
+      const sid = window.currentViewedId;
+      const name = (NAME_MAP[sid]?.name || 'Unknown')
+        .replace(/[^\w\d_-]+/g, '_'); // filename-safe
+    
+      const ts = new Date().toISOString()
+        .replace(/[:T]/g, '-')
+        .split('.')[0];
+    
+      const filename = `chat_${name}_${ts}.txt`;
+    
+      downloadTextFile(text, filename);
+      showToast(`Exported chat: ${filename}`);
     };
 
     document.body.appendChild(el);

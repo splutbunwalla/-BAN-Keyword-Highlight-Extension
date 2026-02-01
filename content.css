@@ -428,6 +428,68 @@ body.hh-disabled .hh-secondaryhighlight {
     width: 180px;
     margin-right: 15px;
 }
+
+.hh-chat-player-select {
+  background: #181a1d;
+  border: 1px solid #444;
+  color: white;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  margin-right: 10px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.hh-chat-player-filter {
+  background: #181a1d;
+  border: 1px solid #444;
+  color: white;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  width: 90px;
+}
+
+.hh-chat-content,
+.hh-chat-player-select,
+.hh-panel,
+.hh-menu {
+  scrollbar-width: thin;                /* Firefox */
+  scrollbar-color: #555 #14161a;         /* Firefox */
+}
+
+.hh-chat-content::-webkit-scrollbar,
+.hh-chat-player-select::-webkit-scrollbar,
+.hh-panel::-webkit-scrollbar,
+.hh-menu::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.hh-chat-content::-webkit-scrollbar-track,
+.hh-chat-player-select::-webkit-scrollbar-track,
+.hh-panel::-webkit-scrollbar-track,
+.hh-menu::-webkit-scrollbar-track {
+  background: #14161a;
+  border-radius: 8px;
+}
+
+.hh-chat-content::-webkit-scrollbar-thumb,
+.hh-chat-player-select::-webkit-scrollbar-thumb,
+.hh-panel::-webkit-scrollbar-thumb,
+.hh-menu::-webkit-scrollbar-thumb {
+  background: #3f434a;
+  border-radius: 8px;
+  border: 2px solid #14161a;
+}
+
+.hh-chat-content::-webkit-scrollbar-thumb:hover,
+.hh-chat-player-select::-webkit-scrollbar-thumb:hover,
+.hh-panel::-webkit-scrollbar-thumb:hover,
+.hh-menu::-webkit-scrollbar-thumb:hover {
+  background: #5a5f69;
+}
 		
 .hh-role-force-white {
   color: #eee;
