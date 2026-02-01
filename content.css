@@ -293,15 +293,15 @@ top: auto !important;
 .hh-tool-btn.info { background: #4e5d94; }
 .hh-tool-btn.danger { background: #d9534f; }
 
-
 #hh-toolbar {
-    position: relative;
-    display: flex;
-    gap: 8px;
-    background: #1e2124;
-    padding: 5px;
-    border-radius: 8px;
-    border: 1px solid #444;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8 px;
+  background: #1e2124;
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid #444;
 }
 
 .hh-toolbar-btn {
@@ -542,4 +542,67 @@ top: auto !important;
 .hh-type-steamid { 
     background-color: var(--hh-id-bg1, gray); 
     color: var(--hh-id-txt, white); 
+}
+
+.hh-status-tag {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-left: 8px;
+  display: flex;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+/* Container for the whole toolbar */
+#hh-toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 4px 8px;
+  gap: 6px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+
+/* Base style for ALL buttons */
+.hh-tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  transition: background 0.2s;
+  user-select: none;
+}
+
+.hh-tool-btn.info { background: #333; }
+.hh-tool-btn.info:hover { background: #444; }
+
+.hh-tool-btn.danger { background: #600; }
+.hh-tool-btn.danger:hover { background: #900; }
+
+/* Info group (Race/Track) */
+.hh-info-group {
+  margin-left: auto; /* Pushes info to the right side */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  border-left: 1px solid #333;
+  padding-left: 10px;
+}
+
+.hh-track-display {
+  font-size: 10px;
+  color: #888;
+  font-style: italic;
+  white-space: nowrap;
 }

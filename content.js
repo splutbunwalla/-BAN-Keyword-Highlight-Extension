@@ -31,6 +31,23 @@ const getUIWrapper = () => {
   return wrapper;
 };
   
+const updateRaceUI = (active) => {
+  const el = document.getElementById('hh-race-status');
+  if (!el) return;
+  
+  if (active) {
+    el.innerHTML = '🔴 Race In Progress';
+    el.style.background = 'rgba(255, 0, 0, 0.2)';
+    el.style.color = '#ff4d4d';
+    el.style.border = '1px solid #ff4d4d';
+  } else {
+    el.innerHTML = '🏁 No Race';
+    el.style.background = 'rgba(255, 255, 255, 0.1)';
+    el.style.color = '#ccc';
+    el.style.border = '1px solid #444';
+  }
+};
+
 // --- UI: TOOLBAR (Runs in Log Frame) ---
 const createToolbar = (attempts = 0) => {
  const isLogFrame = window.location.href.includes("StreamFile.aspx") || 
@@ -53,47 +70,85 @@ const createToolbar = (attempts = 0) => {
   const toolbar = document.createElement('div');
   toolbar.id = 'hh-toolbar';
   
-  // Messages Button
-  const msgBtn = document.createElement('button');
-  msgBtn.className = 'hh-toolbar-btn';
-  msgBtn.innerHTML = '💬 Messages';
+  // Inside createToolbar, before wrapper.prepend(toolbar)
+  // const statusIndicator = document.createElement('div');
+  // statusIndicator.id = 'hh-race-status';
+  // statusIndicator.className = 'hh-status-tag';
+  // statusIndicator.innerHTML = '🏁 Waiting';
+  // toolbar.appendChild(statusIndicator);
+ 
+  // const trackIndicator = document.createElement('div');
+  // trackIndicator.id = 'hh-track-name';
+  // trackIndicator.style.fontSize = '12px';
+  // trackIndicator.style.color = '#aaa';
+  // trackIndicator.style.marginTop = '2px';
+  // trackIndicator.style.paddingRight = '5px';
+  // trackIndicator.innerHTML = 'Unknown Track';
+
   
+  // infoGroup.appendChild(statusIndicator);
+  // infoGroup.appendChild(trackIndicator);
+  // toolbar.appendChild(infoGroup);
+
+  // Call update once to set initial state
+  
+  
+  // Standard Tools
+  const tools = [
+    { label: 'Messages', type: 'info', icon: '💬', id: 'hh-msg-trigger' },
+    { label: 'Players', type: 'info', icon: '📋', action: 'togglePlayers' },
+    { label: 'Users', type: 'info', icon: '👥', cmd: 'users' },
+    { label: 'Restart', type: 'danger', icon: '🔄', cmd: 'restart' }
+  ];
+  
+  tools.forEach(tool => {
+    const btn = document.createElement('div');
+    btn.className = `hh-tool-btn ${tool.type}`;
+    btn.innerHTML = `<span>${tool.icon}</span> ${tool.label}`;
+    
+    btn.onclick = (e) => {
+      if (tool.id === 'hh-msg-trigger') {
+        e.stopPropagation();
+        const menu = document.getElementById('hh-toolbar-msg-submenu');
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+      } else if (tool.action === 'togglePlayers') {
+        togglePlayerList();
+      } else {
+        if (tool.cmd === 'restart' && !confirm("RESTART server?")) return;
+        safeSendMessage({ action: "PROXY_COMMAND", cmd: tool.cmd });
+        showToast(`Sent: ${tool.label}`);
+      }
+    };
+    toolbar.appendChild(btn);
+  });
+  
+  const infoGroup = document.createElement('div');
+  infoGroup.className = 'hh-info-group'; 
+  
+  infoGroup.innerHTML = `
+    <div id="hh-race-status" class="hh-status-tag">🏁 Waiting</div>
+    <div id="hh-track-name" class="hh-track-display">Unknown Track</div>
+  `;
+  
+  
+  updateRaceUI(isRacing);
+  
+  toolbar.appendChild(infoGroup);
+
   const msgSubmenu = document.createElement('div');
   msgSubmenu.id = 'hh-toolbar-msg-submenu';
   msgSubmenu.className = 'hh-action-menu'; 
   msgSubmenu.style.display = 'none';
 
-  msgBtn.onclick = (e) => {
-    e.stopPropagation();
-    const isVisible = msgSubmenu.style.display === 'block';
-    msgSubmenu.style.display = isVisible ? 'none' : 'block';
-  };
+  // msgBtn.onclick = (e) => {
+    // e.stopPropagation();
+    // const isVisible = msgSubmenu.style.display === 'block';
+    // msgSubmenu.style.display = isVisible ? 'none' : 'block';
+  // };
 
-  toolbar.appendChild(msgBtn);
   toolbar.appendChild(msgSubmenu);
-  
-  // Standard Tools
-  const tools = [
-	{ label: 'Players', action: 'togglePlayers', type: 'info', icon: '📋' },
-    { label: 'Users', cmd: 'users', type: 'info', icon: '👥' },
-    { label: 'Restart', cmd: 'restart', type: 'danger', icon: '🔄' }
-  ];
 
-  tools.forEach(tool => {
-    const btn = document.createElement('div');
-    btn.className = `hh-tool-btn ${tool.type}`;
-    btn.innerHTML = `<span>${tool.icon}</span> ${tool.label}`;
-	btn.onclick = () => {
-		if (tool.action === 'togglePlayers') {
-		  togglePlayerList();
-		} else {
-		  if (tool.cmd === 'restart' && !confirm("RESTART server?")) return;
-		  safeSendMessage({ action: "PROXY_COMMAND", cmd: tool.cmd });
-		  showToast(`Sent: ${tool.label}`);
-		}
-	  };
-	  toolbar.appendChild(btn);
-  });
+
 
   wrapper.prepend(toolbar);
   
@@ -310,17 +365,30 @@ const updateToolbarMessages = (messages, container) => {
 
   // --- CORE LOGIC ---
   const checkRaceStatus = (text) => {
+	if (/Loading\s+Level:/i.test(text)) {
+		console.log(text)
+      // Matches "Loading level: " then captures everything until it hits " ("
+      const trackMatch = text.match(/Loading\s+level:\s*([^(\n]+)/i);
+      if (trackMatch && trackMatch[1]) {
+        const trackName = trackMatch[1].trim();
+        const trackEl = document.getElementById('hh-track-name');
+        if (trackEl) trackEl.textContent = trackName;
+      }
+    }
+	  
     if (/race\s+started/i.test(text)) {
       if (!isRacing) {
         isRacing = true;
+        updateRaceUI(true); // <--- Add this
         safeSendMessage({ action: "SET_RACE_MODE", value: true });
         showToast("🏁 Race Mode Active: Bans will be queued");
       }
     } else if (/race\s+finished/i.test(text) || /race\s+abandoned/i.test(text)) {
       if (isRacing) {
         isRacing = false;
+        updateRaceUI(false); // <--- Add this
         safeSendMessage({ action: "SET_RACE_MODE", value: false });
-		showToast("🏁 Race Mode Disabled: Bans no longer queued");
+        showToast("🏁 Race Mode Disabled: Bans no longer queued");
         processBanQueue();
       }
     }
