@@ -11,6 +11,7 @@
   const seenChatLines = new Set();
   const ROLE_WORDS = new Set(['vip', 'admin', 'moderator', 'default']);  
   const ROLE_PATTERN = '\\b(?:vip|admin|moderator|default)\\b';
+  let isEnabled = false;
   
 const buildChatHistoryFromDOM = () => {
   chatHistory = []; // reset so reloads don’t duplicate
@@ -513,6 +514,10 @@ const processChatLog = (text) => {
   };
   
   const showToast = (msg) => {
+	if (document.body.classList.contains('hh-disabled')) return;
+	
+	if(!isEnabled) return;
+	  
     const toast = document.createElement('div');
     toast.className = 'hh-toast';
     toast.textContent = msg;
@@ -619,15 +624,6 @@ const processChatLog = (text) => {
     }
   };
 
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync') {
-      const keys = Object.keys(changes);
-      const isColorChange = keys.every(k => k.includes('Color') || k.includes('Alpha') || k === 'enabled');
-      if (isColorChange) chrome.storage.sync.get(null, (data) => applyStyles(data));
-      else init(); 
-    }
-  });
-
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.action === "EXECUTE_COMMAND") {
       let shouldAutoSubmit = false;
@@ -647,99 +643,108 @@ const processChatLog = (text) => {
     if (msg.action === "toggle" || msg.action === "updateKeywords") init();
   });
   
-  function scan() {
-    if (!document.body || document.body.classList.contains('hh-disabled')) return;
+function scan() {
+  if (!document.body || document.body.classList.contains('hh-disabled')) return;
+
+  const logRoot = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
+
+  // --- PART 1: Update Name Registry (Player IDs/Names) ---
+  // We do this first so the highlighters have the latest 'online' status
+  logRoot.querySelectorAll('tr, div.log-line, span, td').forEach(el => {
+    const txt = (el.innerText || "").trim();
+    if (!txt || el.closest('#hh-ui-wrapper, #hh-player-panel, .hh-action-menu')) return;
+     
+    const tableMatch = txt.match(/^(\d+)\s+(.+?)\s+(\d{17})$/);
+    const logMatch = txt.match(/(joined|left).*?(\d+),?\s+(.*?)\s*\(id:\s*(\d{17})\)/i);
+
+    if (tableMatch) {
+      NAME_MAP[tableMatch[3]] = { name: tableMatch[2].trim(), connId: tableMatch[1], online: true };
+      saveRegistry();
+    } else if (logMatch) {
+      const id = logMatch[4];
+      const existing = NAME_MAP[id] || {};
+      NAME_MAP[id] = {
+        name: logMatch[3].trim() || existing.name || "Unknown",
+        connId: logMatch[2] || existing.connId,
+        online: logMatch[1].toLowerCase().includes('joined')
+      };
+      saveRegistry();
+    }
+  });
+
+  // --- PART 2: Highlighting ---
+  const p = KEYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
+  const s = SECONDARYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
+  const allWords = [...p, ...s].sort((a, b) => b.length - a.length);
+
+  const escape = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+  const wordPattern = allWords.map(escape).join('|');
+  const regex = new RegExp(`(\\b\\d{17}\\b|${ROLE_PATTERN}${wordPattern ? '|' + wordPattern : ''})`, "gi");
+
+  // Use ONE walker and ONE nodes array
+  const walker = document.createTreeWalker(logRoot, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => {
+      const parent = n.parentElement;
+      if (!parent) return NodeFilter.FILTER_REJECT;
+      
+      // Reject if already highlighted or part of protected UI
+      const isUI = parent.closest(
+        ".hh-highlight, .hh-idhighlight, .hh-secondaryhighlight, .hh-role-force-white, " +
+        "#hh-ui-wrapper, #hh-player-panel, .hh-toast, #hh-chat-view, .hh-action-menu, " +
+        "script, style, textarea, input"
+      );
+      
+      return isUI ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+    }
+  });
+
+  const nodes = [];
+  let n;
+  while (n = walker.nextNode()) nodes.push(n);
+
+  nodes.forEach(node => {
+    const text = node.nodeValue;
+    if (!regex.test(text)) return;
     
-    document.querySelectorAll('tr, div.log-line, span, td').forEach(el => {
-	  const txt = (el.innerText || "").trim();
-      if (!txt) return;
-      if (el.closest('#hh-queue-container, .hh-action-menu')) return;
-       
-      const tableMatch = txt.match(/^(\d+)\s+(.+?)\s+(\d{17})$/);
-      const logMatch = txt.match(/(joined|left).*?(\d+),?\s+(.*?)\s*\(id:\s*(\d{17})\)/i);
-      if (tableMatch) {
-        NAME_MAP[tableMatch[3]] = { name: tableMatch[2].trim(), connId: tableMatch[1], online: true };
-        saveRegistry();
-      } else if (logMatch) {
-        const id = logMatch[4];
-        const existing = NAME_MAP[id] || {};
-        NAME_MAP[id] = {
-          name: logMatch[3].trim() || existing.name || "Unknown",
-          connId: logMatch[2] || existing.connId,
-          online: logMatch[1].toLowerCase().includes('joined')
-        };
-        saveRegistry();
+    const fragment = document.createDocumentFragment();
+    let lastIndex = 0; 
+    regex.lastIndex = 0; 
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+      
+      const span = document.createElement('span');
+      const m = match[0];
+      const lower = m.toLowerCase();
+      
+      if (m.length === 17 && /^\d+$/.test(m)) {
+        const data = NAME_MAP[m];
+        span.className = `hh-idhighlight ${(data && data.online) ? 'hh-online' : 'hh-offline'}`;
+        span.textContent = m;
+      } else if (ROLE_WORDS.has(lower)) {
+        span.className = 'hh-role-force-white';
+        span.textContent = m;
+      } else {
+        const isPrimary = p.some(k => new RegExp(escape(k), 'i').test(m));
+        span.className = isPrimary ? 'hh-highlight' : 'hh-secondaryhighlight';
+        span.textContent = m;
       }
-    });
 
-    const p = KEYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
-    const s = SECONDARYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
-	const allWords = [...p, ...s].sort((a, b) => b.length - a.length);
-
-    const escape = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
-    const wordPattern = allWords.map(escape).join('|');
-	const regex = new RegExp(`(\\b\\d{17}\\b|${ROLE_PATTERN}${wordPattern ? '|' + wordPattern : ''})`, "gi");
-
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
-      acceptNode: (n) => {
-        // Check if the text is inside any of our protected UI elements
-        const isUI = n.parentElement.closest(
-          ".hh-highlight, .hh-idhighlight, .hh-secondaryhighlight, " +
-          "#hh-queue-container, .hh-action-menu, " + 
-          "script, style, textarea, input," + 
-		  "#hh-ui-wrapper, #hh-player-panel, .hh-toast, " + "#hh-chat-view"
-        );
-        
-        return isUI ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
-      }
-    });
-
-    let nodes = [], n;
-    while (n = walker.nextNode()) nodes.push(n);
-
-    nodes.forEach(node => {
-      const text = node.nodeValue;
-      if (!regex.test(text)) return;
-      const fragment = document.createDocumentFragment();
-      let lastIndex = 0; regex.lastIndex = 0; let match;
-      while ((match = regex.exec(text)) !== null) {
-        fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
-        const span = document.createElement('span');
-        const m = match[0];
-        const lower = m.toLowerCase();
-        
-        // ── SteamID ───────────────────────────────
-        if (m.length === 17 && /^\d+$/.test(m)) {
-          const data = NAME_MAP[m];
-          span.className = `hh-idhighlight ${(data && data.online) ? 'hh-online' : 'hh-offline'}`;
-          span.textContent = m;
-        }
-        
-        // ── Role words (NO background) ────────────
-        else if (ROLE_WORDS.has(lower)) {
-          span.className = 'hh-role-force-white';
-          span.textContent = m;
-        }
-        
-        // ── Normal keyword highlighting ───────────
-        else {
-          const isPrimary = p.some(k => new RegExp(escape(k), 'i').test(m));
-          span.className = isPrimary ? 'hh-highlight' : 'hh-secondaryhighlight';
-          span.textContent = m;
-        }
-
-		fragment.appendChild(span);
-        lastIndex = regex.lastIndex;
-      }
-      fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
-      node.replaceWith(fragment);
-    });
-	
-	if (typeof renderList === 'function') {
-		renderList(document.getElementById('hh-player-search')?.value || "");
-	}
-  }
+      fragment.appendChild(span);
+      lastIndex = regex.lastIndex;
+    }
+    
+    fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+    node.replaceWith(fragment);
+  });
   
+  // Update Player List UI if open
+  if (typeof renderList === 'function') {
+    renderList(document.getElementById('hh-player-search')?.value || "");
+  }
+}
+
   const handleMenuClick = (ev, data, sid) => {
     const item = ev.target.closest('.hh-menu-row, .hh-submenu-item');
     if (!item || item.classList.contains('disabled') || item.getAttribute('data-type') === 'parent') return;
@@ -918,51 +923,110 @@ const processChatLog = (text) => {
   }, true);
 
   
+// 1. Updated Storage Listener
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'sync') {
+      chrome.storage.sync.get(null, (data) => {
+        // ALWAYS update styles for CSS variables
+        applyStyles(data);
+        
+		if (!isEnabled) {
+          // 1. Stop the observer
+          if (window.hhObserver) window.hhObserver.disconnect();
+          // 2. Clear visual highlights
+          stripHighlights();
+          // 3. Remove any active toasts immediately
+          document.querySelectorAll('.hh-toast').forEach(t => t.remove());
+          // 4. Hide UI
+          const wrapper = document.getElementById('hh-ui-wrapper');
+          if (wrapper) wrapper.style.display = 'none';
+          return;
+        }
+		
+        // Update local variables so scan() uses new words
+        KEYWORDS = data.keywords || [];
+        SECONDARYWORDS = data.secondarykeywords || [];
+        MESSAGES = data.messages || [];
+
+        // If keywords changed, we must re-scan to apply new colors/logic
+        if (changes.keywords || changes.secondarykeywords || changes.enabled) {
+          stripHighlights(); // Clear old ones
+          if (data.enabled !== false) scan(); // Apply new ones
+        }
+
+        // Handle Toolbar/UI updates
+        if (changes.messages) {
+          updateToolbarMessages(MESSAGES);
+        }
+      });
+    }
+  });
+
+  // 2. Modified Init to prevent blocking
   const init = async () => {
     if (isInitializing) return;
     isInitializing = true;
     try {
-      loadRegistry();
       const sync = await chrome.storage.sync.get(null);
+      isEnabled = sync.enabled !== false; // Set this first!
+
+      if (!isEnabled) {
+        document.body.classList.add('hh-disabled');
+        if (window.hhObserver) window.hhObserver.disconnect();
+        stripHighlights();
+        const wrapper = document.getElementById('hh-ui-wrapper');
+        if (wrapper) wrapper.style.display = 'none';
+        return;
+      }
+      // Update globals immediately
       KEYWORDS = sync.keywords || [];
       SECONDARYWORDS = sync.secondarykeywords || [];
       MESSAGES = sync.messages || [];
-	  
-	  if (sync.enabled === false) {
-        if (window.hhObserver) window.hhObserver.disconnect(); // Stop watching for new logs
-        stripHighlights(); // Remove all red/orange spans
-        return; 
-      }
-	  
-      updateToolbarMessages(MESSAGES);
+      isEnabled = sync.enabled !== false;
+
       applyStyles(sync);
-      stripHighlights();
-      scan();
+      loadRegistry();
 
-	  buildChatHistoryFromDOM();
+      if (!isEnabled) {
+        if (window.hhObserver) window.hhObserver.disconnect();
+        stripHighlights();
+        return;
+      }
 
-      createToolbar();
+      // UI needs to be created in the Main Page AND Log Frame
+      createToolbar(); 
       updateQueueDisplay();
 
-      if (window.hhObserver) window.hhObserver.disconnect();
-      if (document.body) {
-		window.hhObserver = new MutationObserver((mutations) => {
-		  mutations.forEach(mutation => {
-			mutation.addedNodes.forEach(node => {
-              if (node.id === 'hh-queue-container' || node.classList?.contains('hh-action-menu') ||
-                       (node.parentElement && node.parentElement.closest('#hh-queue-container, .hh-action-menu'))) {
-                  return;
-                }
-			  const text = node.nodeType === 3 ? node.textContent : node.innerText;
-			  if (text) processChatLog(text);
-			  if (text) checkRaceStatus(text);
+      const isLogFrame = window.location.href.includes("StreamFile.aspx") || 
+                         window.location.href.includes("Proxy.ashx") ||
+                         !!document.querySelector('pre, .log-line, #ConsoleOutput');
 
-			});
-		  });
-		  clearTimeout(scanTimeout);
-		  scanTimeout = setTimeout(scan, 800);
-		});
-        window.hhObserver.observe(document.body, { childList: true, subtree: true });
+      if (isLogFrame) {
+        buildChatHistoryFromDOM();
+        scan();
+
+        const logRoot = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
+        if (window.hhObserver) window.hhObserver.disconnect();
+        
+        window.hhObserver = new MutationObserver((mutations) => {
+          let shouldRescan = false;
+          for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+              if (node.id === 'hh-ui-wrapper' || (node.classList && node.classList.contains('hh-highlight'))) continue;
+              const text = node.nodeType === 3 ? node.textContent : node.innerText;
+              if (text) {
+                processChatLog(text);
+                checkRaceStatus(text);
+                shouldRescan = true;
+              }
+            }
+          }
+          if (shouldRescan) {
+            clearTimeout(scanTimeout);
+            scanTimeout = setTimeout(scan, 250);
+          }
+        });
+        window.hhObserver.observe(logRoot, { childList: true, subtree: true });
       }
     } finally {
       isInitializing = false;
