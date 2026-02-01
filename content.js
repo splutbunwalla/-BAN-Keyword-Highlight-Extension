@@ -580,6 +580,8 @@ const processChatLog = (text) => {
   const applyStyles = (sync) => {
     if (!document.body) return;
     const root = document.documentElement;
+	const wrapper = document.getElementById('hh-ui-wrapper');
+	
     const hexToRGBA = (hex, alpha) => {
 		const r = parseInt(hex.slice(1, 3), 16);
 		const g = parseInt(hex.slice(3, 5), 16);
@@ -607,8 +609,14 @@ const processChatLog = (text) => {
 	root.style.setProperty('--hh-id-txt', sync.steamidTextColor || "#ffffff");
 	root.style.setProperty('--hh-id-border', sync.steamidBorderColor || "#f13333");   
 	
-    if (sync.enabled === false) document.body.classList.add('hh-disabled');
-    else if (sync.enabled === true) document.body.classList.remove('hh-disabled');
+	if (sync.enabled === false) {
+      document.body.classList.add('hh-disabled');
+      if (wrapper) wrapper.style.display = 'none'; // Hide toolbar and queue
+      stripHighlights(); // Immediately clear existing highlights
+    } else {
+      document.body.classList.remove('hh-disabled');
+      if (wrapper) wrapper.style.display = 'flex'; // Show toolbar and queue
+    }
   };
 
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -919,6 +927,13 @@ const processChatLog = (text) => {
       KEYWORDS = sync.keywords || [];
       SECONDARYWORDS = sync.secondarykeywords || [];
       MESSAGES = sync.messages || [];
+	  
+	  if (sync.enabled === false) {
+        if (window.hhObserver) window.hhObserver.disconnect(); // Stop watching for new logs
+        stripHighlights(); // Remove all red/orange spans
+        return; 
+      }
+	  
       updateToolbarMessages(MESSAGES);
       applyStyles(sync);
       stripHighlights();
