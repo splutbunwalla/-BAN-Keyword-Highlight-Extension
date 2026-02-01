@@ -195,56 +195,59 @@ const injectChatPlayerDropdown = (chatView) => {
   filter.type = 'text';
   filter.placeholder = 'filter…';
   filter.className = 'hh-chat-player-filter';
-  
 
   const rebuildOptions = () => {
     const term = filter.value.toLowerCase().trim();
-    const prev = window.currentViewedId;
-  
     select.innerHTML = '';
-  
-    const entries = Object.entries(NAME_MAP)
-      .filter(([, d]) =>
-        !term || (d.name || '').toLowerCase().includes(term)
+
+    // Filter and sort
+    const sorted = Object.entries(NAME_MAP)
+      .filter(([, data]) =>
+        !term || (data.name || '').toLowerCase().includes(term)
       )
       .sort(([, a], [, b]) => {
         if (a.online !== b.online) return a.online ? -1 : 1;
         return (a.name || '').localeCompare(b.name || '');
       });
-  
-    entries.forEach(([sid, d]) => {
+
+    sorted.forEach(([sid, data]) => {
       const opt = document.createElement('option');
       opt.value = sid;
-      opt.textContent = d.name;
+      opt.textContent = `${data.online ? '🟢' : '⚫'} ${data.name}`;
       select.appendChild(opt);
     });
-  
-    // 🔑 Restore selection if possible
-    if (prev && select.querySelector(`option[value="${prev}"]`)) {
-      select.value = prev;
-    } else if (select.options.length) {
-      // 🔑 Otherwise select first visible option
-      select.selectedIndex = 0;
-      window.currentViewedId = select.value;
+
+    // Keep current selection if still visible
+    if (window.currentViewedId && select.querySelector(`option[value="${window.currentViewedId}"]`)) {
+      select.value = window.currentViewedId;
+    } else if (sorted.length > 0) {
+      // Auto-select first online player
+      select.value = sorted[0][0];
+      window.currentViewedId = sorted[0][0];
     }
-  
+
     renderChatLines();
+    // Scroll to top after rebuild
+    const content = chatView.querySelector('.hh-chat-content');
+    if (content) content.scrollTop = 0;
   };
-  
+
   rebuildOptions();
 
   select.onchange = () => {
     const sid = select.value;
-    window.currentViewedId = sid;
-    renderChatLines();
+    const data = NAME_MAP[sid];
+    if (data) {
+      window.currentViewedId = sid; // Update global
+      openPlayerChat(sid, data.name);
+    }
   };
 
   filter.oninput = () => rebuildOptions();
   filter.focus();
-	
+
   headerLeft.prepend(filter);
   headerLeft.prepend(select);
-
 };
 
 const togglePlayerList = () => {
@@ -346,62 +349,59 @@ const togglePlayerList = () => {
 };
 
 const openPlayerChat = (steamId, name) => {
-    currentViewedId = steamId;
     const chatView = document.getElementById('hh-chat-view') || createChatView();
     const title = chatView.querySelector('.hh-panel-title');
     const searchInput = chatView.querySelector('.hh-chat-search');
-    
+    const select = chatView.querySelector('.hh-chat-player-select');
+
+    // Update current viewed player
+    window.currentViewedId = steamId;
+
+    // Update panel title
     title.innerText = `Chat: ${name}`;
-    searchInput.value = ''; // Clear search on open
-    
-    renderChatLines();
+    if (searchInput) searchInput.value = ''; // Clear search on open
+
+    // Sync dropdown selection
+    if (select) {
+        select.value = steamId;
+    }
+
+    renderChatLines(); // Render lines for this player
     chatView.style.display = 'flex';
 };
 
-const buildChatLine = (m) => {
-  const line = document.createElement('div');
-  line.className = 'hh-chat-line';
-
-  const time = document.createElement('span');
-  time.className = 'hh-chat-time';
-  time.textContent = `[${m.timestamp}]`;
-
-  const name = document.createElement('span');
-  name.className = 'hh-chat-name';
-  name.textContent = ` ${m.name}: `;
-
-  const msg = document.createElement('span');
-  msg.className = 'hh-chat-message';
-  msg.textContent = m.message;
-
-  line.append(time, name, msg);
-  return line;
-};
-
-
+// Updated render function
 const renderChatLines = () => {
-  const chatView = document.getElementById('hh-chat-view');
-  if (!chatView) return;
+    const chatView = document.getElementById('hh-chat-view');
+    if (!chatView) return;
 
-  const content = chatView.querySelector('.hh-chat-content');
-  content.textContent = '';
+    const content = chatView.querySelector('.hh-chat-content');
+    if (!content) return;
 
-  const sid = window.currentViewedId;
-  const term = chatView
-    .querySelector('.hh-chat-search')
-    .value
-    .toLowerCase()
-    .trim();
+    content.textContent = ''; // Clear previous
 
-  chatHistory
-    .filter(m =>
-      m.steamId === sid &&
-      (!term || m.message.toLowerCase().includes(term))
-    )
-    .forEach(m => {
-      content.appendChild(buildChatLine(m));
-    });
+    const select = chatView.querySelector('.hh-chat-player-select');
+    const sid = select ? select.value : window.currentViewedId; // Always use dropdown
+    const searchInput = chatView.querySelector('.hh-chat-search');
+    const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+    chatHistory
+        .filter(m =>
+            m.steamId === sid &&
+            (!term || (m.message || '').toLowerCase().includes(term))
+        )
+        .forEach(m => {
+            content.appendChild(buildChatLine(m)); // Make sure buildChatLine is defined
+        });
 };
+
+
+function buildChatLine(m) {
+    const line = document.createElement('div');
+    line.className = 'hh-chat-line';
+    line.textContent = `[${m.timestamp}] ${m.name}: ${m.message}`;
+    return line;
+}
 
 const getVisibleChatText = () => {  
   const chatView = document.getElementById('hh-chat-view');
