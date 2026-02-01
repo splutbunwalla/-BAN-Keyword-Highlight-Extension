@@ -5,31 +5,39 @@ chrome.runtime.onInstalled.addListener(() => {
 // background.js
 let raceMode = false;
 let queueMode = false;
+let tabStates = {};
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  // 1. Receive State Updates from Content Script
-  if (request.action === "SET_RACE_MODE") {
-    raceMode = request.value;
-    console.log("Race Mode set to:", raceMode);
+  const tabId = sender.tab ? sender.tab.id : null;
+  if (request.action === "SET_RACE_MODE" && tabId) {
+    if (!tabStates[tabId]) tabStates[tabId] = {};
+    tabStates[tabId].raceMode = request.value;
+    console.log(`Tab ${tabId} Race Mode:`, request.value);
   }
   
-  if (request.action === "SET_QUEUE_MODE") {
-    queueMode = request.value;
-    console.log("Queue Mode set to:", queueMode);
+  if (request.action === "SET_QUEUE_MODE" && tabId) {
+    if (!tabStates[tabId]) tabStates[tabId] = {};
+    tabStates[tabId].queueMode = request.value;
   }
 
-  if (request.action === "PROXY_COMMAND") {
-    if (sender.tab) {
-      chrome.tabs.sendMessage(sender.tab.id, { 
-        action: "EXECUTE_COMMAND", 
-        cmd: request.cmd,
-        isRacing: raceMode,          // Pass the global truth
-        isProcessingQueue: queueMode // Pass the global truth
-      });
-    }
+  if (request.action === "PROXY_COMMAND" && tabId) {
+    const currentState = tabStates[tabId] || { raceMode: false, queueMode: false };
+    
+    chrome.tabs.sendMessage(tabId, { 
+      action: "EXECUTE_COMMAND", 
+      cmd: request.cmd,
+      isRacing: currentState.raceMode,
+      isProcessingQueue: currentState.queueMode
+    });
   }
   
   if (request.action === "OPEN_TAB") {
     chrome.tabs.create({ url: request.url });
   }
+});
+
+
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  delete tabStates[tabId];
 });
