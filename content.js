@@ -434,7 +434,7 @@ const updateToolbarMessages = (messages, container) => {
   };
 
   // --- CORE LOGIC ---
-  const checkRaceStatus = (text) => {
+  const checkRaceStatus = (text, isSilent = false) => {
 	if (/Loading\s+Level:/i.test(text)) {
 		console.log(text)
       // Matches "Loading level: " then captures everything until it hits " ("
@@ -449,17 +449,17 @@ const updateToolbarMessages = (messages, container) => {
     if (/race\s+started/i.test(text)) {
       if (!isRacing) {
         isRacing = true;
-        updateRaceUI(true); // <--- Add this
         safeSendMessage({ action: "SET_RACE_MODE", value: true });
-        showToast("🏁 Race Mode Active: Bans will be queued");
+        if(isSilent) showToast("🏁 Race Mode Active: Bans will be queued");
+        updateRaceUI(true); 
       }
-    } else if (/race\s+finished/i.test(text) || /race\s+abandoned/i.test(text)) {
+    } else if (/race\s+finished/i.test(text) || /race\s+abandoned/i.test(text)) { 
       if (isRacing) {
         isRacing = false;
-        updateRaceUI(false); // <--- Add this
         safeSendMessage({ action: "SET_RACE_MODE", value: false });
-        showToast("🏁 Race Mode Disabled: Bans no longer queued");
+        if(isSilent) showToast("🏁 Race Mode Disabled: Bans no longer queued");
         processBanQueue();
+        updateRaceUI(false);
       }
     }
   };
@@ -1016,7 +1016,7 @@ function scan() {
               const text = node.nodeType === 3 ? node.textContent : node.innerText;
               if (text) {
                 processChatLog(text);
-                checkRaceStatus(text);
+                checkRaceStatus(text, false);
                 shouldRescan = true;
               }
             }

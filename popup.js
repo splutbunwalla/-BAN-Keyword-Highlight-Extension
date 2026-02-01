@@ -76,37 +76,14 @@ function updateContentScript() {
 }
 
 function saveSettingsSilently() {
-  const pList = Array.from(document.querySelectorAll("#primary-list .keyword-item")).map(item => ({
-    text: item.querySelector("span").textContent,
-    enabled: item.querySelector("input[type='checkbox']").checked
-  }));
-
-  const sList = Array.from(document.querySelectorAll("#secondary-list .keyword-item")).map(item => ({
-    text: item.querySelector("span").textContent,
-    enabled: item.querySelector("input[type='checkbox']").checked
-  }));
-
-  const mList = Array.from(document.querySelectorAll("#message-list .keyword-item")).map(item => {
-    const labelSpan = item.querySelector(".item-label-text");
-    const textSpan = item.querySelector(".item-text-val");
-    return {
-      label: labelSpan ? labelSpan.textContent.replace(':', '') : "",
-      text: textSpan ? textSpan.textContent : ""
-    };
-  });
-
-  chrome.storage.sync.set({
-    keywords: pList,
-    secondarykeywords: sList,
-    messages: mList
-  }, () => {
+  chrome.storage.sync.get(["keywords", "secondarykeywords", "messages"], (data) => {
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-      if (tabs[0]) {
+      if (tabs[0]?.id) {
         chrome.tabs.sendMessage(tabs[0].id, {
           action: "updateKeywords",
-          keywords: pList,
-          secondarykeywords: sList,
-          messages: mList
+          keywords: data.keywords || [],
+          secondarykeywords: data.secondarykeywords || [],
+          messages: data.messages || []
         });
       }
     });
@@ -120,24 +97,28 @@ function renderKeywords(containerId, words, storageKey) {
     const div = document.createElement("div");
     div.className = "keyword-item";
     
-    const cb = document.createElement("input");
+	const cb = document.createElement("input");
     cb.type = "checkbox";
-    cb.checked = item.enabled;
+    cb.checked = item.enabled !== false; // Default to true
     cb.onchange = () => {
       words[index].enabled = cb.checked;
-      saveSettingsSilently();
+      chrome.storage.sync.set({ [storageKey]: words }, () => {
+        saveSettingsSilently();
+      });
     };
 
     const span = document.createElement("span");
     span.textContent = item.text;
 
-    const del = document.createElement("button");
+	const del = document.createElement("button");
     del.innerHTML = "&times;";
     del.className = "delete-btn";
     del.onclick = () => {
       words.splice(index, 1);
-      renderKeywords(containerId, words, storageKey);
-      saveSettingsSilently();
+      chrome.storage.sync.set({ [storageKey]: words }, () => {
+        renderKeywords(containerId, words, storageKey);
+        saveSettingsSilently();
+      });
     };
 
     div.append(cb, span, del);
