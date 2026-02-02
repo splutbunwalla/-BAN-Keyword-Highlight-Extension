@@ -12,18 +12,62 @@
   const ROLE_WORDS = new Set(['vip', 'admin', 'moderator', 'default']);  
   const ROLE_PATTERN = '\\b(?:vip|admin|moderator|default)\\b';
   let isEnabled = false;
-  
+  const ONLINE_TTL = 60_000; // 60 seconds
+
+const pruneOnlineState = () => {
+  const now = Date.now();
+  let changed = false;
+
+  Object.values(NAME_MAP).forEach(p => {
+    if (p.online && p.lastSeen && now - p.lastSeen > ONLINE_TTL) {
+      p.online = false;
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    saveRegistry();
+    if (typeof renderList === 'function') renderList();
+  }
+};
+ 
+const processJoinLeaveFromText = (text) => {
+  const logMatch = text.match(/(joined|left).*?(\d+),?\s+(.*?)\s*\(id:\s*(\d{17})\)/i);
+  if (!logMatch) return;
+
+  const joined = logMatch[1].toLowerCase().includes('joined');
+  const connId = logMatch[2];
+  const name = logMatch[3].trim();
+  const id = logMatch[4];
+
+  const existing = NAME_MAP[id] || {};
+
+  NAME_MAP[id] = {
+    name: name || existing.name || "Unknown",
+    connId: connId || existing.connId,
+    online: joined,
+    lastSeen: joined ? Date.now() : existing.lastSeen || 0
+  };
+};
+
 const buildChatHistoryFromDOM = () => {
   chatHistory = []; // reset so reloads don’t duplicate
   seenChatLines.clear();
+    
+  Object.values(NAME_MAP).forEach(p => {
+    p.online = false;
+    p.lastSeen = 0;
+  });
   
   document.querySelectorAll('tr, div.log-line, pre, span').forEach(el => {
     const text = (el.innerText || "").trim();
     if (!text) return;
 
+    processJoinLeaveFromText(text);
     processChatLog(text);
   });
 
+  saveRegistry();
   console.log(`💬 Rebuilt chat history: ${chatHistory.length} messages`);
 };
 
@@ -640,12 +684,18 @@ const processChatLog = (text) => {
     /(\d{2}:\d{2}:\d{2}\.\d{3}):\s*Chat:\s*(.*?)\s*\(id:\s*(\d{17})\):\s*(.*)/i
   );
   if (!chatMatch) return;
-
+    
+  const steamId = chatMatch[3];
+  if (NAME_MAP[steamId]) {
+    NAME_MAP[steamId].online = true;
+    NAME_MAP[steamId].lastSeen = Date.now();
+  }
+  
   chatHistory.push({
     fullLine: line,
     timestamp: chatMatch[1],
     name: chatMatch[2],
-    steamId: chatMatch[3],
+    steamId: steamId,
     message: chatMatch[4]
   });
 };
@@ -810,6 +860,8 @@ const processChatLog = (text) => {
 function scan() {
   if (!document.body || document.body.classList.contains('hh-disabled')) return;
 
+  pruneOnlineState();
+
   const logRoot = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
 
   // --- PART 1: Update Name Registry (Player IDs/Names) ---
@@ -827,11 +879,15 @@ function scan() {
     } else if (logMatch) {
       const id = logMatch[4];
       const existing = NAME_MAP[id] || {};
+      const joined = logMatch[1].toLowerCase().includes('joined');
+      
       NAME_MAP[id] = {
         name: logMatch[3].trim() || existing.name || "Unknown",
         connId: logMatch[2] || existing.connId,
-        online: logMatch[1].toLowerCase().includes('joined')
+        online: joined,
+        lastSeen: joined ? Date.now() : existing.lastSeen || 0
       };
+
       saveRegistry();
     }
   });
@@ -914,6 +970,7 @@ function scan() {
     if (!item || item.classList.contains('disabled') || item.getAttribute('data-type') === 'parent') return;
 
     loadRegistry(); 
+    
     const currentData = NAME_MAP[sid] || data; 
 
     const type = item.getAttribute('data-type'), 
@@ -1186,6 +1243,8 @@ function scan() {
             }
           }
           if (shouldRescan) {
+			  
+			  pruneOnlineState();
             clearTimeout(scanTimeout);
             scanTimeout = setTimeout(scan, 250);
           }
