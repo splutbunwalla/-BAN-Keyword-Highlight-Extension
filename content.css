@@ -83,7 +83,6 @@ body.hh-disabled .hh-secondaryhighlight {
     flex-direction: column;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     font-family: 'Segoe UI', sans-serif;
-    /* overflow: hidden is REMOVED to allow submenus to pop out */
 }
 
 .hh-menu-header {
@@ -103,7 +102,7 @@ body.hh-disabled .hh-secondaryhighlight {
     cursor: pointer; 
     border-bottom: 1px solid #222; 
     font-size: 13px; 
-    position: relative; /* CRITICAL for submenu positioning */
+    position: relative;
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
@@ -116,11 +115,11 @@ body.hh-disabled .hh-secondaryhighlight {
 .hh-menu-row[data-type="parent"]::after { content: '▶'; font-size: 9px; color: #666; }
 
 .hh-submenu {
-    display: none; /* Triggered on hover */
+    display: none; 
     position: absolute;
     top: -1px;
-    left: 100%; /* Pops out to the right */
-    margin-left: 2px;
+    left: 100%;
+    margin-left: 0px;
     background: var(--hh-main-bg);
     border: 1px solid var(--hh-border);
     border-radius: 8px;
@@ -129,7 +128,17 @@ body.hh-disabled .hh-secondaryhighlight {
     flex-direction: column;
     box-shadow: 4px 4px 15px rgba(0, 0, 0, 0.6);
     animation: hhSubmenuFadeIn 0.15s ease-out forwards;
-    overflow: hidden; /* Safe to use here */
+    overflow: hidden;
+	padding-left: 5px;
+}
+.hh-submenu::before {
+    content: "";
+    position: absolute;
+    left: -10px;
+    top: 0;
+    width: 10px;
+    height: 100%;
+    background: transparent;
 }
 
 .hh-menu-row:hover > .hh-submenu {
@@ -137,6 +146,7 @@ body.hh-disabled .hh-secondaryhighlight {
 }
 
 .hh-submenu-item { 
+	position: relative;
     padding: 10px 12px; 
     color: #ddd; 
     font-size: 12px; 

@@ -13,6 +13,12 @@
   const ROLE_PATTERN = '\\b(?:vip|admin|moderator|default)\\b';
   let isEnabled = false;
   const ONLINE_TTL = 60_000; // 60 seconds
+  let lastDingTime = 0;
+  const DING_COOLDOWN = 1500; // ms, prevents spam
+  let isMuted = false;
+
+const getKeywordText = k => typeof k === 'string' ? k : k.text;
+const isKeywordDingEnabled = k => typeof k === 'object' && k.ding === true;
 
 const pruneOnlineState = () => {
   const now = Date.now();
@@ -68,7 +74,6 @@ const buildChatHistoryFromDOM = () => {
   });
 
   saveRegistry();
-  console.log(`💬 Rebuilt chat history: ${chatHistory.length} messages`);
 };
 
   
@@ -128,9 +133,7 @@ const createToolbar = (attempts = 0) => {
 	setTimeout(createToolbar, 500);
 	return;
   }
-	
-  console.log("Creating toolbar!");
-		
+			
   const toolbar = document.createElement('div');
   toolbar.id = 'hh-toolbar';
     
@@ -181,6 +184,7 @@ const createToolbar = (attempts = 0) => {
       }
     };
     toolbar.appendChild(btn);
+	
   });
   
   const infoGroup = document.createElement('div');
@@ -644,7 +648,6 @@ const updateToolbarMessages = (messages, container) => {
   // --- CORE LOGIC ---
   const checkRaceStatus = (text, isSilent = false) => {
 	if (/Loading\s+Level:/i.test(text)) {
-		console.log(text)
       // Matches "Loading level: " then captures everything until it hits " ("
       const trackMatch = text.match(/Loading\s+level:\s*([^(\n]+)/i);
       if (trackMatch && trackMatch[1]) {
@@ -671,12 +674,12 @@ const updateToolbarMessages = (messages, container) => {
       }
     }
   };
-	
+
+
 const processChatLog = (text) => {
   const line = text.trim();
   if (!line) return;
 
-  // 🚫 PREVENT DUPLICATES
   if (seenChatLines.has(line)) return;
   seenChatLines.add(line);
 
@@ -684,22 +687,72 @@ const processChatLog = (text) => {
     /(\d{2}:\d{2}:\d{2}\.\d{3}):\s*Chat:\s*(.*?)\s*\(id:\s*(\d{17})\):\s*(.*)/i
   );
   if (!chatMatch) return;
-    
+
   const steamId = chatMatch[3];
+  const message = chatMatch[4];
+
   if (NAME_MAP[steamId]) {
     NAME_MAP[steamId].online = true;
     NAME_MAP[steamId].lastSeen = Date.now();
   }
-  
+
   chatHistory.push({
     fullLine: line,
     timestamp: chatMatch[1],
     name: chatMatch[2],
-    steamId: steamId,
-    message: chatMatch[4]
+    steamId,
+    message
   });
 };
 
+const playDing = () => {
+  if (isMuted) return;
+  
+  const now = Date.now();
+  if (now - lastDingTime < DING_COOLDOWN) return;
+  lastDingTime = now;
+
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
+  
+  const ctx = new AudioContext();
+
+  // IMPORTANT: Resume context in case it's suspended
+  if (ctx.state === 'suspended') {
+    ctx.resume();
+  }
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, ctx.currentTime); 
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start();
+  osc.stop(ctx.currentTime + 0.5);
+};
+
+
+const scanForKeywords = (text) => {
+  const normalize = s => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const normMsg = normalize(text);
+
+  const dingKeywords = KEYWORDS.filter(k => k.enabled !== false && k.ding === true);
+  const dingSecondWords = SECONDARYWORDS.filter(k2 => k2.enabled !== false && k2.ding === true);
+
+  if (
+    dingKeywords.some(k => normMsg.includes(normalize(getKeywordText(k)))) ||
+    dingSecondWords.some(k2 => normMsg.includes(normalize(getKeywordText(k2))))
+  ) {
+    playDing();
+  }
+};
 
   const processBanQueue = () => {
     if (banQueue.length === 0) return;
@@ -781,7 +834,6 @@ const processChatLog = (text) => {
         input.dispatchEvent(new KeyboardEvent('keypress', { bubbles: true, cancelable: true, keyCode: 13, which: 13, key: 'Enter' }));
         input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, cancelable: true, keyCode: 13, which: 13, key: 'Enter' }));
         input.blur();
-        console.log(`🚀 Auto-submitted: ${cmd}`);
       }, 100); 
     }
   };
@@ -849,12 +901,18 @@ const processChatLog = (text) => {
 
       const input = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand");
       if (input) {
-        console.log(`Console Frame executing: ${msg.cmd} | AutoSubmit: ${shouldAutoSubmit}`);
         injectToInput(msg.cmd, shouldAutoSubmit);
       }
     }
     if (msg.action === "updateColors") applyStyles(msg);
     if (msg.action === "toggle" || msg.action === "updateKeywords") init();
+	if (msg.action === "updateKeywordsOnly") {
+      KEYWORDS = msg.keywords || KEYWORDS;
+      SECONDARYWORDS = msg.secondarykeywords || SECONDARYWORDS;
+    }
+	if (msg.action === "muteAll") {
+		isMuted = msg.value;
+	}
   });
   
 function scan() {
@@ -1128,6 +1186,22 @@ function scan() {
     actionMenu.style.top = y + "px";
     actionMenu.style.visibility = 'visible';
   }, true);
+  
+// Prime the AudioContext on the first user interaction
+const primeAudio = () => {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (AudioContext) {
+    const dummyCtx = new AudioContext();
+    if (dummyCtx.state === 'suspended') {
+      dummyCtx.resume();
+    }
+  }
+  // Remove listener after first interaction to save resources
+  document.removeEventListener('mousedown', primeAudio);
+  document.removeEventListener('keydown', primeAudio);
+};
+document.addEventListener('mousedown', primeAudio);
+document.addEventListener('keydown', primeAudio);
 
   document.addEventListener('click', (e) => { if (actionMenu && !actionMenu.contains(e.target)) actionMenu.style.display = 'none'; });
   document.addEventListener('mouseup', (e) => {
@@ -1164,6 +1238,10 @@ function scan() {
           return;
         }
 		
+		if (changes.muteAll) {
+          isMuted = changes.muteAll.newValue;
+        }
+		
         // Update local variables so scan() uses new words
         KEYWORDS = data.keywords || [];
         SECONDARYWORDS = data.secondarykeywords || [];
@@ -1190,7 +1268,7 @@ function scan() {
     try {
       const sync = await chrome.storage.sync.get(null);
       isEnabled = sync.enabled !== false; // Set this first!
-
+	  
       if (!isEnabled) {
         document.body.classList.add('hh-disabled');
         if (window.hhObserver) window.hhObserver.disconnect();
@@ -1204,6 +1282,7 @@ function scan() {
       SECONDARYWORDS = sync.secondarykeywords || [];
       MESSAGES = sync.messages || [];
       isEnabled = sync.enabled !== false;
+	  isMuted = sync.muteAll !== false;
 
       applyStyles(sync);
       loadRegistry();
@@ -1236,6 +1315,7 @@ function scan() {
               if (node.id === 'hh-ui-wrapper' || (node.classList && node.classList.contains('hh-highlight'))) continue;
               const text = node.nodeType === 3 ? node.textContent : node.innerText;
               if (text) {
+				scanForKeywords(text);
                 processChatLog(text);
                 checkRaceStatus(text, false);
                 shouldRescan = true;

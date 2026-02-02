@@ -11,9 +11,16 @@ const steamidAlphaInput = document.getElementById('steamidAlpha');
 const toggleCheckbox = document.getElementById("toggleCheckbox");
 const container = document.querySelector('.main-container');
 const toggle = document.getElementById('toggleCheckbox');
+const muteAllToggle = document.getElementById("muteAllToggle");
+const speakerIconSVG = `
+<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="display:block;">
+    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+</svg>`;
 let enabled = true;
 let isClosing = false;
 let debounceTimer;
+let KEYWORDS = [];
+let SECONDARYWORDS = [];
 
 function closePopup() {
   if (isClosing) return;
@@ -97,6 +104,30 @@ function renderKeywords(containerId, words, storageKey) {
     const div = document.createElement("div");
     div.className = "keyword-item";
     
+	const dingBtn = document.createElement('button');
+	dingBtn.className = 'icon-btn ding-btn' + (item.ding ? ' active' : '');
+	dingBtn.innerHTML = speakerIconSVG;
+	dingBtn.title = item.ding ? "Sound On" : "Sound Off";
+
+	dingBtn.onclick = () => {
+		item.ding = !item.ding;
+		
+		dingBtn.classList.toggle('active', item.ding);
+		dingBtn.title = item.ding ? "Sound On" : "Sound Off";
+		
+		chrome.storage.sync.set({ [storageKey]: words }, () => {
+			chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+				if (tabs[0]?.id) {
+					chrome.tabs.sendMessage(tabs[0].id, {
+						action: "updateKeywordsOnly", // New action to avoid re-scan
+						keywords: storageKey === "keywords" ? words : KEYWORDS,
+						secondarykeywords: storageKey === "secondarykeywords" ? words : SECONDARYWORDS
+					});
+				}
+			});
+		});
+	};
+  
 	const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.checked = item.enabled !== false; // Default to true
@@ -121,7 +152,7 @@ function renderKeywords(containerId, words, storageKey) {
       });
     };
 
-    div.append(cb, span, del);
+	div.append(cb, dingBtn, span, del);
     container.appendChild(div);
   });
 }
@@ -178,7 +209,7 @@ function addKeyword(inputId, storageKey, listId) {
     newEntries.forEach(word => {
       // Avoid exact duplicates
       if (!currentKeywords.some(k => (typeof k === 'string' ? k : k.text) === word)) {
-        currentKeywords.push({ text: word, enabled: true });
+        currentKeywords.push({ text: word, enabled: true, ding: true });
       }
     });
 
@@ -212,14 +243,19 @@ function addMessage() {
 
 function loadSettings() {
   chrome.storage.sync.get([
-    "keywords", "secondarykeywords", "messages", "enabled",
+    "keywords", "secondarykeywords", "messages", "enabled", "muteAll",
     "primaryColor", "primaryColorMid", "primaryColorEnd", "primaryTextColor", "primaryBorderColor", "primaryAlpha",
     "secondaryColor", "secondaryColorMid", "secondaryColorEnd", "secondaryTextColor", "secondaryBorderColor", "secondaryAlpha",
     "steamidColor", "steamidColorMid", "steamidColorEnd", "steamidTextColor", "steamidBorderColor", "steamidAlpha"
   ], (data) => {
     // Load Lists
-    renderKeywords( "primary-list", data.keywords || [],"keywords");
-    renderKeywords("secondary-list", data.secondarykeywords || [], "secondarykeywords");
+    KEYWORDS = data.keywords || [];
+    SECONDARYWORDS = data.secondarykeywords || [];
+
+    // Use the variables to render
+    renderKeywords("primary-list", KEYWORDS, "keywords");
+    renderKeywords("secondary-list", SECONDARYWORDS, "secondarykeywords");
+
     renderMessages(data.messages || []);
 
     // Load Primary Styles (with defaults to match your specific CSS request)
@@ -248,12 +284,31 @@ function loadSettings() {
 
     // Extension Toggle State
     enabled = data.enabled !== false;
+    if (muteAllToggle) {
+      muteAllToggle.checked = !!data.muteAll;
+    }
     toggleCheckbox.checked = enabled;
     container.classList.toggle('disabled', !enabled);
   });
 }
 
-// Fixed: The change listener is now correctly attached to the checkbox
+muteAllToggle.addEventListener("change", () => {
+  const isCurrentlyMuted = muteAllToggle.checked;
+  
+  // Save to storage (for next time popup opens)
+  chrome.storage.sync.set({ muteAll: isCurrentlyMuted });
+
+  // Update content script immediately
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]?.id) {
+      chrome.tabs.sendMessage(tabs[0].id, { 
+        action: "muteAll", 
+        value: isCurrentlyMuted 
+      });
+    }
+  });
+});
+
 toggleCheckbox.addEventListener("change", () => {
   enabled = toggleCheckbox.checked;
   container.classList.toggle('disabled', !toggleCheckbox.checked);
