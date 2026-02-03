@@ -982,7 +982,7 @@ function scan() {
   const escape = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
   const wordPattern = allWords.map(escape).join('|');
   const regex = new RegExp(`(\\b\\d{17}\\b|${ROLE_PATTERN}${wordPattern ? '|' + wordPattern : ''})`, "gi");
-  
+
   const walker = document.createTreeWalker(logRoot, NodeFilter.SHOW_TEXT, {
     acceptNode: (n) => {
       const parent = n.parentElement;
