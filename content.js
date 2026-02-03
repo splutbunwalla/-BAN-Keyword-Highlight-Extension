@@ -18,7 +18,6 @@
   let isMuted = false;
 
 const getKeywordText = k => typeof k === 'string' ? k : k.text;
-const isKeywordDingEnabled = k => typeof k === 'object' && k.ding === true;
 
 const updateHeartbeat = () => {
   // 1. Check if we are in the correct frame/page
@@ -150,7 +149,7 @@ const updateRaceUI = (active) => {
 };
 
 // --- UI: TOOLBAR (Runs in Log Frame) ---
-const createToolbar = (attempts = 0) => {
+const createToolbar = () => {
  const isLogFrame = window.location.href.includes("StreamFile.aspx") || 
                      window.location.href.includes("Proxy.ashx") ||
                      document.querySelector('pre, .log-line, #ConsoleOutput');
@@ -546,7 +545,6 @@ function createChatView() {
     };
 
     el.querySelector('#hh-export-chat').onclick = () => {
-      const contentEl = el.querySelector('.hh-chat-content');
       const text = getVisibleChatText();
       if (!text) {
         showToast("No chat content to export");
@@ -640,7 +638,7 @@ const updateToolbarMessages = (messages, container) => {
     const countEl = container.querySelector('#hh-queue-count');
     const listEl = container.querySelector('#hh-queue-list');
 
-    if (countEl) countEl.textContent = banQueue.length;
+    if (countEl) countEl.textContent = `${banQueue.length}`;
     if (listEl) {
       listEl.innerHTML = '';banQueue.forEach((item, index) => {
         const row = document.createElement('div');
@@ -831,11 +829,6 @@ const scanForKeywords = (text) => {
   };
   const saveRegistry = () => sessionStorage.setItem('hh_registry', JSON.stringify(NAME_MAP));
 
-  const hexToRGBA = (hex, alpha) => {
-    const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  };
-
   const copyToClipboard = (text) => {
     const el = document.createElement('textarea');
     el.value = text;
@@ -989,8 +982,7 @@ function scan() {
   const escape = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
   const wordPattern = allWords.map(escape).join('|');
   const regex = new RegExp(`(\\b\\d{17}\\b|${ROLE_PATTERN}${wordPattern ? '|' + wordPattern : ''})`, "gi");
-
-  // Use ONE walker and ONE nodes array
+  
   const walker = document.createTreeWalker(logRoot, NodeFilter.SHOW_TEXT, {
     acceptNode: (n) => {
       const parent = n.parentElement;
