@@ -1,414 +1,529 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <style>
+    <style>
 
-@keyframes popupIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
+        @keyframes popupIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px) scale(0.96);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
 
-.main-container.closing {
-  animation: popupOut 500ms ease-in forwards;
-}
+        .main-container.closing {
+            animation: popupOut 500ms ease-in forwards;
+        }
 
-@keyframes popupOut {
-  to {
-    opacity: 0;
-    transform: translateY(6px) scale(0.95);
-  }
-}
+        @keyframes popupOut {
+            to {
+                opacity: 0;
+                transform: translateY(6px) scale(0.95);
+            }
+        }
 
-.main-container.disabled {
-  opacity: 0.5;
-  filter: grayscale(0.6);
-  transform: scale(0.98);
-  transition: 120ms ease;
-}
+        .main-container.disabled {
+            opacity: 0.5;
+            filter: grayscale(0.6);
+            transform: scale(0.98);
+            transition: 120ms ease;
+        }
 
-html {
-  background: #181a1d;
-}
+        html {
+            background: #181a1d;
+        }
 
-body {
-  font-family: 'Segoe UI', Tahoma, sans-serif;
-  width: 280px;
-  margin: 0;
-  padding: 8px;
-  background: #181a1d;
-  overflow: hidden;
-}
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            width: 280px;
+            margin: 0;
+            padding: 8px;
+            background: #181a1d;
+            overflow: hidden;
+        }
 
-.main-container { 
-  background-color: #1e2124; 
-  color: #ffffff; 
-  border-radius: 16px; 
-  border: 1px solid #333; 
-  padding: 12px; 
-  /* A subtle shadow makes the edge look crisp against the background */
-  box-shadow: 0 4px 15px rgba(0,0,0,0.6); 
-  display: flex; 
-  flex-direction: column; 
-  gap: 10px;
-  overflow: hidden; 
-  position: relative;
-  animation: popupIn 500ms cubic-bezier(.2,.9,.3,1);
-  transform-origin: top center;
-}
+        .main-container {
+            background-color: #1e2124;
+            color: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #333;
+            padding: 12px;
+            /* A subtle shadow makes the edge look crisp against the background */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow: hidden;
+            position: relative;
+            animation: popupIn 500ms cubic-bezier(.2, .9, .3, 1);
+            transform-origin: top center;
+        }
 
-::-webkit-scrollbar {
-  width: 0;
-  background: transparent !important;
-}
+        ::-webkit-scrollbar {
+            width: 0;
+            background: transparent !important;
+        }
 
-    .control-group { 
-      margin-bottom: 5px; 
-      padding-bottom: 10px; 
-      border-bottom: 1px solid #333; 
-    }
+        .control-group {
+            margin-bottom: 5px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
 
-.setting-row {
-  display: flex;         /* Changed from grid to flex for better control */
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-  width: 100%;
-}
+        .setting-row {
+            display: flex; /* Changed from grid to flex for better control */
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            width: 100%;
+        }
 
-.setting-row label { 
-  font-size: 11px; 
-  color: #bbb; 
-  flex: 0 0 70px; /* Fixed width for labels so inputs align */
-}
+        .setting-row label {
+            font-size: 11px;
+            color: #bbb;
+            flex: 0 0 70px; /* Fixed width for labels so inputs align */
+        }
 
-/* The vertical container for the two rows of inputs */
-.input-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1; /* Take up all remaining horizontal space */
-}
+        /* The vertical container for the two rows of inputs */
+        .input-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1; /* Take up all remaining horizontal space */
+        }
 
-/* Horizontal rows inside the stack */
-.input-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-}
+        /* Horizontal rows inside the stack */
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+        }
 
-input[type="range"] { 
-  flex: 1; 
-  margin: 0; 
-  cursor: pointer; 
-  accent-color: #2196F3; 
-}
+        input[type="range"] {
+            flex: 1;
+            margin: 0;
+            cursor: pointer;
+            accent-color: #2196F3;
+        }
 
-input[type="color"] { 
-  width: 24px; 
-  height: 24px; 
-  flex-shrink: 0; /* Prevent them from squishing */
-  border: 1px solid #111; 
-  border-radius: 4px; 
-  background: none; 
-  cursor: pointer;
-}
+        input[type="color"] {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0; /* Prevent them from squishing */
+            border: 1px solid #111;
+            border-radius: 4px;
+            background: none;
+            cursor: pointer;
+        }
 
 
-    input[type="text"] { 
-      background-color: #40444b; border: 1px solid #222; 
-      color: white; border-radius: 4px; padding: 4px;
-    }
-    
-    input[type="text"]::placeholder { color: #888; }
+        input[type="text"] {
+            background-color: #40444b;
+            border: 1px solid #222;
+            color: white;
+            border-radius: 4px;
+            padding: 4px;
+        }
 
-    .keyword-list { 
-      max-height: 100px; overflow-y: auto; 
-      background-color: #2f3136; border-radius: 8px; 
-      border: 1px solid #444; margin-bottom: 8px;
-    }
+        input[type="text"]::placeholder {
+            color: #888;
+        }
 
-    /* Dark slim scrollbar */
-    .keyword-list::-webkit-scrollbar { width: 4px; display: block; }
-    .keyword-list::-webkit-scrollbar-track { background: transparent; }
-    .keyword-list::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+        .keyword-list {
+            max-height: 100px;
+            overflow-y: auto;
+            background-color: #2f3136;
+            border-radius: 8px;
+            border: 1px solid #444;
+            margin-bottom: 8px;
+        }
 
-    .keyword-item { 
-      padding: 6px 8px;
-      background-color: #2f3136; 
-      border-bottom: 1px solid #1e2124; 
-      display: flex; 
-      align-items: center; 
-      gap: 8px; 
-      width: 100%; 
-      box-sizing: border-box;
-    }
+        /* Dark slim scrollbar */
+        .keyword-list::-webkit-scrollbar {
+            width: 4px;
+            display: block;
+        }
 
-    .add-keyword { display: flex; gap: 5px; margin-bottom: 5px; }
-    .add-keyword input { flex-grow: 1; }
+        .keyword-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
 
-    /* Buttons */
-    #add-msg-btn { 
-      width: 24px !important; min-width: 24px; height: 24px;
-      background-color: #4CAF50; color: white; border: none; 
-      border-radius: 4px; font-weight: bold; cursor: pointer; 
-    }
+        .keyword-list::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 10px;
+        }
 
-    .delete-btn { 
-      background: transparent; border: none; color: #888; 
-      cursor: pointer; font-size: 14px; 
-      flex-shrink: 0; 
-      margin-left: auto; 
-    }
-    .delete-btn:hover { color: #ff4d4d; }
+        .keyword-item {
+            padding: 6px 8px;
+            background-color: #2f3136;
+            border-bottom: 1px solid #1e2124;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
 
-    /* Header */
-    .toggle-section { 
-      display: flex; justify-content: space-between; 
-      align-items: center; padding-bottom: 10px; border-bottom: 1px solid #333; 
-    }
-    .section-title-big { font-size: 14px; font-weight: bold; }
-    .version-tag { font-size: 10px; color: #888; font-style: italic; }
+        .add-keyword {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
 
-    /* Toggle Switch */
-    .switch { position: relative; display: inline-block; width: 34px; height: 18px; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider { 
-      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; 
-      background-color: #ccc; transition: .4s; border-radius: 20px; 
-    }
-    .slider:before { 
-      position: absolute; content: ""; height: 12px; width: 12px; 
-      left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; 
-    }
-    input:checked + .slider { background-color: #2196F3; }
-    input:checked + .slider:before { transform: translateX(16px); }
+        .add-keyword input {
+            flex-grow: 1;
+        }
 
-    /* Message Spanning Button */
-    .msg-grid-container { display: flex; gap: 5px; align-items: stretch; margin-top: 5px; }
-    .msg-inputs { display: flex; flex-direction: column; gap: 4px; flex: 1; }
-    #add-msg-btn { height: auto; width: 30px !important; font-size: 18px; }
+        /* Buttons */
+        #add-msg-btn {
+            width: 24px !important;
+            min-width: 24px;
+            height: 24px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
 
-    .item-label-text { font-weight: bold; color: #2196F3; font-size: 10px; text-transform: uppercase; }
-    .item-text-val { color: #bbb; font-size: 11px; font-style: italic; }
+        .delete-btn {
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 14px;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
 
-    .item-info { 
-      flex: 1; /* This is the magic property */
-      min-width: 0; /* Allows text truncation to work properly */
-      display: flex; 
-      flex-direction: column; 
-      gap: 2px;
-    }
+        .delete-btn:hover {
+            color: #ff4d4d;
+        }
 
-    .add-keyword.multiline {
-        display: flex;
-        gap: 5px;
-    }
-    
-    .add-keyword textarea {
-        flex: 1;
-        background: #181a1d;
-        border: 1px solid #444;
-        color: white;
-        padding: 5px;
-        border-radius: 4px;
-        resize: vertical; /* Allows user to drag it larger if needed */
-        font-family: inherit;
-        font-size: 12px;
-    }
-    
-    .add-keyword button { 
-	  height: auto; width: 30px !important; font-size: 18px;
-      background-color: #4CAF50; color: white; border: none; 
-      border-radius: 4px; font-weight: bold; cursor: pointer; 
-    }	
-	.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px; /* Space between header and the list */
-}
+        /* Header */
+        .toggle-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
 
-.section-title {
-  font-size: 12px;
-  font-weight: bold;
-}
+        .section-title-big {
+            font-size: 14px;
+            font-weight: bold;
+        }
 
-.message-actions {
-  display: flex;
-  gap: 4px; /* Space between Export and Import buttons */
-}
+        .version-tag {
+            font-size: 10px;
+            color: #888;
+            font-style: italic;
+        }
 
-.mini-btn {
-  background: #36393f;
-  border: 1px solid #444;
-  color: #ccc;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 10px;
-  cursor: pointer;
-  transition: 0.2s;
-}
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 34px;
+            height: 18px;
+        }
 
-.mini-btn:hover {
-  background: #4e5d6e;
-  color: white;
-}
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
 
-.icon-btn {
-    background: #2a2d31;
-    border: 1px solid #444;
-    border-radius: 4px;
-    cursor: pointer;
-    padding: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #777; /* Gray when sound is OFF */
-    transition: all 0.2s ease;
-    margin-right: 5px;
-}
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 20px;
+        }
 
-/* Color when sound is ON */
-.icon-btn.active {
-    color: #ff0033; /* Your accent red */
-    background: rgba(255, 0, 51, 0.1);
-    border-color: #ff0033;
-}
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 12px;
+            width: 12px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
 
-.icon-btn:hover {
-    background: #3a3e44;
-    color: #eee;
-}
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
 
-.icon-btn.active:hover {
-    background: rgba(255, 0, 51, 0.2);
-    color: #ff4d6a;
-}
+        input:checked + .slider:before {
+            transform: translateX(16px);
+        }
 
-.icon-btn svg {
-    display: block;
-}
-	
-  </style>
+        /* Message Spanning Button */
+        .msg-grid-container {
+            display: flex;
+            gap: 5px;
+            align-items: stretch;
+            margin-top: 5px;
+        }
+
+        .msg-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+        }
+
+        #add-msg-btn {
+            height: auto;
+            width: 30px !important;
+            font-size: 18px;
+        }
+
+        .item-label-text {
+            font-weight: bold;
+            color: #2196F3;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .item-text-val {
+            color: #bbb;
+            font-size: 11px;
+            font-style: italic;
+        }
+
+        .item-info {
+            flex: 1; /* This is the magic property */
+            min-width: 0; /* Allows text truncation to work properly */
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .add-keyword.multiline {
+            display: flex;
+            gap: 5px;
+        }
+
+        .add-keyword textarea {
+            flex: 1;
+            background: #181a1d;
+            border: 1px solid #444;
+            color: white;
+            padding: 5px;
+            border-radius: 4px;
+            resize: vertical; /* Allows user to drag it larger if needed */
+            font-family: inherit;
+            font-size: 12px;
+        }
+
+        .add-keyword button {
+            height: auto;
+            width: 30px !important;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px; /* Space between header and the list */
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .message-actions {
+            display: flex;
+            gap: 4px; /* Space between Export and Import buttons */
+        }
+
+        .mini-btn {
+            background: #36393f;
+            border: 1px solid #444;
+            color: #ccc;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .mini-btn:hover {
+            background: #4e5d6e;
+            color: white;
+        }
+
+        .icon-btn {
+            background: #2a2d31;
+            border: 1px solid #444;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #777; /* Gray when sound is OFF */
+            transition: all 0.2s ease;
+            margin-right: 5px;
+        }
+
+        /* Color when sound is ON */
+        .icon-btn.active {
+            color: #ff0033; /* Your accent red */
+            background: rgba(255, 0, 51, 0.1);
+            border-color: #ff0033;
+        }
+
+        .icon-btn:hover {
+            background: #3a3e44;
+            color: #eee;
+        }
+
+        .icon-btn.active:hover {
+            background: rgba(255, 0, 51, 0.2);
+            color: #ff4d6a;
+        }
+
+        .icon-btn svg {
+            display: block;
+        }
+
+    </style>
 </head>
 <body>
-  <div class="main-container">
-    
+<div class="main-container">
+
     <div class="toggle-section">
-      <div class="title-wrapper">
-        <span class="section-title-big">Wreckfest 2 Admin Tool (HH)</span>
-        <div class="version-tag">v1.6</div>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="toggleCheckbox">
-        <span class="slider round"></span>
-      </label>
-    </div>
-<div class="control-group">
-  <div class="toggle-wrapper" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-    <span style="font-size: 13px; font-weight: 500;">Mute All Sounds</span>
-    <label class="switch">
-      <input type="checkbox" id="muteAllToggle">
-      <span class="slider"></span>
-    </label>
-  </div>
-</div>
-    <div class="control-group">
-      <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">Primary Keywords</div>
-      <div id="primary-list" class="keyword-list"></div>
-	  <div class="add-keyword multiline">
-		<textarea id="new-primary" placeholder="Add words (one per line)..." rows="3"></textarea>
-		<button id="add-primary-btn">+</button>
-	  </div>
-		<div class="setting-row multi-input">
-		  <label>Primary Highlight</label>
-		  <div class="input-stack">
-			<div class="input-group">
-			  <input type="color" id="primaryColor" title="Gradient Top">
-			  <input type="color" id="primaryColorMid" title="Gradient Middle">
-			  <input type="color" id="primaryColorEnd" title="Gradient Bottom">
-			</div>
-			<div class="input-group">
-			  <input type="color" id="primaryTextColor" title="Text Color">
-			  <input type="color" id="primaryBorderColor" title="Border Color">
-			  <input type="range" id="primaryAlpha" min="0" max="1" step="0.1" title="Opacity">
-			</div>
-		  </div>
-		</div>
-	</div>
-
-
-    <div class="control-group">
-      <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">Secondary Keywords</div>
-      <div id="secondary-list" class="keyword-list"></div>
-  	  <div class="add-keyword multiline">
-		<textarea id="new-secondary" placeholder="Add words (one per line)..." rows="3"></textarea>
-		<button id="add-secondary-btn">+</button>
-	  </div>
-	  
-		<div class="setting-row multi-input">
-		  <label>Secondary Highlight</label>
-		  <div class="input-stack">
-			<div class="input-group">
-			  <input type="color" id="secondaryColor" title="Gradient Top">
-			  <input type="color" id="secondaryColorMid" title="Gradient Middle">
-			  <input type="color" id="secondaryColorEnd" title="Gradient Bottom">
-			</div>
-			<div class="input-group">
-			  <input type="color" id="secondaryTextColor" title="Text Color">
-			  <input type="color" id="secondaryBorderColor" title="Border Color">
-			  <input type="range" id="secondaryAlpha" min="0" max="1" step="0.1" title="Opacity">
-			</div>
-		  </div>
-		</div>
-    </div>
-
-    <div class="control-group">
-		<div class="setting-row multi-input">
-        <label>SteamID Style</label>
-		  <div class="input-stack">
-			<div class="input-group">
-			  <input type="color" id="steamidColor" title="Gradient Top">
-			  <input type="color" id="steamidColorMid" title="Gradient Middle">
-			  <input type="color" id="steamidColorEnd" title="Gradient Bottom">
-			</div>
-			<div class="input-group">
-			  <input type="color" id="steamidTextColor" title="Text Color">
-			  <!--input type="color" id="steamidBorderColor" title="Border Color"-->
-			  <input type="range" id="steamidAlpha" min="0" max="1" step="0.1" title="Opacity" value="0.5">
-			</div>
-		  </div>
-		</div>
-    </div>
-	
-	<div class="control-group" style="border-bottom: none;">
-	  <div class="section-header">
-		<div class="section-title">Messages</div>
-		<div class="message-actions">
-		  <button id="export-messages" class="mini-btn" title="Export to JSON">Export</button>
-		  <button id="import-messages" class="mini-btn" title="Import from JSON">Import</button>
-		  <input type="file" id="import-file" style="display: none;" accept=".json">
-		</div>
-	  </div>
-  
-      <div id="message-list" class="keyword-list" style="max-height: 160px;"></div>
-      <div class="msg-grid-container">
-        <div class="msg-inputs">
-          <input type="text" id="new-msg-label" placeholder="Label">
-          <input type="text" id="new-msg-text" placeholder="Message text...">
+        <div class="title-wrapper">
+            <span class="section-title-big">Wreckfest 2 Admin Tool (HH)</span>
+            <div class="version-tag">v1.6</div>
         </div>
-        <button id="add-msg-btn">+</button>
-      </div>
+        <label class="switch">
+            <input id="toggleCheckbox" type="checkbox">
+            <span class="slider round"></span>
+        </label>
     </div>
-    
-  </div>
-  <script src="popup.js"></script>
+    <div class="control-group">
+        <div class="toggle-wrapper"
+             style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <span style="font-size: 13px; font-weight: 500;">Mute All Sounds</span>
+            <label class="switch">
+                <input id="muteAllToggle" type="checkbox">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+    <div class="control-group">
+        <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">Primary Keywords</div>
+        <div class="keyword-list" id="primary-list"></div>
+        <div class="add-keyword multiline">
+            <textarea id="new-primary" placeholder="Add words (one per line)..." rows="3"></textarea>
+            <button id="add-primary-btn">+</button>
+        </div>
+        <div class="setting-row multi-input">
+            <label>Primary Highlight</label>
+            <div class="input-stack">
+                <div class="input-group">
+                    <input id="primaryColor" title="Gradient Top" type="color">
+                    <input id="primaryColorMid" title="Gradient Middle" type="color">
+                    <input id="primaryColorEnd" title="Gradient Bottom" type="color">
+                </div>
+                <div class="input-group">
+                    <input id="primaryTextColor" title="Text Color" type="color">
+                    <input id="primaryBorderColor" title="Border Color" type="color">
+                    <input id="primaryAlpha" max="1" min="0" step="0.1" title="Opacity" type="range">
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="control-group">
+        <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">Secondary Keywords</div>
+        <div class="keyword-list" id="secondary-list"></div>
+        <div class="add-keyword multiline">
+            <textarea id="new-secondary" placeholder="Add words (one per line)..." rows="3"></textarea>
+            <button id="add-secondary-btn">+</button>
+        </div>
+
+        <div class="setting-row multi-input">
+            <label>Secondary Highlight</label>
+            <div class="input-stack">
+                <div class="input-group">
+                    <input id="secondaryColor" title="Gradient Top" type="color">
+                    <input id="secondaryColorMid" title="Gradient Middle" type="color">
+                    <input id="secondaryColorEnd" title="Gradient Bottom" type="color">
+                </div>
+                <div class="input-group">
+                    <input id="secondaryTextColor" title="Text Color" type="color">
+                    <input id="secondaryBorderColor" title="Border Color" type="color">
+                    <input id="secondaryAlpha" max="1" min="0" step="0.1" title="Opacity" type="range">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <div class="setting-row multi-input">
+            <label>SteamID Style</label>
+            <div class="input-stack">
+                <div class="input-group">
+                    <input id="steamidColor" title="Gradient Top" type="color">
+                    <input id="steamidColorMid" title="Gradient Middle" type="color">
+                    <input id="steamidColorEnd" title="Gradient Bottom" type="color">
+                </div>
+                <div class="input-group">
+                    <input id="steamidTextColor" title="Text Color" type="color">
+                    <!--input type="color" id="steamidBorderColor" title="Border Color"-->
+                    <input id="steamidAlpha" max="1" min="0" step="0.1" title="Opacity" type="range" value="0.5">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="control-group" style="border-bottom: none;">
+        <div class="section-header">
+            <div class="section-title">Messages</div>
+            <div class="message-actions">
+                <button class="mini-btn" id="export-messages" title="Export to JSON">Export</button>
+                <button class="mini-btn" id="import-messages" title="Import from JSON">Import</button>
+                <input accept=".json" id="import-file" style="display: none;" type="file">
+            </div>
+        </div>
+
+        <div class="keyword-list" id="message-list" style="max-height: 160px;"></div>
+        <div class="msg-grid-container">
+            <div class="msg-inputs">
+                <input id="new-msg-label" placeholder="Label" type="text">
+                <input id="new-msg-text" placeholder="Message text..." type="text">
+            </div>
+            <button id="add-msg-btn">+</button>
+        </div>
+    </div>
+
+</div>
+<script src="popup.js"></script>
 </body>
 </html>

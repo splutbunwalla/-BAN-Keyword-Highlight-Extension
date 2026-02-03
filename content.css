@@ -5,7 +5,7 @@
     --hh-p-border: #f13333;
     --hh-id-bg1: rgba(255, 255, 51, 1);
     --hh-id-txt: #000000;
-    
+
     /* UI Colors */
     --hh-main-bg: #1a1a1a;
     --hh-alt-bg: #252525;
@@ -29,27 +29,33 @@ body.hh-disabled .hh-secondaryhighlight {
 /* --- 2. HIGHLIGHTING CLASSES --- */
 /* --- HIGHLIGHTING RESTORATION --- */
 
-.hh-idhighlight { 
+.hh-idhighlight {
     background: linear-gradient(
-        var(--hh-id-bg1), 
-        var(--hh-id-bg-mid) 40%, 
-        var(--hh-id-bg-end)
+            var(--hh-id-bg1),
+            var(--hh-id-bg-mid) 40%,
+            var(--hh-id-bg-end)
     ) !important;
     color: var(--hh-id-txt) !important;
     border-bottom: 1px solid var(--hh-id-border) !important;
-    font-weight: bold !important; 
-    padding: 0 3px; 
-    border-radius: 3px; 
-    cursor: pointer; 
+    font-weight: bold !important;
+    padding: 0 3px;
+    border-radius: 3px;
+    cursor: pointer;
 }
-.hh-idhighlight.hh-online { border-bottom: 2px solid #00ff88 !important; }
-.hh-idhighlight.hh-offline { border-bottom: 2px solid #ff0000 !important; }
 
-.hh-highlight { 
+.hh-idhighlight.hh-online {
+    border-bottom: 2px solid #00ff88 !important;
+}
+
+.hh-idhighlight.hh-offline {
+    border-bottom: 2px solid #ff0000 !important;
+}
+
+.hh-highlight {
     background: linear-gradient(
-        var(--hh-p-bg1), 
-        var(--hh-p-bg-mid) 40%, 
-        var(--hh-p-bg-end)
+            var(--hh-p-bg1),
+            var(--hh-p-bg-mid) 40%,
+            var(--hh-p-bg-end)
     ) !important;
     color: var(--hh-p-txt) !important;
     border-bottom: 1px solid var(--hh-p-border) !important;
@@ -58,11 +64,11 @@ body.hh-disabled .hh-secondaryhighlight {
     border-radius: 2px;
 }
 
-.hh-secondaryhighlight { 
+.hh-secondaryhighlight {
     background: linear-gradient(
-        var(--hh-s-bg1), 
-        var(--hh-s-bg-mid) 40%, 
-        var(--hh-s-bg-end)
+            var(--hh-s-bg1),
+            var(--hh-s-bg-mid) 40%,
+            var(--hh-s-bg-end)
     ) !important;
     color: var(--hh-s-txt) !important;
     border-bottom: 1px solid var(--hh-s-border) !important;
@@ -77,7 +83,7 @@ body.hh-disabled .hh-secondaryhighlight {
     position: absolute;
     background: var(--hh-main-bg);
     border: 1px solid var(--hh-border);
-    border-radius: 8px; 
+    border-radius: 8px;
     min-width: 160px;
     z-index: 100000;
     flex-direction: column;
@@ -96,26 +102,37 @@ body.hh-disabled .hh-secondaryhighlight {
     justify-content: space-between;
 }
 
-.hh-menu-row { 
-    padding: 10px 12px; 
-    color: #ddd; 
-    cursor: pointer; 
-    border-bottom: 1px solid #222; 
-    font-size: 13px; 
+.hh-menu-row {
+    padding: 10px 12px;
+    color: #ddd;
+    cursor: pointer;
+    border-bottom: 1px solid #222;
+    font-size: 13px;
     position: relative;
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.hh-menu-row:hover { background: #333; color: #fff; }
-.hh-menu-row:last-child { border-radius: 0 0 7px 7px; border-bottom: none; }
+.hh-menu-row:hover {
+    background: #333;
+    color: #fff;
+}
+
+.hh-menu-row:last-child {
+    border-radius: 0 0 7px 7px;
+    border-bottom: none;
+}
 
 /* --- 4. SUBMENU LOGIC --- */
-.hh-menu-row[data-type="parent"]::after { content: '▶'; font-size: 9px; color: #666; }
+.hh-menu-row[data-type="parent"]::after {
+    content: '▶';
+    font-size: 9px;
+    color: #666;
+}
 
 .hh-submenu {
-    display: none; 
+    display: none;
     position: absolute;
     top: -1px;
     left: 100%;
@@ -129,8 +146,9 @@ body.hh-disabled .hh-secondaryhighlight {
     box-shadow: 4px 4px 15px rgba(0, 0, 0, 0.6);
     animation: hhSubmenuFadeIn 0.15s ease-out forwards;
     overflow: hidden;
-	padding-left: 5px;
+    padding-left: 5px;
 }
+
 .hh-submenu::before {
     content: "";
     position: absolute;
@@ -145,19 +163,32 @@ body.hh-disabled .hh-secondaryhighlight {
     display: flex;
 }
 
-.hh-submenu-item { 
-	position: relative;
-    padding: 10px 12px; 
-    color: #ddd; 
-    font-size: 12px; 
-    border-bottom: 1px solid #222; 
-    white-space: nowrap; 
+.hh-submenu-item {
+    position: relative;
+    padding: 10px 12px;
+    color: #ddd;
+    font-size: 12px;
+    border-bottom: 1px solid #222;
+    white-space: nowrap;
 }
-.hh-submenu-item:hover { background: var(--hh-accent); color: #fff; }
+
+.hh-submenu-item:hover {
+    background: var(--hh-accent);
+    color: #fff;
+}
 
 /* Flip logic for edges of screen */
-.hh-flip-submenu-x .hh-submenu { left: auto; right: 100%; margin-left: 0; margin-right: 2px; }
-.hh-flip-submenu-y .hh-submenu { top: auto; bottom: -1px; }
+.hh-flip-submenu-x .hh-submenu {
+    left: auto;
+    right: 100%;
+    margin-left: 0;
+    margin-right: 2px;
+}
+
+.hh-flip-submenu-y .hh-submenu {
+    top: auto;
+    bottom: -1px;
+}
 
 /* --- 5. TOOLBAR --- */
 #hh-ui-wrapper {
@@ -166,11 +197,14 @@ body.hh-disabled .hh-secondaryhighlight {
     right: 25px;
     display: flex;
     flex-direction: column;
-    gap: 8px; 
+    gap: 8px;
     z-index: 2147483647 !important;
     pointer-events: none;
 }
-#hh-ui-wrapper > div { pointer-events: auto; }
+
+#hh-ui-wrapper > div {
+    pointer-events: auto;
+}
 
 #hh-toolbar {
     position: relative;
@@ -196,9 +230,18 @@ body.hh-disabled .hh-secondaryhighlight {
     gap: 5px;
     transition: filter 0.2s;
 }
-.hh-tool-btn.info { background: #4e5d94; }
-.hh-tool-btn.danger { background: #d9534f; }
-.hh-tool-btn:hover { filter: brightness(1.2); }
+
+.hh-tool-btn.info {
+    background: #4e5d94;
+}
+
+.hh-tool-btn.danger {
+    background: #d9534f;
+}
+
+.hh-tool-btn:hover {
+    filter: brightness(1.2);
+}
 
 /* Race Info (Right Aligned) */
 .hh-info-group {
@@ -209,27 +252,43 @@ body.hh-disabled .hh-secondaryhighlight {
     flex-direction: column;
     align-items: flex-end;
 }
-.hh-status-tag { font-size: 11px; font-weight: bold; white-space: nowrap; }
-.hh-track-display { font-size: 10px; color: #888; font-style: italic; }
+
+.hh-status-tag {
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.hh-track-display {
+    font-size: 10px;
+    color: #888;
+    font-style: italic;
+}
 
 /* --- 6. ANIMATIONS --- */
 @keyframes hhSubmenuFadeIn {
-    from { opacity: 0; transform: translateX(5px); }
-    to { opacity: 1; transform: translateX(0); }
+    from {
+        opacity: 0;
+        transform: translateX(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 /* Toast Notification */
 .hh-toast {
-    position: fixed; 
-    bottom: 20px; 
-    right: 20px; 
-    background: #ff0033; 
-    color: white; 
-    padding: 12px 20px; 
-    border-radius: 5px; 
-    z-index: 999999; 
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #ff0033;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 5px;
+    z-index: 999999;
     font-weight: bold;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     font-family: sans-serif;
 }
 
@@ -261,7 +320,7 @@ body.hh-disabled .hh-secondaryhighlight {
     display: flex;
     flex-direction: column;
     pointer-events: auto;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     overflow: hidden;
     font-family: 'Segoe UI', sans-serif;
 }
@@ -303,7 +362,9 @@ body.hh-disabled .hh-secondaryhighlight {
     transition: background 0.2s;
 }
 
-.hh-player-row:hover { background: #40444b; }
+.hh-player-row:hover {
+    background: #40444b;
+}
 
 .hh-player-info {
     display: flex;
@@ -343,48 +404,68 @@ body.hh-disabled .hh-secondaryhighlight {
     font-size: 10px;
 }
 
-.hh-btn-profile { background: #5c2e2e; }
-.hh-btn-kick { background: #f0ad4e; }
-.hh-btn-ban { background: #d9534f; }
+.hh-btn-profile {
+    background: #5c2e2e;
+}
+
+.hh-btn-kick {
+    background: #f0ad4e;
+}
+
+.hh-btn-ban {
+    background: #d9534f;
+}
 
 /* --- 8. TOOLBAR MESSAGE SUBMENU --- */
 #hh-toolbar-msg-submenu {
     position: absolute;
-    top: 100%; 
+    top: 100%;
     left: 0;
-    margin-top: 5px; 
+    margin-top: 5px;
     width: 220px;
-    max-height: 250px; 
-    display: none; 
+    max-height: 250px;
+    display: none;
     flex-direction: column;
-    overflow-y: auto; 
+    overflow-y: auto;
     overflow-x: hidden;
 
     background: #1e2124;
     border: 1px solid #444;
     border-radius: 6px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
     z-index: 10003;
 }
 
 /* Ensure the items don't shrink, forcing the container to scroll */
 .hh-menu-item {
-    flex-shrink: 0; 
+    flex-shrink: 0;
     padding: 10px 12px;
     color: #eee;
     font-size: 12px;
     cursor: pointer;
     border-bottom: 1px solid #333;
 }
-.hh-menu-item:hover { background: #40444b; color: #fff; }
-.hh-menu-item:last-child { border-bottom: none; }
-.hh-menu-item.disabled { color: #777; cursor: default; }
+
+.hh-menu-item:hover {
+    background: #40444b;
+    color: #fff;
+}
+
+.hh-menu-item:last-child {
+    border-bottom: none;
+}
+
+.hh-menu-item.disabled {
+    color: #777;
+    cursor: default;
+}
 
 /* Scrollbar Styling for Submenus */
 #hh-toolbar-msg-submenu::-webkit-scrollbar,
 #hh-player-list-content::-webkit-scrollbar {
     width: 4px;
 }
+
 #hh-toolbar-msg-submenu::-webkit-scrollbar-thumb,
 #hh-player-list-content::-webkit-scrollbar-thumb {
     background: #444;
@@ -404,7 +485,7 @@ body.hh-disabled .hh-secondaryhighlight {
     z-index: 100005;
     display: none;
     flex-direction: column;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
 }
 
 .hh-chat-content {
@@ -440,127 +521,149 @@ body.hh-disabled .hh-secondaryhighlight {
 }
 
 .hh-chat-player-select {
-  background: #181a1d;
-  border: 1px solid #444;
-  color: white;
-  padding: 4px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  margin-right: 10px;
-  max-height: 240px;
-  overflow-y: auto;
+    background: #181a1d;
+    border: 1px solid #444;
+    color: white;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin-right: 10px;
+    max-height: 240px;
+    overflow-y: auto;
 }
 
 .hh-chat-player-filter {
-  background: #181a1d;
-  border: 1px solid #444;
-  color: white;
-  padding: 4px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  width: 90px;
+    background: #181a1d;
+    border: 1px solid #444;
+    color: white;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    width: 90px;
 }
 
 .hh-chat-content,
 .hh-chat-player-select,
 .hh-panel,
 .hh-menu {
-  scrollbar-width: thin;                /* Firefox */
-  scrollbar-color: #555 #14161a;         /* Firefox */
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #555 #14161a; /* Firefox */
 }
 
 .hh-chat-content::-webkit-scrollbar,
 .hh-chat-player-select::-webkit-scrollbar,
 .hh-panel::-webkit-scrollbar,
 .hh-menu::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+    width: 8px;
+    height: 8px;
 }
 
 .hh-chat-content::-webkit-scrollbar-track,
 .hh-chat-player-select::-webkit-scrollbar-track,
 .hh-panel::-webkit-scrollbar-track,
 .hh-menu::-webkit-scrollbar-track {
-  background: #14161a;
-  border-radius: 8px;
+    background: #14161a;
+    border-radius: 8px;
 }
 
 .hh-chat-content::-webkit-scrollbar-thumb,
 .hh-chat-player-select::-webkit-scrollbar-thumb,
 .hh-panel::-webkit-scrollbar-thumb,
 .hh-menu::-webkit-scrollbar-thumb {
-  background: #3f434a;
-  border-radius: 8px;
-  border: 2px solid #14161a;
+    background: #3f434a;
+    border-radius: 8px;
+    border: 2px solid #14161a;
 }
 
 .hh-chat-content::-webkit-scrollbar-thumb:hover,
 .hh-chat-player-select::-webkit-scrollbar-thumb:hover,
 .hh-panel::-webkit-scrollbar-thumb:hover,
 .hh-menu::-webkit-scrollbar-thumb:hover {
-  background: #5a5f69;
+    background: #5a5f69;
 }
-		
+
 .hh-role-force-white {
-  color: #eee;
-  font-weight: 600;
-  text-shadow: 0 0 2px rgba(0,0,0,0.8);
-  background: none !important;
+    color: #eee;
+    font-weight: 600;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+    background: none !important;
 }
 
 /* Ban Queue Container */
 #hh-queue-container {
     position: relative;
     width: 260px;
-    background: rgba(16, 16, 16, 0.95); 
-    color: #ccc; 
-    z-index: 999999; 
-    border: 1px solid #444; 
+    background: rgba(16, 16, 16, 0.95);
+    color: #ccc;
+    z-index: 999999;
+    border: 1px solid #444;
     border-radius: 4px;
-    font-family: 'Segoe UI', sans-serif; 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    display: none; 
-    flex-direction: column; 
+    font-family: 'Segoe UI', sans-serif;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    display: none;
+    flex-direction: column;
     overflow: hidden;
-	margin-top: 8px;
+    margin-top: 8px;
 }
 
 #hh-queue-header {
-    padding: 8px 12px; 
-    background: #222; 
+    padding: 8px 12px;
+    background: #222;
     border-bottom: 1px solid #444;
-    font-weight: bold; 
-    font-size: 13px; 
-    color: #fff; 
-    display: flex; 
-    justify-content: space-between; 
+    font-weight: bold;
+    font-size: 13px;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
     align-items: center;
 }
 
-#hh-queue-count { color: #ff0033; }
-#hh-queue-list { max-height: 300px; overflow-y: auto; padding: 0; }
+#hh-queue-count {
+    color: #ff0033;
+}
+
+#hh-queue-list {
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 0;
+}
 
 /* Ban Queue Items */
 .hh-queue-row {
-    display: flex; 
-    justify-content: space-between; 
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    padding: 8px 12px; 
-    border-bottom: 1px solid #333; 
+    padding: 8px 12px;
+    border-bottom: 1px solid #333;
     font-size: 12px;
 }
 
-.hh-queue-info { display: flex; flex-direction: column; overflow: hidden; }
-.hh-queue-name { color: #fff; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hh-queue-sid { color: #888; font-size: 10px; }
+.hh-queue-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.hh-queue-name {
+    color: #fff;
+    font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hh-queue-sid {
+    color: #888;
+    font-size: 10px;
+}
 
 .hh-queue-remove {
-    color: #ff4444; 
-    cursor: pointer; 
-    font-size: 18px; 
+    color: #ff4444;
+    cursor: pointer;
+    font-size: 18px;
     font-weight: bold;
-    padding: 0 5px; 
-    margin-left: 10px; 
+    padding: 0 5px;
+    margin-left: 10px;
     flex-shrink: 0;
 }
 
@@ -582,9 +685,18 @@ body.hh-disabled .hh-secondaryhighlight {
 
 /* Optional: Pulse animation to show it's "alive" */
 @keyframes hh-pulse {
-    0% { transform: scale(1); opacity: 0.6; }
-    50% { transform: scale(1.3); opacity: 1; }
-    100% { transform: scale(1); opacity: 0.6; }
+    0% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
 }
 
 #hh-heartbeat.pulsing {
