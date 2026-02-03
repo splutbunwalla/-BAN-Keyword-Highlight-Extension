@@ -802,7 +802,7 @@ const scanForKeywords = (text) => {
         }
       }, index * 2000); 
 
-      combinedLogs.push(`${item.name} (${item.sid}) banned for ${item.dur} mins`);
+      combinedLogs.push(`${item.name} (${item.sid}) banned by Server for ${item.dur} mins`);
     });
 
     copyToClipboard(combinedLogs.join("\n"));
