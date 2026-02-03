@@ -17,8 +17,18 @@
     const DING_COOLDOWN = 1500; // ms, prevents spam
     let isMuted = false;
     let didBootstrap = false;
+    let compiledRegex = null;
 
     const getKeywordText = k => typeof k === 'string' ? k : k.text;
+
+    function updateRegex() {
+        const p = KEYWORDS.filter(k => k.enabled !== false).map(getKeywordText);
+        const s = SECONDARYWORDS.filter(k => k.enabled !== false).map(getKeywordText);
+        const allWords = [...p, ...s].sort((a, b) => b.length - a.length);
+        const escape = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+        const wordPattern = allWords.map(escape).join('|');
+        compiledRegex = new RegExp(`(\\b\\d{17}\\b|${ROLE_PATTERN}${wordPattern ? '|' + wordPattern : ''})`, "gi");
+    }
 
     const updateHeartbeat = () => {
         // 1. Check if we are in the correct frame/page
@@ -727,6 +737,16 @@
         const line = text.trim();
         if (!line) return;
 
+        if (seenChatLines.size > 200) {
+            // Clear the oldest entries to keep memory low
+            const firstValue = seenChatLines.values().next().value;
+            seenChatLines.delete(firstValue);
+        }
+
+        if (chatHistory.length > 100) {
+            chatHistory.shift();
+        }
+
         if (seenChatLines.has(line)) return;
         seenChatLines.add(line);
 
@@ -1078,6 +1098,11 @@ function scan() {
 
         const walker = document.createTreeWalker(logRoot, NodeFilter.SHOW_TEXT, {
             acceptNode: (n) => {
+                if (n.parentElement.classList.contains('hh-highlight') ||
+                    n.parentElement.classList.contains('.hh-secondaryhighlight') ||
+                    n.parentElement.classList.contains('hh-idhighlight')) {
+                    return NodeFilter.FILTER_REJECT;
+                }
                 const parent = n.parentElement;
                 if (!parent) return NodeFilter.FILTER_REJECT;
                 const isUI = parent.closest(
@@ -1352,6 +1377,7 @@ function scan() {
                 // If keywords changed, we must re-scan to apply new colors/logic
                 if (changes.keywords || changes.secondarykeywords || changes.enabled) {
                     stripHighlights(); // Clear old ones
+                    updateRegex();
                     if (data.enabled !== false) scan(); // Apply new ones
                 }
 
@@ -1392,6 +1418,8 @@ function scan() {
             createToolbar();
             updateQueueDisplay();
 
+            updateRegex();
+
             const isLogFrame = window.location.href.includes("StreamFile.aspx") ||
                 window.location.href.includes("Proxy.ashx") ||
                 !!document.querySelector('pre, .log-line, #ConsoleOutput');
@@ -1420,7 +1448,8 @@ function scan() {
                     for (const mutation of mutations) {
                         if (mutation.target.closest('#hh-ui-wrapper')) continue;
                         for (const node of mutation.addedNodes) {
-                            const text = node.nodeType === 3 ? node.textContent : node.innerText;
+                            // const text = node.nodeType === 3 ? node.textContent : node.innerText;
+                            const text = node.textContent;
                             if (text) {
                                 scanForKeywords(text);
                                 processChatLog(text);
