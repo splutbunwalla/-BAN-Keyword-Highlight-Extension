@@ -9,13 +9,14 @@
     let isProcessingQueue = false;
     let chatHistory = [];
     const seenChatLines = new Set();
-    const ROLE_WORDS = new Set(['vip', 'admin', 'moderator', 'default']);
-    const ROLE_PATTERN = '\\b(?:vip|admin|moderator|default)\\b';
+    const ROLE_WORDS = new Set(['vip', 'admin', 'moderator', 'default', 'leader']);
+    const ROLE_PATTERN = '\\b(?:vip|admin|moderator|default|leader)\\b';
     let isEnabled = false;
     const ONLINE_TTL = 60_000; // 60 seconds
     let lastDingTime = 0;
     const DING_COOLDOWN = 1500; // ms, prevents spam
     let isMuted = false;
+    let didBootstrap = false;
 
     const getKeywordText = k => typeof k === 'string' ? k : k.text;
 
@@ -63,9 +64,17 @@
 
         if (changed) {
             saveRegistry();
-            if (typeof renderList === 'function') renderList();
+            const panel = document.getElementById('hh-player-panel');
+            if (panel && typeof renderList === 'function') {
+                requestAnimationFrame(() => renderList(
+                    document.getElementById('hh-player-search')?.value || ""
+                ));
+            }
         }
     };
+
+    const getOnlineCount = () =>
+        Object.values(NAME_MAP).filter(p => p.online).length;
 
     const processJoinLeaveFromText = (text) => {
         const logMatch = text.match(/(joined|left).*?(\d+),?\s+(.*?)\s*\(id:\s*(\d{17})\)/i);
@@ -84,6 +93,9 @@
             online: joined,
             lastSeen: joined ? Date.now() : existing.lastSeen || 0
         };
+
+        updateRaceUI(isRacing);
+
     };
 
     const buildChatHistoryFromDOM = () => {
@@ -123,7 +135,7 @@
                 alignItems: 'flex-end',
                 gap: '10px',
                 zIndex: '2147483647',
-                pointerEvents: 'none'
+                pointerEvents: 'auto'
             });
 
             document.body.appendChild(wrapper);
@@ -135,13 +147,16 @@
         const el = document.getElementById('hh-race-status');
         if (!el) return;
 
+        const count = getOnlineCount();
+        const countText = ` (${count}/24)`;
+
         if (active) {
-            el.innerHTML = '🔴 Race In Progress';
+            el.innerHTML = `🔴 Race In Progress${countText}`;
             el.style.background = 'rgba(255, 0, 0, 0.2)';
             el.style.color = '#ff4d4d';
             el.style.border = '1px solid #ff4d4d';
         } else {
-            el.innerHTML = '🏁 No Race';
+            el.innerHTML = `🏁 No Race${countText}`;
             el.style.background = 'rgba(255, 255, 255, 0.1)';
             el.style.color = '#ccc';
             el.style.border = '1px solid #444';
@@ -336,6 +351,7 @@
 
         panel = document.createElement('div');
         panel.id = 'hh-player-panel';
+        panel.style.pointerEvents = 'auto';
         panel.innerHTML = `
     <div class="hh-panel-header">
       <span>Online Players</span>
@@ -564,7 +580,10 @@
         };
 
         document.body.appendChild(el);
-        el.querySelector('#hh-chat-close').onclick = () => el.style.display = 'none';
+        el.querySelector('#hh-chat-close').onclick = () => {
+            el.remove();
+            window.currentViewedId = null;
+        };
         return el;
     }
 
@@ -958,42 +977,97 @@
         }
     });
 
-    function scan() {
+    function bootstrapOnlineFromHistory() {
+        const now = Date.now();
+
+        // Start pessimistic
+        Object.values(NAME_MAP).forEach(p => {
+            p.online = false;
+            p.lastSeen = 0;
+        });
+
+        document.querySelectorAll('tr, div.log-line, pre, span').forEach(el => {
+            const text = (el.innerText || "").trim();
+            if (!text) return;
+
+            // Reuse your *existing* parsers
+            processJoinLeaveFromText(text);
+            processChatLog(text);
+        });
+
+        // Anyone who chatted but never had join logged
+        Object.values(NAME_MAP).forEach(p => {
+            if (p.lastSeen && !p.online) {
+                p.online = true;
+            }
+        });
+
+        saveRegistry();
+    }
+
+function scan() {
         if (!document.body || document.body.classList.contains('hh-disabled')) return;
 
-        pruneOnlineState();
-
         const logRoot = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
+        let dataChanged = false;
+        let tableFoundInThisScan = false;
 
-        // --- PART 1: Update Name Registry (Player IDs/Names) ---
-        // We do this first so the highlighters have the latest 'online' status
-        logRoot.querySelectorAll('tr, div.log-line, span, td').forEach(el => {
-            const txt = (el.innerText || "").trim();
-            if (!txt || el.closest('#hh-ui-wrapper, #hh-player-panel, .hh-action-menu')) return;
+        // --- PART 1: DATA EXTRACTION (Robust Text Parsing) ---
+        // We read the entire log text, normalize spaces, and split by line.
+        // This ensures we catch the table row even if it's split across 10 different spans.
+        const fullText = (logRoot.innerText || "").replace(/[\u00a0\t]/g, ' ');
+        const lines = fullText.split('\n');
 
-            const tableMatch = txt.match(/^(\d+)\s+(.+?)\s+(\d{17})$/);
+        lines.forEach(line => {
+            const txt = line.trim();
+            if (!txt) return;
+
+            const tableMatch = txt.match(/^\s*(\d+)\s+(.+?)\s+(\d{17})\s+(vip|admin|moderator|default|leader)(?:\s+|$)/i);
             const logMatch = txt.match(/(joined|left).*?(\d+),?\s+(.*?)\s*\(id:\s*(\d{17})\)/i);
 
             if (tableMatch) {
-                NAME_MAP[tableMatch[3]] = {name: tableMatch[2].trim(), connId: tableMatch[1], online: true};
-                saveRegistry();
+                tableFoundInThisScan = true;
+                const id = tableMatch[3];
+                const role = tableMatch[4].toLowerCase();
+
+                if (!NAME_MAP[id] || !NAME_MAP[id].online) {
+                    NAME_MAP[id] = {
+                        name: tableMatch[2].trim(),
+                        connId: tableMatch[1],
+                        online: true,
+                        role: role, // Store the role
+                        lastSeen: Date.now()
+                    };
+                    dataChanged = true;
+                } else {
+                    NAME_MAP[id].lastSeen = Date.now();
+                }
             } else if (logMatch) {
                 const id = logMatch[4];
                 const existing = NAME_MAP[id] || {};
                 const joined = logMatch[1].toLowerCase().includes('joined');
 
-                NAME_MAP[id] = {
-                    name: logMatch[3].trim() || existing.name || "Unknown",
-                    connId: logMatch[2] || existing.connId,
-                    online: joined,
-                    lastSeen: joined ? Date.now() : existing.lastSeen || 0
-                };
-
-                saveRegistry();
+                // Only update if status actually changes to avoid spamming saveRegistry
+                if (existing.online !== joined) {
+                    NAME_MAP[id] = {
+                        name: logMatch[3].trim() || existing.name || "Unknown",
+                        connId: logMatch[2] || existing.connId,
+                        online: joined,
+                        lastSeen: joined ? Date.now() : (existing.lastSeen || 0)
+                    };
+                    dataChanged = true;
+                }
             }
         });
 
-        // --- PART 2: Highlighting ---
+        if (dataChanged) {
+            saveRegistry();
+            // Force immediate UI update
+            if (renderList) renderList(document.getElementById('hh-player-search')?.value || "");
+            updateRaceUI(isRacing);
+        }
+
+        // --- PART 2: Highlighting (Standard Logic) ---
         const p = KEYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
         const s = SECONDARYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
         const allWords = [...p, ...s].sort((a, b) => b.length - a.length);
@@ -1006,14 +1080,11 @@
             acceptNode: (n) => {
                 const parent = n.parentElement;
                 if (!parent) return NodeFilter.FILTER_REJECT;
-
-                // Reject if already highlighted or part of protected UI
                 const isUI = parent.closest(
                     ".hh-highlight, .hh-idhighlight, .hh-secondaryhighlight, .hh-role-force-white, " +
                     "#hh-ui-wrapper, #hh-player-panel, .hh-toast, #hh-chat-view, .hh-action-menu, " +
                     "script, style, textarea, input"
                 );
-
                 return isUI ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
             }
         });
@@ -1033,7 +1104,6 @@
 
             while ((match = regex.exec(text)) !== null) {
                 fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
-
                 const span = document.createElement('span');
                 const m = match[0];
                 const lower = m.toLowerCase();
@@ -1050,19 +1120,14 @@
                     span.className = isPrimary ? 'hh-highlight' : 'hh-secondaryhighlight';
                     span.textContent = m;
                 }
-
                 fragment.appendChild(span);
                 lastIndex = regex.lastIndex;
             }
-
             fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
             node.replaceWith(fragment);
         });
 
-        // Update Player List UI if open
-        if (typeof renderList === 'function') {
-            renderList(document.getElementById('hh-player-search')?.value || "");
-        }
+        return tableFoundInThisScan;
     }
 
     const handleMenuClick = (ev, data, sid) => {
@@ -1299,12 +1364,12 @@
     });
 
     // 2. Modified Init to prevent blocking
-    const init = async () => {
+     const init = async () => {
         if (isInitializing) return;
         isInitializing = true;
         try {
             const sync = await chrome.storage.sync.get(null);
-            isEnabled = sync.enabled !== false; // Set this first!
+            isEnabled = sync.enabled !== false;
 
             updateHeartbeat();
             if (!isEnabled) {
@@ -1315,22 +1380,15 @@
                 if (wrapper) wrapper.style.display = 'none';
                 return;
             }
-            // Update globals immediately
+
             KEYWORDS = sync.keywords || [];
             SECONDARYWORDS = sync.secondarykeywords || [];
             MESSAGES = sync.messages || [];
-            isEnabled = sync.enabled !== false;
             isMuted = sync.muteAll !== false;
 
             applyStyles(sync);
             loadRegistry();
-            if (!isEnabled) {
-                if (window.hhObserver) window.hhObserver.disconnect();
-                stripHighlights();
-                return;
-            }
 
-            // UI needs to be created in the Main Page AND Log Frame
             createToolbar();
             updateQueueDisplay();
 
@@ -1339,17 +1397,29 @@
                 !!document.querySelector('pre, .log-line, #ConsoleOutput');
 
             if (isLogFrame) {
-                buildChatHistoryFromDOM();
-                scan();
+                if (!didBootstrap) {
+                    buildChatHistoryFromDOM();
+                    bootstrapOnlineFromHistory();
+                    updateRaceUI(isRacing);
 
+                    const foundTable = scan(); // This now works because scan returns a value
+
+                    if (!foundTable) {
+                        console.log("HH: No table found. Requesting 'users'...");
+                        safeSendMessage({action: "PROXY_COMMAND", cmd: "users"});
+                    }
+                    didBootstrap = true;
+                }
+
+                // Observer Setup
                 const logRoot = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
                 if (window.hhObserver) window.hhObserver.disconnect();
 
                 window.hhObserver = new MutationObserver((mutations) => {
                     let shouldRescan = false;
                     for (const mutation of mutations) {
+                        if (mutation.target.closest('#hh-ui-wrapper')) continue;
                         for (const node of mutation.addedNodes) {
-                            if (node.id === 'hh-ui-wrapper' || (node.classList && node.classList.contains('hh-highlight'))) continue;
                             const text = node.nodeType === 3 ? node.textContent : node.innerText;
                             if (text) {
                                 scanForKeywords(text);
@@ -1360,19 +1430,15 @@
                         }
                     }
                     if (shouldRescan) {
-
                         pruneOnlineState();
                         clearTimeout(scanTimeout);
                         scanTimeout = setTimeout(scan, 250);
-                        const dot = document.getElementById('hh-heartbeat');
-                        if (dot) {
-                            dot.style.transform = "scale(1.5)"; // Tiny "blip" when scan happens
-                            setTimeout(() => dot.style.transform = "scale(1)", 100);
-                        }
                     }
                 });
                 window.hhObserver.observe(logRoot, {childList: true, subtree: true});
             }
+        } catch (e) {
+            console.error("HH Init Error:", e);
         } finally {
             isInitializing = false;
         }
