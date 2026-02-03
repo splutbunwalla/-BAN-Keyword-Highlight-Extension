@@ -20,6 +20,37 @@
 const getKeywordText = k => typeof k === 'string' ? k : k.text;
 const isKeywordDingEnabled = k => typeof k === 'object' && k.ding === true;
 
+const updateHeartbeat = () => {
+  // 1. Check if we are in the correct frame/page
+  const isLogFrame = window.location.href.includes("StreamFile.aspx") || 
+                     window.location.href.includes("Proxy.ashx") ||
+                     document.querySelector('pre, .log-line, #ConsoleOutput');
+  
+  if (!isLogFrame) return;
+
+  let dot = document.getElementById('hh-heartbeat');
+
+  // 2. ALWAYS create the dot if it doesn't exist, even if disabled
+  if (!dot) {
+    dot = document.createElement('div');
+    dot.id = 'hh-heartbeat';
+    dot.classList.add('pulsing');
+    document.body.appendChild(dot);
+    console.log("Heartbeat dot initialized");
+  }
+
+  // 3. Update the visual state based on isEnabled
+  if (isEnabled) {
+    dot.style.background = "#00ff00"; // Green
+    dot.style.boxShadow = "0 0 5px #00ff00";
+    dot.title = "HH Monitor Active";
+  } else {
+    dot.style.background = "#ffcc00"; // Yellow
+    dot.style.boxShadow = "0 0 5px #ffcc00";
+    dot.title = "HH Monitor Disabled (Standby)";
+  }
+};
+
 const pruneOnlineState = () => {
   const now = Date.now();
   let changed = false;
@@ -905,7 +936,7 @@ const scanForKeywords = (text) => {
       }
     }
     if (msg.action === "updateColors") applyStyles(msg);
-    if (msg.action === "toggle" || msg.action === "updateKeywords") init();
+    if (msg.action === "toggle" || msg.action === "updateKeywords") init(); 
 	if (msg.action === "updateKeywordsOnly") {
       KEYWORDS = msg.keywords || KEYWORDS;
       SECONDARYWORDS = msg.secondarykeywords || SECONDARYWORDS;
@@ -1269,6 +1300,7 @@ document.addEventListener('keydown', primeAudio);
       const sync = await chrome.storage.sync.get(null);
       isEnabled = sync.enabled !== false; // Set this first!
 	  
+	  updateHeartbeat();
       if (!isEnabled) {
         document.body.classList.add('hh-disabled');
         if (window.hhObserver) window.hhObserver.disconnect();
@@ -1286,7 +1318,6 @@ document.addEventListener('keydown', primeAudio);
 
       applyStyles(sync);
       loadRegistry();
-
       if (!isEnabled) {
         if (window.hhObserver) window.hhObserver.disconnect();
         stripHighlights();
@@ -1296,7 +1327,7 @@ document.addEventListener('keydown', primeAudio);
       // UI needs to be created in the Main Page AND Log Frame
       createToolbar(); 
       updateQueueDisplay();
-
+	  
       const isLogFrame = window.location.href.includes("StreamFile.aspx") || 
                          window.location.href.includes("Proxy.ashx") ||
                          !!document.querySelector('pre, .log-line, #ConsoleOutput');
@@ -1324,9 +1355,14 @@ document.addEventListener('keydown', primeAudio);
           }
           if (shouldRescan) {
 			  
-			  pruneOnlineState();
+			pruneOnlineState();
             clearTimeout(scanTimeout);
             scanTimeout = setTimeout(scan, 250);
+			const dot = document.getElementById('hh-heartbeat');
+			if (dot) {
+				dot.style.transform = "scale(1.5)"; // Tiny "blip" when scan happens
+				setTimeout(() => dot.style.transform = "scale(1)", 100);
+			}
           }
         });
         window.hhObserver.observe(logRoot, { childList: true, subtree: true });
