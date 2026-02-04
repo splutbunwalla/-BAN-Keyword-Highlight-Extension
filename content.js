@@ -929,33 +929,27 @@
         if (!document.body) return;
         const root = document.documentElement;
         const wrapper = document.getElementById('hh-ui-wrapper');
+		
+		// Primary Colors (Pickr strings already contain alpha)
+        root.style.setProperty('--hh-p-bg1', sync.primaryColorFirst);
+        root.style.setProperty('--hh-p-bg-mid', sync.primaryColorMiddle);
+        root.style.setProperty('--hh-p-bg-end', sync.primaryColorEnd);
+        root.style.setProperty('--hh-p-txt', sync.primaryTextColor);
+        root.style.setProperty('--hh-p-border', sync.primaryBorderColor);
 
-        const hexToRGBA = (hex, alpha) => {
-            const r = parseInt(hex.slice(1, 3), 16);
-            const g = parseInt(hex.slice(3, 5), 16);
-            const b = parseInt(hex.slice(5, 7), 16);
-            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        };
-        // Primary
-        root.style.setProperty('--hh-p-bg1', hexToRGBA(sync.primaryColor || "#a70000", sync.primaryAlpha ?? 1));
-        root.style.setProperty('--hh-p-bg-mid', hexToRGBA(sync.primaryColorMid || "#000000", sync.primaryAlpha ?? 1));
-        root.style.setProperty('--hh-p-bg-end', hexToRGBA(sync.primaryColorEnd || "#ff0000", sync.primaryAlpha ?? 1));
-        root.style.setProperty('--hh-p-txt', sync.primaryTextColor || "#ffffff");
-        root.style.setProperty('--hh-p-border', sync.primaryBorderColor || "#f13333");
+        // Secondary Colors
+        root.style.setProperty('--hh-s-bg1', sync.secondaryColorFirst);
+        root.style.setProperty('--hh-s-bg-mid', sync.secondaryColorMiddle);
+        root.style.setProperty('--hh-s-bg-end', sync.secondaryColorEnd);
+        root.style.setProperty('--hh-s-txt', sync.secondaryTextColor);
+        root.style.setProperty('--hh-s-border', sync.secondaryBorderColor);
 
-        // Secondary
-        root.style.setProperty('--hh-s-bg1', hexToRGBA(sync.secondaryColor || "#a70000", sync.secondaryAlpha ?? 1));
-        root.style.setProperty('--hh-s-bg-mid', hexToRGBA(sync.secondaryColorMid || "#000000", sync.secondaryAlpha ?? 1));
-        root.style.setProperty('--hh-s-bg-end', hexToRGBA(sync.secondaryColorEnd || "#ff0000", sync.secondaryAlpha ?? 1));
-        root.style.setProperty('--hh-s-txt', sync.secondaryTextColor || "#ffffff");
-        root.style.setProperty('--hh-s-border', sync.secondaryBorderColor || "#f13333");
-
-        // SteamID
-        root.style.setProperty('--hh-id-bg1', hexToRGBA(sync.steamidColor || "#ff8c00", sync.steamidAlpha ?? 0.5));
-        root.style.setProperty('--hh-id-bg-mid', hexToRGBA(sync.steamidColorMid || "#ff8c00", sync.steamidAlpha ?? 0.5));
-        root.style.setProperty('--hh-id-bg-end', hexToRGBA(sync.steamidColorEnd || "#ff8c00", sync.steamidAlpha ?? 0.5));
-        root.style.setProperty('--hh-id-txt', sync.steamidTextColor || "#ffffff");
-        root.style.setProperty('--hh-id-border', sync.steamidBorderColor || "#f13333");
+        // SteamID Colors
+        root.style.setProperty('--hh-id-bg1', sync.steamidColorFirst);
+        root.style.setProperty('--hh-id-bg-mid', sync.steamidColorMiddle);
+        root.style.setProperty('--hh-id-bg-end', sync.steamidColorEnd);
+        root.style.setProperty('--hh-id-txt', sync.steamidTextColor);
+		
 
         if (sync.enabled === false) {
             document.body.classList.add('hh-disabled');
@@ -1306,9 +1300,9 @@ function scan() {
     }, true);
 
 	const primeAudio = () => {
-	if (!AudioContextClass || audioCtx) return;
+	if (!AudioContext || audioCtx) return;
 	
-	audioCtx = new AudioContextClass();
+	audioCtx = new AudioContext();
 	
 	// Resume is optional but safe
 	if (audioCtx.state === 'suspended') {

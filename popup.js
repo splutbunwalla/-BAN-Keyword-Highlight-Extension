@@ -11,6 +11,7 @@ let isClosing = false;
 let debounceTimer;
 let KEYWORDS = [];
 let SECONDARYWORDS = [];
+let activePickr = null;
 
 function closePopup() {
     if (isClosing) return;
@@ -23,8 +24,16 @@ function closePopup() {
     }, 140);
 }
 
+
+document.querySelectorAll('.color-swatch').forEach(swatch => {
+    const input = document.getElementById(swatch.dataset.target);
+    if (input?.value) {
+        swatch.style.background = input.value;
+    }
+});
+
 document.addEventListener('click', (e) => {
-    if (!container.contains(e.target)) {
+	if (!container.contains(e.target) && !e.target.closest('.pcr-app')) {
         closePopup();
     }
 });
@@ -36,28 +45,27 @@ document.addEventListener('keydown', (e) => {
 });
 
 function updateContentScript() {
-    const settings = {
-        primaryColor: document.getElementById("primaryColor").value,
-        primaryColorMid: document.getElementById("primaryColorMid").value,
+	const settings = {
+        // Primary
+        primaryColorFirst: document.getElementById("primaryColorFirst").value,
+        primaryColorMiddle: document.getElementById("primaryColorMiddle").value,
         primaryColorEnd: document.getElementById("primaryColorEnd").value,
         primaryTextColor: document.getElementById("primaryTextColor").value,
         primaryBorderColor: document.getElementById("primaryBorderColor").value,
-        primaryAlpha: parseFloat(document.getElementById("primaryAlpha").value),
 
-        secondaryColor: document.getElementById("secondaryColor").value,
-        secondaryColorMid: document.getElementById("secondaryColorMid").value,
+        // Secondary
+        secondaryColorFirst: document.getElementById("secondaryColorFirst").value,
+        secondaryColorMiddle: document.getElementById("secondaryColorMiddle").value,
         secondaryColorEnd: document.getElementById("secondaryColorEnd").value,
         secondaryTextColor: document.getElementById("secondaryTextColor").value,
         secondaryBorderColor: document.getElementById("secondaryBorderColor").value,
-        secondaryAlpha: parseFloat(document.getElementById("secondaryAlpha").value),
 
-        steamidColor: document.getElementById("steamidColor").value,
-        steamidColorMid: document.getElementById("steamidColorMid").value,
+        // SteamID
+        steamidColorFirst: document.getElementById("steamidColorFirst").value,
+        steamidColorMiddle: document.getElementById("steamidColorMiddle").value,
         steamidColorEnd: document.getElementById("steamidColorEnd").value,
         steamidTextColor: document.getElementById("steamidTextColor").value,
-        steamidBorderColor: `#FFFFFF`,
-        // document.getElementById("steamidBorderColor").value,
-        steamidAlpha: parseFloat(document.getElementById("steamidAlpha").value),
+        steamidBorderColor: "#FFFFFF"
     };
 
     chrome.tabs.query({active: true, currentWindow: true}, tabs => {
@@ -66,6 +74,7 @@ function updateContentScript() {
         }
     });
 
+    // Save to storage
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
         chrome.storage.sync.set(settings);
@@ -234,53 +243,71 @@ function addMessage() {
 function loadSettings() {
     chrome.storage.sync.get([
         "keywords", "secondarykeywords", "messages", "enabled", "muteAll",
-        "primaryColor", "primaryColorMid", "primaryColorEnd", "primaryTextColor", "primaryBorderColor", "primaryAlpha",
-        "secondaryColor", "secondaryColorMid", "secondaryColorEnd", "secondaryTextColor", "secondaryBorderColor", "secondaryAlpha",
-        "steamidColor", "steamidColorMid", "steamidColorEnd", "steamidTextColor", "steamidBorderColor", "steamidAlpha"
+        "primaryColorFirst", "primaryColorMiddle", "primaryColorEnd", "primaryTextColor", "primaryBorderColor",
+        "secondaryColorFirst", "secondaryColorMiddle", "secondaryColorEnd", "secondaryTextColor", "secondaryBorderColor",
+        "steamidColorFirst", "steamidColorMiddle", "steamidColorEnd", "steamidTextColor"
     ], (data) => {
-        // Load Lists
+        // 1. Load Lists & Toggles
         KEYWORDS = data.keywords || [];
         SECONDARYWORDS = data.secondarykeywords || [];
-
-        // Use the variables to render
         renderKeywords("primary-list", KEYWORDS, "keywords");
         renderKeywords("secondary-list", SECONDARYWORDS, "secondarykeywords");
-
         renderMessages(data.messages || []);
 
-        // Load Primary Styles (with defaults to match your specific CSS request)
-        document.getElementById("primaryColor").value = data.primaryColor || "#a70000";
-        document.getElementById("primaryColorMid").value = data.primaryColorMid || "#000000";
-        document.getElementById("primaryColorEnd").value = data.primaryColorEnd || "#ff0000";
-        document.getElementById("primaryTextColor").value = data.primaryTextColor || "#ffffff";
-        document.getElementById("primaryBorderColor").value = data.primaryBorderColor || "#f13333";
-        document.getElementById("primaryAlpha").value = data.primaryAlpha !== undefined ? data.primaryAlpha : 1;
-
-        // Load Secondary Styles
-        document.getElementById("secondaryColor").value = data.secondaryColor || "#ffff33";
-        document.getElementById("secondaryColorMid").value = data.secondaryColorMid || "#ffff33";
-        document.getElementById("secondaryColorEnd").value = data.secondaryColorEnd || "#ffff33";
-        document.getElementById("secondaryTextColor").value = data.secondaryTextColor || "#000000";
-        document.getElementById("secondaryBorderColor").value = data.secondaryBorderColor || "transparent";
-        document.getElementById("secondaryAlpha").value = data.secondaryAlpha !== undefined ? data.secondaryAlpha : 0.5;
-
-        // Load SteamID Styles
-        document.getElementById("steamidColor").value = data.steamidColor || "#ff8c00";
-        document.getElementById("steamidColorMid").value = data.steamidColorMid || "#ff8c00";
-        document.getElementById("steamidColorEnd").value = data.steamidColorEnd || "#ff8c00";
-        document.getElementById("steamidTextColor").value = data.steamidTextColor || "#000000";
-        // document.getElementById("steamidBorderColor").value = data.steamidBorderColor || "transparent";
-        document.getElementById("steamidAlpha").value = data.steamidAlpha !== undefined ? data.steamidAlpha : 0.5;
-
-        // Extension Toggle State
         enabled = data.enabled !== false;
-        if (muteAllToggle) {
-            muteAllToggle.checked = !!data.muteAll;
-        }
         toggleCheckbox.checked = enabled;
+        if (muteAllToggle) muteAllToggle.checked = !!data.muteAll;
         container.classList.toggle('disabled', !enabled);
+
+        // 2. Initialize Pickr for each swatch using the data we just loaded
+        document.querySelectorAll('.color-swatch').forEach(swatch => {
+            const targetId = swatch.dataset.target;
+            const input = document.getElementById(targetId);
+            
+            // Get the color from storage, or use a specific fallback
+            const savedColor = data[targetId] || (targetId.includes('TextColor') ? '#ffffff' : '#3399ff');
+            
+            // Update hidden input and swatch visual immediately
+            if (input) input.value = savedColor;
+            swatch.style.backgroundColor = savedColor;
+            const readableName = targetId
+                    .replace(/([A-Z])/g, ' $1')
+                    .replace(/^./, str => str.toUpperCase());
+                swatch.title = readableName;
+            const pickr = Pickr.create({
+                el: swatch,
+                theme: 'nano', // Nano is better for small popups
+                default: savedColor,
+                padding: 8,
+                closeOnScroll: false,
+                useAsButton: true, // Swatch acts as the button
+                components: {
+					preview: true,
+                    opacity: true,
+                    hue: true,
+                    interaction: {
+                        input: true,
+                        save: false, 
+                    }
+                }
+            });
+
+            // Handle live updates
+            pickr.on('change', (color) => {
+                const hexa = color.toHEXA().toString();
+                swatch.style.backgroundColor = hexa;
+                if (input) input.value = hexa;
+                
+                updateContentScript(); 
+            });
+            
+            pickr.on('show', () => {
+                activePickr = pickr;
+            });
+        });
     });
 }
+
 
 muteAllToggle.addEventListener("change", () => {
     const isCurrentlyMuted = muteAllToggle.checked;
@@ -372,8 +399,6 @@ document.getElementById('import-file').addEventListener('change', (e) => {
     e.target.value = '';
 });
 
-loadSettings();
-
 // Attach listeners to ALL inputs for live-updating and debounced saving
 let saveTimeout;
 document.querySelectorAll('input, select, textarea').forEach(input => {
@@ -385,28 +410,42 @@ document.querySelectorAll('input, select, textarea').forEach(input => {
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(() => {
             const settings = {
-                primaryColor: document.getElementById("primaryColor").value,
-                primaryColorMid: document.getElementById("primaryColorMid").value,
+                // Primary
+                primaryColorFirst: document.getElementById("primaryColorFirst").value,
+                primaryColorMiddle: document.getElementById("primaryColorMiddle").value,
                 primaryColorEnd: document.getElementById("primaryColorEnd").value,
                 primaryTextColor: document.getElementById("primaryTextColor").value,
                 primaryBorderColor: document.getElementById("primaryBorderColor").value,
-                primaryAlpha: parseFloat(document.getElementById("primaryAlpha").value),
 
-                secondaryColor: document.getElementById("secondaryColor").value,
-                secondaryColorMid: document.getElementById("secondaryColorMid").value,
+                // Secondary
+                secondaryColorFirst: document.getElementById("secondaryColorFirst").value,
+                secondaryColorMiddle: document.getElementById("secondaryColorMiddle").value,
                 secondaryColorEnd: document.getElementById("secondaryColorEnd").value,
                 secondaryTextColor: document.getElementById("secondaryTextColor").value,
                 secondaryBorderColor: document.getElementById("secondaryBorderColor").value,
-                secondaryAlpha: parseFloat(document.getElementById("secondaryAlpha").value),
 
-                steamidColor: document.getElementById("steamidColor").value,
-                steamidColorMid: document.getElementById("steamidColorMid").value,
+                // SteamID
+                steamidColorFirst: document.getElementById("steamidColorFirst").value,
+                steamidColorMiddle: document.getElementById("steamidColorMiddle").value,
                 steamidColorEnd: document.getElementById("steamidColorEnd").value,
                 steamidTextColor: document.getElementById("steamidTextColor").value,
-                // steamidBorderColor: document.getElementById("steamidBorderColor").value,
-                steamidAlpha: parseFloat(document.getElementById("steamidAlpha").value),
+                steamidBorderColor: "#FFFFFF"
             };
-            chrome.storage.sync.set(settings);
-        }, 100);
+
+            chrome.tabs.query({active: true, currentWindow: true}, tabs => {
+                if (tabs[0]?.id) {
+                    chrome.tabs.sendMessage(tabs[0].id, {action: "update", settings: settings});
+                }
+            });
+
+            // Save to storage
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+
+                chrome.storage.sync.set(settings);
+            }, 100);
+        });
     });
 });
+
+loadSettings();
