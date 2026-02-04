@@ -19,6 +19,9 @@
     let didBootstrap = false;
     let compiledRegex = null;
 
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
     const getKeywordText = k => typeof k === 'string' ? k : k.text;
 
     function updateRegex() {
@@ -771,39 +774,31 @@
             message
         });
     };
-
-    const playDing = () => {
-        if (isMuted) return;
-
-        const now = Date.now();
-        if (now - lastDingTime < DING_COOLDOWN) return;
-        lastDingTime = now;
-
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-
-        const ctx = new AudioContext();
-
-        // IMPORTANT: Resume context in case it's suspended
-        if (ctx.state === 'suspended') {
-            ctx.resume();
-        }
-
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        gain.gain.setValueAtTime(0, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
-    };
+	
+	const playDing = () => {
+	if (isMuted) return;
+	if (!audioCtx || audioCtx.state !== 'running') return;
+	
+	const now = Date.now();
+	if (now - lastDingTime < DING_COOLDOWN) return;
+	lastDingTime = now;
+	
+	const osc = audioCtx.createOscillator();
+	const gain = audioCtx.createGain();
+	
+	osc.type = 'sine';
+	osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+	
+	gain.gain.setValueAtTime(0, audioCtx.currentTime);
+	gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.01);
+	gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+	
+	osc.connect(gain);
+	gain.connect(audioCtx.destination);
+	
+	osc.start();
+	osc.stop(audioCtx.currentTime + 0.5);
+	};
 
 
     const scanForKeywords = (text) => {
@@ -1310,21 +1305,23 @@ function scan() {
         actionMenu.style.visibility = 'visible';
     }, true);
 
-// Prime the AudioContext on the first user interaction
-    const primeAudio = () => {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (AudioContext) {
-            const dummyCtx = new AudioContext();
-            if (dummyCtx.state === 'suspended') {
-                dummyCtx.resume();
-            }
-        }
-        // Remove listener after first interaction to save resources
-        document.removeEventListener('mousedown', primeAudio);
-        document.removeEventListener('keydown', primeAudio);
-    };
-    document.addEventListener('mousedown', primeAudio);
-    document.addEventListener('keydown', primeAudio);
+	const primeAudio = () => {
+	if (!AudioContextClass || audioCtx) return;
+	
+	audioCtx = new AudioContextClass();
+	
+	// Resume is optional but safe
+	if (audioCtx.state === 'suspended') {
+		audioCtx.resume();
+	}
+	
+	document.removeEventListener('pointerdown', primeAudio, true);
+	document.removeEventListener('click', primeAudio, true);
+	};
+	
+	// Capture phase helps extensions
+	document.addEventListener('pointerdown', primeAudio, true);
+	document.addEventListener('click', primeAudio, true);
 
     document.addEventListener('click', (e) => {
         if (actionMenu && !actionMenu.contains(e.target)) actionMenu.style.display = 'none';
