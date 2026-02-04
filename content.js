@@ -24,6 +24,8 @@
 
     const getKeywordText = k => typeof k === 'string' ? k : k.text;
 
+
+
     function updateRegex() {
         const p = KEYWORDS.filter(k => k.enabled !== false).map(getKeywordText);
         const s = SECONDARYWORDS.filter(k => k.enabled !== false).map(getKeywordText);
@@ -34,7 +36,6 @@
     }
 
     const updateHeartbeat = () => {
-        // 1. Check if we are in the correct frame/page
         const isLogFrame = window.location.href.includes("StreamFile.aspx") ||
             window.location.href.includes("Proxy.ashx") ||
             document.querySelector('pre, .log-line, #ConsoleOutput');
@@ -43,16 +44,13 @@
 
         let dot = document.getElementById('hh-heartbeat');
 
-        // 2. ALWAYS create the dot if it doesn't exist, even if disabled
         if (!dot) {
             dot = document.createElement('div');
             dot.id = 'hh-heartbeat';
             dot.classList.add('pulsing');
             document.body.appendChild(dot);
-            console.log("Heartbeat dot initialized");
         }
 
-        // 3. Update the visual state based on isEnabled
         if (isEnabled) {
             dot.style.background = "#00ff00"; // Green
             dot.style.boxShadow = "0 0 5px #00ff00";
@@ -111,26 +109,26 @@
 
     };
 
-    const buildChatHistoryFromDOM = () => {
-        chatHistory = []; // reset so reloads don’t duplicate
-        seenChatLines.clear();
+const buildChatHistoryFromDOM = () => {
+    const logRoot = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
+    const rawText = logRoot.innerText || logRoot.textContent;
+    
+    // Split by timestamp but KEEP the timestamp in the resulting strings
+    // This regex splits at the start of a timestamp without consuming it
+    const entries = rawText.split(/(?=\d{2}:\d{2}:\d{2}\.\d{3}:)/);
 
-        Object.values(NAME_MAP).forEach(p => {
-            p.online = false;
-            p.lastSeen = 0;
-        });
+    console.log(`HH Debug: Bootstrap processing ${entries.length} entries.`);
 
-        document.querySelectorAll('tr, div.log-line, pre, span').forEach(el => {
-            const text = (el.innerText || "").trim();
-            if (!text) return;
+    entries.forEach(entry => {
+        const cleaned = entry.replace(/\u00a0/g, ' ').trim();
+        if (cleaned.toLowerCase().includes("chat:")) {
+            // This now sends the string WITH the timestamp to processChatLog
+            processChatLog(cleaned);
+        }
+    });
 
-            processJoinLeaveFromText(text);
-            processChatLog(text);
-        });
-
-        saveRegistry();
-    };
-
+    console.log(`HH Debug: Bootstrap complete. Total chatHistory: ${chatHistory.length}`);
+};
 
     const getUIWrapper = () => {
         let wrapper = document.getElementById('hh-ui-wrapper');
@@ -734,47 +732,43 @@
             }
         }
     };
-
-
-    const processChatLog = (text) => {
-        const line = text.trim();
-        if (!line) return;
-
-        if (seenChatLines.size > 200) {
-            // Clear the oldest entries to keep memory low
-            const firstValue = seenChatLines.values().next().value;
-            seenChatLines.delete(firstValue);
-        }
-
-        if (chatHistory.length > 100) {
-            chatHistory.shift();
-        }
-
-        if (seenChatLines.has(line)) return;
-        seenChatLines.add(line);
-
-        const chatMatch = line.match(
-            /(\d{2}:\d{2}:\d{2}\.\d{3}):\s*Chat:\s*(.*?)\s*\(id:\s*(\d{17})\):\s*(.*)/i
-        );
-        if (!chatMatch) return;
-
-        const steamId = chatMatch[3];
-        const message = chatMatch[4];
-
-        if (NAME_MAP[steamId]) {
-            NAME_MAP[steamId].online = true;
-            NAME_MAP[steamId].lastSeen = Date.now();
-        }
-
-        chatHistory.push({
-            fullLine: line,
-            timestamp: chatMatch[1],
-            name: chatMatch[2],
-            steamId,
-            message
-        });
-    };
 	
+const processChatLog = (text) => {
+    // 1. Standardize the string (No &nbsp;, trimmed)
+    const line = text.replace(/\u00a0/g, ' ').trim();
+    if (!line || line.length < 10) return;
+
+    // 2. Duplicate Check
+    // If we already saw this exact timestamp + message, stop immediately.
+    if (seenChatLines.has(line)) return;
+    seenChatLines.add(line);
+
+    // 3. Regex (Flexible for both Timestamp and Non-Timestamp lines)
+    const chatMatch = line.match(/(?:(\d{2}:\d{2}:\d{2}\.\d{3}):\s*)?Chat:\s*(.*?)\s*\(id:\s*(\d+)\):\s*(.*)/i);
+    
+    if (chatMatch) {
+        const timestamp = chatMatch[1] || "History";
+        const name = chatMatch[2].trim();
+        const steamId = chatMatch[3].trim();
+        const message = chatMatch[4].trim();
+
+        // 4. Verification Check
+        // If it's a "History" tag, check if we already have this message with a real timestamp
+        // to prevent [History] vs [23:00:00] duplicates
+        if (timestamp === "History") {
+            const isDuplicate = chatHistory.some(h => 
+                h.name === name && h.message === message && h.steamId === steamId
+            );
+            if (isDuplicate) return;
+        }
+
+        chatHistory.push({ timestamp, name, steamId, message });
+
+        if (chatHistory.length > 5000) chatHistory.shift();
+        if (window.currentViewedId === steamId) renderChatLines();
+    }
+};
+
 	const playDing = () => {
 	if (isMuted) return;
 	if (!audioCtx || audioCtx.state !== 'running') return;
@@ -1379,101 +1373,133 @@ function scan() {
             });
         }
     });
+	
+const isLogFrame = () => {
+    return window.location.href.includes("StreamFile.aspx") ||
+           window.location.href.includes("Proxy.ashx") ||
+           !!document.querySelector('pre, .log-line, #ConsoleOutput');
+};
 
-    // 2. Modified Init to prevent blocking
-     const init = async () => {
-        if (isInitializing) return;
-        isInitializing = true;
-        try {
-            const sync = await chrome.storage.sync.get(null);
-            isEnabled = sync.enabled !== false;
+const getLogRoot = () => {
+    const specific = document.querySelector('pre, #ConsoleOutput, .log-container, .log-line');
+    if (specific) return specific;
 
-            updateHeartbeat();
-            if (!isEnabled) {
-                document.body.classList.add('hh-disabled');
-                if (window.hhObserver) window.hhObserver.disconnect();
-                stripHighlights();
-                const wrapper = document.getElementById('hh-ui-wrapper');
-                if (wrapper) wrapper.style.display = 'none';
-                return;
-            }
+    if (isLogFrame()) {
+        return document.body;
+    }
 
-            KEYWORDS = sync.keywords || [];
-            SECONDARYWORDS = sync.secondarykeywords || [];
-            MESSAGES = sync.messages || [];
-            isMuted = sync.muteAll !== false;
+    return null;
+};
 
-            applyStyles(sync);
-            loadRegistry();
+// Improved detection function
+const isUsersCommandOutputVisible = () => {
+    const root = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
+    const text = root.innerText || "";
+    // Check for the header. Using a regex to handle varying whitespace/hidden chars
+    return /player-id,\s*name/i.test(text);
+};
 
-            createToolbar();
-            updateQueueDisplay();
+const init = async () => {
+    if (isInitializing) return;
+    isInitializing = true;
 
-            updateRegex();
+    try {
+        const isLogFrame = window.location.href.includes("StreamFile.aspx") ||
+                           window.location.href.includes("Proxy.ashx") ||
+                           !!document.querySelector('pre, .log-line, #ConsoleOutput');
 
-            const isLogFrame = window.location.href.includes("StreamFile.aspx") ||
-                window.location.href.includes("Proxy.ashx") ||
-                !!document.querySelector('pre, .log-line, #ConsoleOutput');
+        const sync = await chrome.storage.sync.get(null);
+        isEnabled = sync.enabled !== false;
+        
+        // ... (Rest of your settings/UI setup: KEYWORDS, createToolbar, etc.)
+        KEYWORDS = sync.keywords || [];
+        SECONDARYWORDS = sync.secondarykeywords || [];
+        MESSAGES = sync.messages || [];
+        isMuted = sync.muteAll !== false;
+        applyStyles(sync);
+        loadRegistry();
+        createToolbar();
+        updateQueueDisplay();
+        updateRegex();
 
-            if (isLogFrame) {
-                if (!didBootstrap) {
-                    buildChatHistoryFromDOM();
-                    bootstrapOnlineFromHistory();
-                    updateRaceUI(isRacing);
-
-                    const foundTable = scan(); // This now works because scan returns a value
-
-                    if (!foundTable) {
-                        console.log("HH: No table found. Requesting 'users'...");
-                        safeSendMessage({action: "PROXY_COMMAND", cmd: "users"});
-                    }
-                    didBootstrap = true;
-                }
-
-                // Observer Setup
-                const logRoot = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
-                if (window.hhObserver) window.hhObserver.disconnect();
-
-                window.hhObserver = new MutationObserver((mutations) => {
-                    let shouldRescan = false;
-                    for (const mutation of mutations) {
-                        if (mutation.target.closest('#hh-ui-wrapper')) continue;
-                        for (const node of mutation.addedNodes) {
-                            // const text = node.nodeType === 3 ? node.textContent : node.innerText;
-                            const text = node.textContent;
-                            if (text) {
-                                scanForKeywords(text);
-                                processChatLog(text);
-                                checkRaceStatus(text, false);
-                                shouldRescan = true;
-                            }
-                        }
-                    }
-                    if (shouldRescan) {
-                        pruneOnlineState();
-                        clearTimeout(scanTimeout);
-                        scanTimeout = setTimeout(scan, 250);
-                    }
-                });
-                window.hhObserver.observe(logRoot, {childList: true, subtree: true});
-            }
-        } catch (e) {
-            console.error("HH Init Error:", e);
-        } finally {
+        if (!isLogFrame || !isEnabled) {
             isInitializing = false;
-        }
-    };
-
-    const startExtension = () => {
-        // If body isn't ready, wait 200ms and try again
-        if (!document.body) {
-            setTimeout(startExtension, 200);
             return;
         }
 
-        // Body exists, now we can safely init
-        init();
-    };
+        // 1. FAST POLLING for container
+        let logRoot = document.querySelector('pre, #ConsoleOutput, .log-container');
+        let attempts = 0;
+        while (!logRoot && attempts < 40) {
+            await new Promise(r => setTimeout(r, 50)); 
+            logRoot = document.querySelector('pre, #ConsoleOutput, .log-container');
+            attempts++;
+        }
+        if (!logRoot) logRoot = document.body;
 
-    startExtension();
+        // 2. INSTANT START: Observer and Initial Scan
+        // This makes sure new lines and existing lines are highlighted immediately
+        scan(); 
+        if (window.hhObserver) window.hhObserver.disconnect();
+        window.hhObserver = new MutationObserver((mutations) => {
+            let shouldRescan = false;
+            for (const mutation of mutations) {
+                if (mutation.target.closest('#hh-ui-wrapper')) continue;
+                if (mutation.target.classList?.contains('hh-highlight')) continue;
+                for (const node of mutation.addedNodes) {
+                    if (node.textContent) {
+                        scanForKeywords(node.textContent);
+                        processChatLog(node.textContent);
+                        checkRaceStatus(node.textContent, false);
+                        shouldRescan = true;
+                    }
+                }
+            }
+            if (shouldRescan) {
+                clearTimeout(scanTimeout);
+                scanTimeout = setTimeout(scan, 50);
+            }
+        });
+        window.hhObserver.observe(logRoot, {childList: true, subtree: true});
+
+        // 3. INTELLIGENT BOOTSTRAP (The fix for the double >users)
+        if (!didBootstrap) {
+
+            // Wait until the log actually has content (history loading)
+            let historyWait = 0;
+            while (logRoot.innerText.length < 50 && historyWait < 20) {
+                await new Promise(r => setTimeout(r, 100)); // Wait up to 2 seconds for history
+                historyWait++;
+            }
+
+            buildChatHistoryFromDOM();
+            bootstrapOnlineFromHistory();
+            updateRaceUI(isRacing);
+
+            // Final check: Is the table there now?
+            if (!isUsersCommandOutputVisible()) {
+                console.log("HH: No table found in history. Requesting 'users'...");
+                safeSendMessage({action: "PROXY_COMMAND", cmd: "users"});
+            }
+            didBootstrap = true; 
+        }
+
+    } catch (e) {
+        console.error("HH Init Error:", e);
+    } finally {
+        isInitializing = false;
+    }
+};
+const startExtension = () => {
+    if (!isLogFrame()) return; 
+
+    if (!document.body) {
+        setTimeout(startExtension, 200);
+        return;
+    }
+    init();
+};
+
+startExtension();
+
 })();
