@@ -14,6 +14,7 @@
     let isEnabled = false;
     const ONLINE_TTL = 60_000; // 60 seconds
     let lastDingTime = 0;
+    let lastAlarmTime = 0;
     const DING_COOLDOWN = 1500; // ms, prevents spam
     let isMuted = false;
     let didBootstrap = false;
@@ -286,7 +287,7 @@ const buildChatHistoryFromDOM = () => {
         chatView.style.display = 'flex';
     };
 
-    const injectChatPlayerDropdown = (chatView) => {
+	const injectChatPlayerDropdown = (chatView) => {
         if (chatView.querySelector('.hh-chat-player-select')) return;
 
         const headerLeft = chatView.querySelector('.hh-header-left');
@@ -295,14 +296,20 @@ const buildChatHistoryFromDOM = () => {
         select.className = 'hh-chat-player-select';
         const filter = document.createElement('input');
         filter.type = 'text';
-        filter.placeholder = 'filter…';
+        filter.placeholder = 'filter users…';
         filter.className = 'hh-chat-player-filter';
 
         const rebuildOptions = () => {
             const term = filter.value.toLowerCase().trim();
             select.innerHTML = '';
 
-            // Filter and sort
+            // Add ALL Option
+            const allOpt = document.createElement('option');
+            allOpt.value = "ALL";
+            allOpt.textContent = "👥 -- ALL PLAYERS --";
+            select.appendChild(allOpt);
+
+            // Filter and sort players
             const sorted = Object.entries(NAME_MAP)
                 .filter(([, data]) =>
                     !term || (data.name || '').toLowerCase().includes(term)
@@ -319,17 +326,15 @@ const buildChatHistoryFromDOM = () => {
                 select.appendChild(opt);
             });
 
-            // Keep current selection if still visible
+            // Restore selection or default to ALL
             if (window.currentViewedId && select.querySelector(`option[value="${window.currentViewedId}"]`)) {
                 select.value = window.currentViewedId;
-            } else if (sorted.length > 0) {
-                // Auto-select first online player
-                select.value = sorted[0][0];
-                window.currentViewedId = sorted[0][0];
+            } else {
+                select.value = "ALL";
+                window.currentViewedId = "ALL";
             }
 
             renderChatLines();
-            // Scroll to top after rebuild
             const content = chatView.querySelector('.hh-chat-content');
             if (content) content.scrollTop = 0;
         };
@@ -337,22 +342,24 @@ const buildChatHistoryFromDOM = () => {
         rebuildOptions();
 
         select.onchange = () => {
-            const sid = select.value;
-            const data = NAME_MAP[sid];
-            if (data) {
-                window.currentViewedId = sid; // Update global
-                openPlayerChat(sid, data.name);
+            window.currentViewedId = select.value;
+            const title = chatView.querySelector('.hh-panel-title');
+            
+            if(select.value === 'ALL') {
+                 title.innerText = `Chat: Global History`;
+            } else {
+                 const data = NAME_MAP[select.value];
+                 if (data) title.innerText = `Chat: ${data.name}`;
             }
+            renderChatLines();
         };
 
         filter.oninput = () => rebuildOptions();
-        filter.focus();
-
         headerLeft.prepend(filter);
         headerLeft.prepend(select);
     };
 
-    const togglePlayerList = () => {
+	const togglePlayerList = () => {
         let panel = document.getElementById('hh-player-panel');
         if (panel) {
             panel.remove();
@@ -430,9 +437,7 @@ const buildChatHistoryFromDOM = () => {
                         // Ban Action
                         row.querySelector('.hh-btn-ban').onclick = (e) => {
                             e.stopPropagation();
-                            if (confirm(`PERMA BAN ${data.name}?`)) {
-                                safeSendMessage({action: "PROXY_COMMAND", cmd: `ban ${id} ${PERMA_DUR}`});
-                            }
+                            safeSendMessage({action: "PROXY_COMMAND", cmd: `ban ${id}`});
                         };
 
                         content.appendChild(row);
@@ -473,31 +478,54 @@ const buildChatHistoryFromDOM = () => {
         chatView.style.display = 'flex';
     };
 
-// Updated render function
-    const renderChatLines = () => {
+	const renderChatLines = () => {
         const chatView = document.getElementById('hh-chat-view');
         if (!chatView) return;
 
         const content = chatView.querySelector('.hh-chat-content');
         if (!content) return;
 
-        content.textContent = ''; // Clear previous
+        content.textContent = ''; 
 
         const select = chatView.querySelector('.hh-chat-player-select');
-        const sid = select ? select.value : window.currentViewedId; // Always use dropdown
+        const sid = select ? select.value : (window.currentViewedId || 'ALL'); 
+        
         const searchInput = chatView.querySelector('.hh-chat-search');
         const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
+        // Get Filter Values
+        const startTime = chatView.querySelector('#hh-chat-start')?.value.trim();
+        const endTime = chatView.querySelector('#hh-chat-end')?.value.trim();
+        const hideServer = chatView.querySelector('#hh-hide-server')?.checked;
+
         chatHistory
-            .filter(m =>
-                m.steamId === sid &&
-                (!term || (m.message || '').toLowerCase().includes(term))
-            )
+            .filter(m => {
+                // 1. Player Filter
+                if (sid !== 'ALL' && m.steamId !== sid) return false;
+
+                // 2. Server Filter
+                if (hideServer && m.steamId === "0") return false;
+
+                // 3. Text Search
+                if (term && (!m.message || !m.message.toLowerCase().includes(term))) return false;
+
+                // 4. Start Time Filter
+                if (startTime) {
+                    if (m.timestamp === "History") return false; // History has no specific time
+                    if (m.timestamp < startTime) return false;
+                }
+
+                // 5. End Time Filter
+                if (endTime) {
+                    if (m.timestamp !== "History" && m.timestamp > endTime) return false;
+                }
+
+                return true;
+            })
             .forEach(m => {
-                content.appendChild(buildChatLine(m)); // Make sure buildChatLine is defined
+                content.appendChild(buildChatLine(m));
             });
     };
-
 
     function buildChatLine(m) {
         const line = document.createElement('div');
@@ -506,21 +534,35 @@ const buildChatHistoryFromDOM = () => {
         return line;
     }
 
-    const getVisibleChatText = () => {
+	const getVisibleChatText = () => {
         const chatView = document.getElementById('hh-chat-view');
         if (!chatView) return '';
 
         const select = chatView.querySelector('.hh-chat-player-select');
-        const sid = select ? select.value : window.currentViewedId;
+        const sid = select ? select.value : (window.currentViewedId || 'ALL');
 
         const searchInput = chatView.querySelector('.hh-chat-search');
         const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        
+        const startTime = chatView.querySelector('#hh-chat-start')?.value.trim();
+        const endTime = chatView.querySelector('#hh-chat-end')?.value.trim();
+        const hideServer = chatView.querySelector('#hh-hide-server')?.checked;
 
         return chatHistory
-            .filter(m =>
-                m.steamId === sid &&                     // <-- use 'steamId', not 'sid'
-                (!term || (m.message || '').toLowerCase().includes(term))
-            )
+            .filter(m => {
+                if (sid !== 'ALL' && m.steamId !== sid) return false;
+                if (hideServer && m.steamId === "0") return false;
+                if (term && (!m.message || !m.message.toLowerCase().includes(term))) return false;
+                
+                if (startTime) {
+                    if (m.timestamp === "History") return false;
+                    if (m.timestamp < startTime) return false;
+                }
+                if (endTime) {
+                    if (m.timestamp !== "History" && m.timestamp > endTime) return false;
+                }
+                return true;
+            })
             .map(m => `[${m.timestamp}] ${m.name}: ${m.message}`)
             .join('\n');
     };
@@ -540,7 +582,7 @@ const buildChatHistoryFromDOM = () => {
         URL.revokeObjectURL(url);
     };
 
-    function createChatView() {
+	function createChatView() {
         const el = document.createElement('div');
         el.id = 'hh-chat-view';
         el.innerHTML = `
@@ -553,22 +595,38 @@ const buildChatHistoryFromDOM = () => {
                 <span id="hh-chat-close" style="cursor:pointer;color:#ff4444;font-weight:bold;">✖</span>
             </div>
         </div>
+        
+        <div class="hh-chat-filter-row">
+            <input type="text" id="hh-chat-start" class="hh-chat-time-input" placeholder="Start (HH:MM:SS)">
+            <input type="text" id="hh-chat-end" class="hh-chat-time-input" placeholder="End (HH:MM:SS)">
+            
+            <label class="hh-chat-checkbox-label" title="Hide messages from Server (ID: 0)">
+                <input type="checkbox" id="hh-hide-server" checked> 
+                Hide Server
+            </label>
+        </div>
+        
         <div class="hh-chat-content"></div>
         <div class="hh-chat-footer">
-			<button id="hh-export-chat" class="hh-tool-btn info">Export</button>
+            <button id="hh-export-chat" class="hh-tool-btn info">Export</button>
             <button id="hh-copy-chat" class="hh-tool-btn info">Copy Visible</button>
         </div>
     `;
 
-        // Search listener
+        // Event Listeners
         el.querySelector('.hh-chat-search').oninput = renderChatLines;
-        // Add copy logic
+        el.querySelector('#hh-chat-start').oninput = renderChatLines;
+        el.querySelector('#hh-chat-end').oninput = renderChatLines;
+        el.querySelector('#hh-hide-server').onchange = renderChatLines;
+
+        // Copy Visible
         el.querySelector('#hh-copy-chat').onclick = () => {
             const content = el.querySelector('.hh-chat-content').innerText;
             navigator.clipboard.writeText(content);
             showToast("Copied filtered logs!");
         };
 
+        // Export
         el.querySelector('#hh-export-chat').onclick = () => {
             const text = getVisibleChatText();
             if (!text) {
@@ -576,14 +634,9 @@ const buildChatHistoryFromDOM = () => {
                 return;
             }
 
-            const sid = window.currentViewedId;
-            const name = (NAME_MAP[sid]?.name || 'Unknown')
-                .replace(/[^\w\d_-]+/g, '_'); // filename-safe
-
-            const ts = new Date().toISOString()
-                .replace(/[:T]/g, '-')
-                .split('.')[0];
-
+            const sid = window.currentViewedId || "ALL";
+            const name = (NAME_MAP[sid]?.name || 'Global_Chat').replace(/[^\w\d_-]+/g, '_');
+            const ts = new Date().toISOString().replace(/[:T]/g, '-').split('.')[0];
             const filename = `chat_${name}_${ts}.txt`;
 
             downloadTextFile(text, filename);
@@ -794,6 +847,41 @@ const processChatLog = (text) => {
 	osc.stop(audioCtx.currentTime + 0.5);
 	};
 
+	const playAlarm = () => {
+		if (isMuted) return;
+		if (!audioCtx || audioCtx.state !== 'running') return;
+	
+		const now = Date.now();
+		if (now - lastAlarmTime < DING_COOLDOWN) return;
+		
+		lastAlarmTime = now;
+		// Create two oscillators for a "thick" dissonant sound
+		const osc1 = audioCtx.createOscillator();
+		const osc2 = audioCtx.createOscillator();
+		
+		// 440Hz and 445Hz create a jarring interference pattern
+		osc1.frequency.setValueAtTime(440, audioCtx.currentTime);
+		osc2.frequency.setValueAtTime(445, audioCtx.currentTime);
+		
+		// Use 'sawtooth' or 'square' for a harsher, more "alarm-like" buzz
+		osc1.type = 'sawtooth';
+		osc2.type = 'sawtooth';
+		
+		const gain = audioCtx.createGain();
+		gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+		
+		// Connect both to the same gain node
+		osc1.connect(gain);
+		osc2.connect(gain);
+		gain.connect(audioCtx.destination);
+		
+		osc1.start();
+		osc2.start();
+		// Stop after a short burst
+		osc1.stop(audioCtx.currentTime + 0.3);
+		osc2.stop(audioCtx.currentTime + 0.3);
+	};
+
 
     const scanForKeywords = (text) => {
         const normalize = s => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
@@ -802,10 +890,11 @@ const processChatLog = (text) => {
         const dingKeywords = KEYWORDS.filter(k => k.enabled !== false && k.ding === true);
         const dingSecondWords = SECONDARYWORDS.filter(k2 => k2.enabled !== false && k2.ding === true);
 
-        if (
-            dingKeywords.some(k => normMsg.includes(normalize(getKeywordText(k)))) ||
-            dingSecondWords.some(k2 => normMsg.includes(normalize(getKeywordText(k2))))
-        ) {
+        if (dingKeywords.some(k => normMsg.includes(normalize(getKeywordText(k))))) {
+			playAlarm();
+		}
+		
+        if (dingSecondWords.some(k2 => normMsg.includes(normalize(getKeywordText(k2))))) {
             playDing();
         }
     };
@@ -1437,6 +1526,7 @@ const init = async () => {
         }
         if (!logRoot) logRoot = document.body;
 
+        updateHeartbeat();
         // 2. INSTANT START: Observer and Initial Scan
         // This makes sure new lines and existing lines are highlighted immediately
         scan(); 
