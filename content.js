@@ -196,6 +196,7 @@ const buildChatHistoryFromDOM = () => {
 
         // Standard Tools
         const tools = [
+            {label: 'Perma Ban ID', type: 'info', icon: '🔨', action: 'perma', desc: 'Permanent ban for id'},
             {label: 'Chat', type: 'info', icon: '💬', action: 'openChat', desc: 'View player chat logs'},
             {label: 'Messages', type: 'info', icon: '💬', id: 'hh-msg-trigger', desc: 'Send global announcements'},
             {label: 'Players', type: 'info', icon: '📋', action: 'togglePlayers', desc: 'Show/hide online player list'},
@@ -232,6 +233,20 @@ const buildChatHistoryFromDOM = () => {
                     }
                 } else if (tool.action === 'openChat') {
                     openChatSelector();
+				} else if (tool.action === 'perma') {
+					sid = prompt("Enter SteamId to ban:");
+					if (!sid || isNaN(sid)) return;
+					dur = PERMA_DUR;
+					// Chances are not online as will be a perma of an id from a different server
+					if (isRacing) { 
+						banQueue.push({sid, dur});
+						updateQueueDisplay();
+						showToast(`Queued Ban: ${sid} (Offline)`);
+					} else {
+						const cmd = (dur === PERMA_DUR) ? `ban ${sid}` : `ban ${sid},${dur}`;
+						safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
+						showToast(`Banned: ${sid}`);
+					}
                 } else {
                     // Standard commands (users, etc.)
                     safeSendMessage({action: "PROXY_COMMAND", cmd: tool.cmd});
@@ -1463,21 +1478,60 @@ function scan() {
         }
     });
 	
+	const bootstrapRaceStatusFromHistory = () => {
+        const logRoot = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
+        const rawText = logRoot.innerText || logRoot.textContent || "";
+        
+        // Split by timestamp to analyze line by line chronologically
+        const entries = rawText.split(/(?=\d{2}:\d{2}:\d{2}\.\d{3}:)/);
+        
+        let lastRaceEvent = null; // Track the most recent status found
+        let lastTrackFound = "No Track Detected";
+
+        entries.forEach(entry => {
+            const line = entry.replace(/\u00a0/g, ' ').trim();
+            const lowerLine = line.toLowerCase();
+
+            // 1. Check for Race Status Events
+            if (lowerLine.includes("race started")) {
+                lastRaceEvent = "STARTED";
+            } 
+            else if (lowerLine.includes("race finished") || lowerLine.includes("race abandoned")) {
+                lastRaceEvent = "STOPPED";
+            }
+
+            // 2. Check for Track/Level Loading
+            if (lowerLine.includes("loading level:")) {
+                const match = line.match(/Loading\s+level:\s*([^(\n\r]+)/i);
+                if (match && match[1]) {
+                    lastTrackFound = match[1].trim();
+                }
+            }
+        });
+
+        // Apply the results of the scan
+        if (lastRaceEvent === "STARTED") {
+            isRacing = true;
+            safeSendMessage({action: "SET_RACE_MODE", value: true});
+            console.log("HH Bootstrap: Detected Race IN PROGRESS");
+        } else {
+            isRacing = false;
+            safeSendMessage({action: "SET_RACE_MODE", value: false});
+            console.log("HH Bootstrap: Detected No Active Race");
+        }
+
+        // Update the UI with the last track we found in history
+        const trackEl = document.getElementById('hh-track-name');
+        if (trackEl) trackEl.textContent = lastTrackFound;
+        
+        // Sync the visual UI state (the red/green bar)
+        updateRaceUI(isRacing);
+    };
+	
 const isLogFrame = () => {
     return window.location.href.includes("StreamFile.aspx") ||
            window.location.href.includes("Proxy.ashx") ||
            !!document.querySelector('pre, .log-line, #ConsoleOutput');
-};
-
-const getLogRoot = () => {
-    const specific = document.querySelector('pre, #ConsoleOutput, .log-container, .log-line');
-    if (specific) return specific;
-
-    if (isLogFrame()) {
-        return document.body;
-    }
-
-    return null;
 };
 
 // Improved detection function
@@ -1564,6 +1618,7 @@ const init = async () => {
 
             buildChatHistoryFromDOM();
             bootstrapOnlineFromHistory();
+			bootstrapRaceStatusFromHistory();
             updateRaceUI(isRacing);
 
             // Final check: Is the table there now?
