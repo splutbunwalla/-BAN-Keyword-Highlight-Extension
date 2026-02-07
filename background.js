@@ -27,7 +27,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             action: "EXECUTE_COMMAND",
             cmd: request.cmd,
             isRacing: currentState.raceMode,
-            isProcessingQueue: currentState.queueMode
+            isProcessingQueue: currentState.queueMode,
+		    autoSubmit: request.autoSubmit 
+        
         });
     }
 

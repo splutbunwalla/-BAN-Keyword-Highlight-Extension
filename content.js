@@ -243,8 +243,12 @@ const buildChatHistoryFromDOM = () => {
 						updateQueueDisplay();
 						showToast(`Queued Ban: ${sid} (Offline)`);
 					} else {
-						const cmd = (dur === PERMA_DUR) ? `ban ${sid}` : `ban ${sid},${dur}`;
-						safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
+						const cmd = `ban ${sid}`;
+						safeSendMessage({	
+							action: "PROXY_COMMAND", 
+							cmd: cmd, 
+							autoSubmit: true 
+						});
 						showToast(`Banned: ${sid}`);
 					}
                 } else {
@@ -1066,7 +1070,9 @@ const processChatLog = (text) => {
             if (msg.cmd.startsWith('ban') && msg.isProcessingQueue) shouldAutoSubmit = true;
             if (msg.cmd.startsWith('message')) shouldAutoSubmit = true;
             if (msg.cmd.startsWith('restart')) shouldAutoSubmit = true;
-            if (msg.cmd.startsWith('users')) shouldAutoSubmit = true;
+            if (msg.cmd.startsWith('users')) shouldAutoSubmit = true; 
+			
+			if (msg.autoSubmit) shouldAutoSubmit = true;
 
             const input = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand");
             if (input) {
