@@ -1351,6 +1351,7 @@ function scan() {
       <div class="hh-menu-row" data-type="parent" id="hh-role-row">👤 Role
          <div class="hh-submenu" id="hh-role-submenu">
              <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="">❔ Check Status</div>
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="default">Default</div>
              <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="vip">⭐ VIP</div>
              <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="moderator">🛡️ Moderator</div>
              <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="admin">👑 Admin</div>
