@@ -989,20 +989,19 @@ const processChatLog = (text) => {
 
         banQueue.forEach((item, index) => {
             setTimeout(() => {
-                // --- CHANGED: Switch command based on type ---
                 let cmd;
                 if (item.type === 'role') {
                     cmd = `role ${item.sid}`;
                     if (item.role) cmd += `,${item.role}`;
                     combinedLogs.push(`${item.name} (${item.sid}) role set to ${item.role || 'Check'} by Server`);
+					console.log(combinedLogs);
                 } else {
                     // Default to Ban
                     cmd = (item.dur === PERMA_DUR) ? `ban ${item.sid}` : `ban ${item.sid},${item.dur}`;
                     combinedLogs.push(`${item.name} (${item.sid}) banned by Server for ${item.dur} mins`);
                 }
-                // ---------------------------------------------
                 
-                safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
+                safeSendMessage({action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true});
 
                 if (index === banQueue.length - 1) {
                     setTimeout(() => {
