@@ -196,7 +196,7 @@ const buildChatHistoryFromDOM = () => {
 
         // Standard Tools
         const tools = [
-            {label: 'Perma Ban ID', type: 'info', icon: '🔨', action: 'perma', desc: 'Permanent ban for id'},
+			{label: 'SID Actions', type: 'info', icon: '🛠️', id: 'hh-sid-trigger', desc: 'Role and Ban actions by SteamID'},
             {label: 'Chat', type: 'info', icon: '💬', action: 'openChat', desc: 'View player chat logs'},
             {label: 'Messages', type: 'info', icon: '💬', id: 'hh-msg-trigger', desc: 'Send global announcements'},
             {label: 'Players', type: 'info', icon: '📋', action: 'togglePlayers', desc: 'Show/hide online player list'},
@@ -211,11 +211,19 @@ const buildChatHistoryFromDOM = () => {
             btn.title = tool.desc;
 
             btn.onclick = (e) => {
-                if (tool.id === 'hh-msg-trigger') {
-                    e.stopPropagation();
-                    const menu = document.getElementById('hh-toolbar-msg-submenu');
-                    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-                } else if (tool.action === 'togglePlayers') {
+				if (tool.id === 'hh-sid-trigger') {
+					e.stopPropagation();
+					const menu = document.getElementById('hh-toolbar-sid-submenu');
+					// Close other menus
+					document.getElementById('hh-toolbar-msg-submenu').style.display = 'none';
+					menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+				} else if (tool.id === 'hh-msg-trigger') {
+					e.stopPropagation();
+					const menu = document.getElementById('hh-toolbar-msg-submenu');
+					// Close other menus
+					document.getElementById('hh-toolbar-sid-submenu').style.display = 'none';
+					menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+				} else if (tool.action === 'togglePlayers') {
                     togglePlayerList();
                 } else if (tool.cmd === 'restart') {
                     if (!restartClickTimer) {
@@ -277,11 +285,62 @@ const buildChatHistoryFromDOM = () => {
         msgSubmenu.style.display = 'none';
 
         toolbar.appendChild(msgSubmenu);
+		
+		// Inside createToolbar, after msgSubmenu creation...
+
+		const sidSubmenu = document.createElement('div');
+		sidSubmenu.id = 'hh-toolbar-sid-submenu';
+		sidSubmenu.className = 'hh-action-menu';
+		sidSubmenu.style.display = 'none';
+		sidSubmenu.style.top = '100%';
+		sidSubmenu.style.bottom = 'auto';
+		
+		const sidActions = [
+			{ label: '🔨 Permanent Ban', type: 'ban', dur: PERMA_DUR },
+			{ label: '👤 Set Default', type: 'role', role: 'default' },
+			{ label: '⭐ Set VIP', type: 'role', role: 'vip' },
+			{ label: '🛡️ Set Moderator', type: 'role', role: 'moderator' },
+			{ label: '👑 Set Admin', type: 'role', role: 'admin' }
+		];
+		
+		sidActions.forEach(act => {
+			const item = document.createElement('div');
+			item.className = 'hh-menu-item';
+			item.textContent = act.label;
+			item.onclick = (e) => {
+				e.stopPropagation();
+				const sid = prompt(`Enter SteamID for ${act.label}:`);
+				if (!sid || isNaN(sid) || sid.length !== 17) return;
+		
+				if (isRacing) {
+					outmsg = `Queued: ${sid}`;
+					if (act.type === 'role') {
+						banQueue.push({ type: 'role', sid, name: "Manual Entry", role: act.role });
+						outmsg += ` ${act.role}`;
+					} else {
+						banQueue.push({ type: 'ban', sid, name: "Manual Entry", dur: act.dur });
+						outmsg += ` banned`;
+					}
+					updateQueueDisplay();
+					showToast(outmsg);
+				} else {
+					let cmd = act.type === 'role' ? `role ${sid}${act.role ? ',' + act.role : ''}` : `ban ${sid}`;
+					safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true });
+					showToast(`Sent: ${act.label}`);
+				}
+				sidSubmenu.style.display = 'none';
+			};
+			sidSubmenu.appendChild(item);
+		});
+		
+		toolbar.appendChild(sidSubmenu); // Add to toolbar
+		
 
         wrapper.prepend(toolbar);
 
         document.addEventListener('click', () => {
             msgSubmenu.style.display = 'none';
+			sidSubmenu.style.display = 'none';
         });
 
         updateToolbarMessages(MESSAGES, msgSubmenu);
@@ -704,10 +763,8 @@ const buildChatHistoryFromDOM = () => {
         });
     };
 
-    // --- UI: QUEUE DISPLAY ---
-// --- UI: QUEUE DISPLAY ---
-    const updateQueueDisplay = () => {
-        // Ensure we only draw the queue in the same frame as the toolbar
+	// --- UI: QUEUE DISPLAY ---
+	const updateQueueDisplay = () => {
         const isLogArea = window.location.href.includes("StreamFile") ||
             window.location.href.includes("Proxy.ashx") ||
             document.getElementById('ConsoleOutput');
@@ -722,10 +779,10 @@ const buildChatHistoryFromDOM = () => {
             container = document.createElement('div');
             container.id = 'hh-queue-container';
             container.innerHTML = `
-        <div id="hh-queue-header"><span>Ban Queue</span><span id="hh-queue-count">0</span></div>
+        <div id="hh-queue-header"><span>Action Queue</span><span id="hh-queue-count">0</span></div>
         <div id="hh-queue-list"></div>
       `;
-            wrapper.appendChild(container); // Queue goes below toolbar
+            wrapper.appendChild(container);
         }
 
         if (banQueue.length === 0) {
@@ -734,8 +791,6 @@ const buildChatHistoryFromDOM = () => {
         }
 
         container.style.display = 'flex';
-
-        // Use the container to find sub-elements to avoid null errors
         const countEl = container.querySelector('#hh-queue-count');
         const listEl = container.querySelector('#hh-queue-list');
 
@@ -745,15 +800,20 @@ const buildChatHistoryFromDOM = () => {
             banQueue.forEach((item, index) => {
                 const row = document.createElement('div');
                 row.className = 'hh-queue-row';
-                
-                // Logic to display "Perma" instead of the long ID string
-                const displayDur = (item.dur === PERMA_DUR) ? "Perma" : `${item.dur}m`;
+
+                // --- NEW: Generate label for same-line display ---
+                let extraLabel = "";
+                if (item.type === 'role') {
+                    extraLabel = `<span style="margin-left:8px; color:#00ffff; font-weight:bold;">[Role: ${item.role || 'Check'}]</span>`;
+                } else {
+                    const d = (item.dur === PERMA_DUR) ? "Perma" : `${item.dur}m`;
+                    extraLabel = `<span style="margin-left:8px; color:#ffbc00; font-weight:bold;">[Ban: ${d}]</span>`;
+                }
 
                 row.innerHTML = `
           <div class="hh-queue-info">
-            <span class="hh-queue-name">${item.name}</span>
-            <span class="hh-queue-sid">${item.sid}</span>
-            <span class="hh-queue-dur" style="margin-left: 8px; color: #ffbc00; font-weight: bold;">[${displayDur}]</span>
+            <span class="hh-queue-name" style="display:block; font-size:0.9em; opacity:0.8;">${item.name}</span>
+            <span class="hh-queue-sid" style="display:flex; align-items:center;">${item.sid} ${extraLabel}</span>
           </div>
           <span class="hh-queue-remove">&times;</span>
         `;
@@ -766,10 +826,9 @@ const buildChatHistoryFromDOM = () => {
             });
         }
 
-        if (!document.getElementById('hh-queue-container')) {
-            wrapper.appendChild(container);
-        }
+        if (!document.getElementById('hh-queue-container')) wrapper.appendChild(container);
     };
+
     const safeSendMessage = (msg) => {
         try {
             if (chrome?.runtime?.id) {
@@ -923,14 +982,26 @@ const processChatLog = (text) => {
         }
     };
 
-    const processBanQueue = () => {
+	const processBanQueue = () => {
         if (banQueue.length === 0) return;
         safeSendMessage({action: "SET_QUEUE_MODE", value: true});
         let combinedLogs = [];
 
         banQueue.forEach((item, index) => {
             setTimeout(() => {
-                const cmd = (item.dur === PERMA_DUR) ? `ban ${item.sid}` : `ban ${item.sid},${item.dur}`;
+                // --- CHANGED: Switch command based on type ---
+                let cmd;
+                if (item.type === 'role') {
+                    cmd = `role ${item.sid}`;
+                    if (item.role) cmd += `,${item.role}`;
+                    combinedLogs.push(`${item.name} (${item.sid}) role set to ${item.role || 'Check'} by Server`);
+                } else {
+                    // Default to Ban
+                    cmd = (item.dur === PERMA_DUR) ? `ban ${item.sid}` : `ban ${item.sid},${item.dur}`;
+                    combinedLogs.push(`${item.name} (${item.sid}) banned by Server for ${item.dur} mins`);
+                }
+                // ---------------------------------------------
+                
                 safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
 
                 if (index === banQueue.length - 1) {
@@ -939,12 +1010,10 @@ const processChatLog = (text) => {
                     }, 1000);
                 }
             }, index * 2000);
-
-            combinedLogs.push(`${item.name} (${item.sid}) banned by Server for ${item.dur} mins`);
         });
 
         copyToClipboard(combinedLogs.join("\n"));
-        showToast(`Processing ${banQueue.length} queued bans...`);
+        showToast(`Processing ${banQueue.length} queued actions...`);
         banQueue = [];
         updateQueueDisplay();
     };
@@ -1269,13 +1338,21 @@ function scan() {
             safeSendMessage({action: "PROXY_COMMAND", cmd: `kick ${conn}`});
         } else if (type === 'unban') {
             safeSendMessage({action: "PROXY_COMMAND", cmd: `unban ${sid}`});
-        } else if (type === 'role') {
+		} else if (type === 'role') {
             const roleArg = item.getAttribute('data-role');
-            let cmd = `role ${sid}`;
-            if (roleArg) cmd += `,${roleArg}`;
-            safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
-            showToast(roleArg ? `Setting Role: ${roleArg}` : `Checking Role Status`);
-        } else if (type === 'ban') {
+            
+            // --- CHANGED: Check isRacing to Queue ---
+            if (isRacing && roleArg) {
+                banQueue.push({ type: 'role', sid, name: currentData.name, role: roleArg });
+                updateQueueDisplay();
+                showToast(`Queued Role: (${sid}) ${roleArg}`);
+            } else {
+                let cmd = `role ${sid}`;
+                if (roleArg) cmd += `,${roleArg}`;
+                safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
+                showToast(roleArg ? `Setting Role: ${sid} ${roleArg}` : `Checking Role Status`);
+            }
+		} else if (type === 'ban') {
             if (dur === "custom") {
                 dur = prompt("Enter ban duration in minutes:");
                 if (!dur || isNaN(dur)) return;
