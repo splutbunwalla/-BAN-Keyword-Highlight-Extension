@@ -7,8 +7,8 @@
     "clipboardWrite"
   ],
   "host_permissions": [
-    "https://gamepanel.hosthavoc.com/*",
-    "https://*.dyn.tcadmin.net:8881/*"
+  "https://gamepanel.hosthavoc.com/Aspx/Interface/*",
+  "https://*.dyn.tcadmin.net:8881/Monitor/Public/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -31,15 +31,12 @@
   "content_scripts": [
     {
       "matches": [
-        "https://gamepanel.hosthavoc.com/*",
-        "https://*.dyn.tcadmin.net:8881/*"
+        "https://gamepanel.hosthavoc.com/Aspx/Interface/GameHosting/ServiceWebConsoleInput.aspx*",
+        "https://*.dyn.tcadmin.net:8881/Monitor/Public/FileSystem/StreamFile.aspx*",
+        "https://gamepanel.hosthavoc.com/Aspx/Interface/Base/Proxy.ashx/Request-*"
       ],
-      "js": [
-        "content.js"
-      ],
-      "css": [
-        "content.css"
-      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
       "all_frames": true,
       "run_at": "document_start"
     }
