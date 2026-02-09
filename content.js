@@ -705,6 +705,7 @@ const buildChatHistoryFromDOM = () => {
     };
 
     // --- UI: QUEUE DISPLAY ---
+// --- UI: QUEUE DISPLAY ---
     const updateQueueDisplay = () => {
         // Ensure we only draw the queue in the same frame as the toolbar
         const isLogArea = window.location.href.includes("StreamFile") ||
@@ -744,10 +745,15 @@ const buildChatHistoryFromDOM = () => {
             banQueue.forEach((item, index) => {
                 const row = document.createElement('div');
                 row.className = 'hh-queue-row';
+                
+                // Logic to display "Perma" instead of the long ID string
+                const displayDur = (item.dur === PERMA_DUR) ? "Perma" : `${item.dur}m`;
+
                 row.innerHTML = `
           <div class="hh-queue-info">
             <span class="hh-queue-name">${item.name}</span>
             <span class="hh-queue-sid">${item.sid}</span>
+            <span class="hh-queue-dur" style="margin-left: 8px; color: #ffbc00; font-weight: bold;">[${displayDur}]</span>
           </div>
           <span class="hh-queue-remove">&times;</span>
         `;
@@ -764,7 +770,6 @@ const buildChatHistoryFromDOM = () => {
             wrapper.appendChild(container);
         }
     };
-
     const safeSendMessage = (msg) => {
         try {
             if (chrome?.runtime?.id) {
