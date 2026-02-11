@@ -28,8 +28,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             cmd: request.cmd,
             isRacing: currentState.raceMode,
             isProcessingQueue: currentState.queueMode,
-		    autoSubmit: request.autoSubmit 
-        
+            autoSubmit: request.autoSubmit
+
         });
     }
 

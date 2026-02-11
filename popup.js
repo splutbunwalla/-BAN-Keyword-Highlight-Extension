@@ -33,7 +33,7 @@ document.querySelectorAll('.color-swatch').forEach(swatch => {
 });
 
 document.addEventListener('click', (e) => {
-	if (!container.contains(e.target) && !e.target.closest('.pcr-app')) {
+    if (!container.contains(e.target) && !e.target.closest('.pcr-app')) {
         closePopup();
     }
 });
@@ -45,7 +45,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 function updateContentScript() {
-	const settings = {
+    const settings = {
         // Primary
         primaryColorFirst: document.getElementById("primaryColorFirst").value,
         primaryColorMiddle: document.getElementById("primaryColorMiddle").value,
@@ -263,17 +263,17 @@ function loadSettings() {
         document.querySelectorAll('.color-swatch').forEach(swatch => {
             const targetId = swatch.dataset.target;
             const input = document.getElementById(targetId);
-            
+
             // Get the color from storage, or use a specific fallback
             const savedColor = data[targetId] || (targetId.includes('TextColor') ? '#ffffff' : '#3399ff');
-            
+
             // Update hidden input and swatch visual immediately
             if (input) input.value = savedColor;
             swatch.style.backgroundColor = savedColor;
             const readableName = targetId
-                    .replace(/([A-Z])/g, ' $1')
-                    .replace(/^./, str => str.toUpperCase());
-                swatch.title = readableName;
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/^./, str => str.toUpperCase());
+            swatch.title = readableName;
             const pickr = Pickr.create({
                 el: swatch,
                 theme: 'nano', // Nano is better for small popups
@@ -282,12 +282,12 @@ function loadSettings() {
                 closeOnScroll: false,
                 useAsButton: true, // Swatch acts as the button
                 components: {
-					preview: true,
+                    preview: true,
                     opacity: true,
                     hue: true,
                     interaction: {
                         input: true,
-                        save: false, 
+                        save: false,
                     }
                 }
             });
@@ -297,10 +297,10 @@ function loadSettings() {
                 const hexa = color.toHEXA().toString();
                 swatch.style.backgroundColor = hexa;
                 if (input) input.value = hexa;
-                
-                updateContentScript(); 
+
+                updateContentScript();
             });
-            
+
             pickr.on('show', () => {
                 activePickr = pickr;
             });

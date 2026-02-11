@@ -26,7 +26,6 @@
     const getKeywordText = k => typeof k === 'string' ? k : k.text;
 
 
-
     function updateRegex() {
         const p = KEYWORDS.filter(k => k.enabled !== false).map(getKeywordText);
         const s = SECONDARYWORDS.filter(k => k.enabled !== false).map(getKeywordText);
@@ -110,26 +109,26 @@
 
     };
 
-const buildChatHistoryFromDOM = () => {
-    const logRoot = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
-    const rawText = logRoot.innerText || logRoot.textContent;
-    
-    // Split by timestamp but KEEP the timestamp in the resulting strings
-    // This regex splits at the start of a timestamp without consuming it
-    const entries = rawText.split(/(?=\d{2}:\d{2}:\d{2}\.\d{3}:)/);
+    const buildChatHistoryFromDOM = () => {
+        const logRoot = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
+        const rawText = logRoot.innerText || logRoot.textContent;
 
-    console.log(`HH Debug: Bootstrap processing ${entries.length} entries.`);
+        // Split by timestamp but KEEP the timestamp in the resulting strings
+        // This regex splits at the start of a timestamp without consuming it
+        const entries = rawText.split(/(?=\d{2}:\d{2}:\d{2}\.\d{3}:)/);
 
-    entries.forEach(entry => {
-        const cleaned = entry.replace(/\u00a0/g, ' ').trim();
-        if (cleaned.toLowerCase().includes("chat:")) {
-            // This now sends the string WITH the timestamp to processChatLog
-            processChatLog(cleaned);
-        }
-    });
+        console.log(`HH Debug: Bootstrap processing ${entries.length} entries.`);
 
-    console.log(`HH Debug: Bootstrap complete. Total chatHistory: ${chatHistory.length}`);
-};
+        entries.forEach(entry => {
+            const cleaned = entry.replace(/\u00a0/g, ' ').trim();
+            if (cleaned.toLowerCase().includes("chat:")) {
+                // This now sends the string WITH the timestamp to processChatLog
+                processChatLog(cleaned);
+            }
+        });
+
+        console.log(`HH Debug: Bootstrap complete. Total chatHistory: ${chatHistory.length}`);
+    };
 
     const getUIWrapper = () => {
         let wrapper = document.getElementById('hh-ui-wrapper');
@@ -196,7 +195,13 @@ const buildChatHistoryFromDOM = () => {
 
         // Standard Tools
         const tools = [
-			{label: 'SID Actions', type: 'info', icon: '🛠️', id: 'hh-sid-trigger', desc: 'Role and Ban actions by SteamID'},
+            {
+                label: 'SID Actions',
+                type: 'info',
+                icon: '🛠️',
+                id: 'hh-sid-trigger',
+                desc: 'Role and Ban actions by SteamID'
+            },
             {label: 'Chat', type: 'info', icon: '💬', action: 'openChat', desc: 'View player chat logs'},
             {label: 'Messages', type: 'info', icon: '💬', id: 'hh-msg-trigger', desc: 'Send global announcements'},
             {label: 'Players', type: 'info', icon: '📋', action: 'togglePlayers', desc: 'Show/hide online player list'},
@@ -211,19 +216,19 @@ const buildChatHistoryFromDOM = () => {
             btn.title = tool.desc;
 
             btn.onclick = (e) => {
-				if (tool.id === 'hh-sid-trigger') {
-					e.stopPropagation();
-					const menu = document.getElementById('hh-toolbar-sid-submenu');
-					// Close other menus
-					document.getElementById('hh-toolbar-msg-submenu').style.display = 'none';
-					menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-				} else if (tool.id === 'hh-msg-trigger') {
-					e.stopPropagation();
-					const menu = document.getElementById('hh-toolbar-msg-submenu');
-					// Close other menus
-					document.getElementById('hh-toolbar-sid-submenu').style.display = 'none';
-					menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-				} else if (tool.action === 'togglePlayers') {
+                if (tool.id === 'hh-sid-trigger') {
+                    e.stopPropagation();
+                    const menu = document.getElementById('hh-toolbar-sid-submenu');
+                    // Close other menus
+                    document.getElementById('hh-toolbar-msg-submenu').style.display = 'none';
+                    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+                } else if (tool.id === 'hh-msg-trigger') {
+                    e.stopPropagation();
+                    const menu = document.getElementById('hh-toolbar-msg-submenu');
+                    // Close other menus
+                    document.getElementById('hh-toolbar-sid-submenu').style.display = 'none';
+                    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+                } else if (tool.action === 'togglePlayers') {
                     togglePlayerList();
                 } else if (tool.cmd === 'restart') {
                     if (!restartClickTimer) {
@@ -241,24 +246,24 @@ const buildChatHistoryFromDOM = () => {
                     }
                 } else if (tool.action === 'openChat') {
                     openChatSelector();
-				} else if (tool.action === 'perma') {
-					sid = prompt("Enter SteamId to ban:");
-					if (!sid || isNaN(sid)) return;
-					dur = PERMA_DUR;
-					// Chances are not online as will be a perma of an id from a different server
-					if (isRacing) { 
-						banQueue.push({sid, dur});
-						updateQueueDisplay();
-						showToast(`Queued Ban: ${sid} (Offline)`);
-					} else {
-						const cmd = `ban ${sid}`;
-						safeSendMessage({	
-							action: "PROXY_COMMAND", 
-							cmd: cmd, 
-							autoSubmit: true 
-						});
-						showToast(`Banned: ${sid}`);
-					}
+                } else if (tool.action === 'perma') {
+                    sid = prompt("Enter SteamId to ban:");
+                    if (!sid || isNaN(sid)) return;
+                    dur = PERMA_DUR;
+                    // Chances are not online as will be a perma of an id from a different server
+                    if (isRacing) {
+                        banQueue.push({sid, dur});
+                        updateQueueDisplay();
+                        showToast(`Queued Ban: ${sid} (Offline)`);
+                    } else {
+                        const cmd = `ban ${sid}`;
+                        safeSendMessage({
+                            action: "PROXY_COMMAND",
+                            cmd: cmd,
+                            autoSubmit: true
+                        });
+                        showToast(`Banned: ${sid}`);
+                    }
                 } else {
                     // Standard commands (users, etc.)
                     safeSendMessage({action: "PROXY_COMMAND", cmd: tool.cmd});
@@ -285,62 +290,62 @@ const buildChatHistoryFromDOM = () => {
         msgSubmenu.style.display = 'none';
 
         toolbar.appendChild(msgSubmenu);
-		
-		// Inside createToolbar, after msgSubmenu creation...
 
-		const sidSubmenu = document.createElement('div');
-		sidSubmenu.id = 'hh-toolbar-sid-submenu';
-		sidSubmenu.className = 'hh-action-menu';
-		sidSubmenu.style.display = 'none';
-		sidSubmenu.style.top = '100%';
-		sidSubmenu.style.bottom = 'auto';
-		
-		const sidActions = [
-			{ label: '🔨 Permanent Ban', type: 'ban', dur: PERMA_DUR },
-			{ label: '👤 Set Default', type: 'role', role: 'default' },
-			{ label: '⭐ Set VIP', type: 'role', role: 'vip' },
-			{ label: '🛡️ Set Moderator', type: 'role', role: 'moderator' },
-			{ label: '👑 Set Admin', type: 'role', role: 'admin' }
-		];
-		
-		sidActions.forEach(act => {
-			const item = document.createElement('div');
-			item.className = 'hh-menu-item';
-			item.textContent = act.label;
-			item.onclick = (e) => {
-				e.stopPropagation();
-				const sid = prompt(`Enter SteamID for ${act.label}:`);
-				if (!sid || isNaN(sid) || sid.length !== 17) return;
-		
-				if (isRacing) {
-					outmsg = `Queued: ${sid}`;
-					if (act.type === 'role') {
-						banQueue.push({ type: 'role', sid, name: "Manual Entry", role: act.role });
-						outmsg += ` ${act.role}`;
-					} else {
-						banQueue.push({ type: 'ban', sid, name: "Manual Entry", dur: act.dur });
-						outmsg += ` banned`;
-					}
-					updateQueueDisplay();
-					showToast(outmsg);
-				} else {
-					let cmd = act.type === 'role' ? `role ${sid}${act.role ? ',' + act.role : ''}` : `ban ${sid}`;
-					safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true });
-					showToast(`Sent: ${act.label}`);
-				}
-				sidSubmenu.style.display = 'none';
-			};
-			sidSubmenu.appendChild(item);
-		});
-		
-		toolbar.appendChild(sidSubmenu); // Add to toolbar
-		
+        // Inside createToolbar, after msgSubmenu creation...
+
+        const sidSubmenu = document.createElement('div');
+        sidSubmenu.id = 'hh-toolbar-sid-submenu';
+        sidSubmenu.className = 'hh-action-menu';
+        sidSubmenu.style.display = 'none';
+        sidSubmenu.style.top = '100%';
+        sidSubmenu.style.bottom = 'auto';
+
+        const sidActions = [
+            {label: '🔨 Permanent Ban', type: 'ban', dur: PERMA_DUR},
+            {label: '👤 Set Default', type: 'role', role: 'default'},
+            {label: '⭐ Set VIP', type: 'role', role: 'vip'},
+            {label: '🛡️ Set Moderator', type: 'role', role: 'moderator'},
+            {label: '👑 Set Admin', type: 'role', role: 'admin'}
+        ];
+
+        sidActions.forEach(act => {
+            const item = document.createElement('div');
+            item.className = 'hh-menu-item';
+            item.textContent = act.label;
+            item.onclick = (e) => {
+                e.stopPropagation();
+                const sid = prompt(`Enter SteamID for ${act.label}:`);
+                if (!sid || isNaN(sid) || sid.length !== 17) return;
+
+                if (isRacing) {
+                    outmsg = `Queued: ${sid}`;
+                    if (act.type === 'role') {
+                        banQueue.push({type: 'role', sid, name: "Manual Entry", role: act.role});
+                        outmsg += ` ${act.role}`;
+                    } else {
+                        banQueue.push({type: 'ban', sid, name: "Manual Entry", dur: act.dur});
+                        outmsg += ` banned`;
+                    }
+                    updateQueueDisplay();
+                    showToast(outmsg);
+                } else {
+                    let cmd = act.type === 'role' ? `role ${sid}${act.role ? ',' + act.role : ''}` : `ban ${sid}`;
+                    safeSendMessage({action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true});
+                    showToast(`Sent: ${act.label}`);
+                }
+                sidSubmenu.style.display = 'none';
+            };
+            sidSubmenu.appendChild(item);
+        });
+
+        toolbar.appendChild(sidSubmenu); // Add to toolbar
+
 
         wrapper.prepend(toolbar);
 
         document.addEventListener('click', () => {
             msgSubmenu.style.display = 'none';
-			sidSubmenu.style.display = 'none';
+            sidSubmenu.style.display = 'none';
         });
 
         updateToolbarMessages(MESSAGES, msgSubmenu);
@@ -365,7 +370,7 @@ const buildChatHistoryFromDOM = () => {
         chatView.style.display = 'flex';
     };
 
-	const injectChatPlayerDropdown = (chatView) => {
+    const injectChatPlayerDropdown = (chatView) => {
         if (chatView.querySelector('.hh-chat-player-select')) return;
 
         const headerLeft = chatView.querySelector('.hh-header-left');
@@ -422,12 +427,12 @@ const buildChatHistoryFromDOM = () => {
         select.onchange = () => {
             window.currentViewedId = select.value;
             const title = chatView.querySelector('.hh-panel-title');
-            
-            if(select.value === 'ALL') {
-                 title.innerText = `Chat: Global History`;
+
+            if (select.value === 'ALL') {
+                title.innerText = `Chat: Global History`;
             } else {
-                 const data = NAME_MAP[select.value];
-                 if (data) title.innerText = `Chat: ${data.name}`;
+                const data = NAME_MAP[select.value];
+                if (data) title.innerText = `Chat: ${data.name}`;
             }
             renderChatLines();
         };
@@ -437,7 +442,7 @@ const buildChatHistoryFromDOM = () => {
         headerLeft.prepend(select);
     };
 
-	const togglePlayerList = () => {
+    const togglePlayerList = () => {
         let panel = document.getElementById('hh-player-panel');
         if (panel) {
             panel.remove();
@@ -556,18 +561,18 @@ const buildChatHistoryFromDOM = () => {
         chatView.style.display = 'flex';
     };
 
-	const renderChatLines = () => {
+    const renderChatLines = () => {
         const chatView = document.getElementById('hh-chat-view');
         if (!chatView) return;
 
         const content = chatView.querySelector('.hh-chat-content');
         if (!content) return;
 
-        content.textContent = ''; 
+        content.textContent = '';
 
         const select = chatView.querySelector('.hh-chat-player-select');
-        const sid = select ? select.value : (window.currentViewedId || 'ALL'); 
-        
+        const sid = select ? select.value : (window.currentViewedId || 'ALL');
+
         const searchInput = chatView.querySelector('.hh-chat-search');
         const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
@@ -612,7 +617,7 @@ const buildChatHistoryFromDOM = () => {
         return line;
     }
 
-	const getVisibleChatText = () => {
+    const getVisibleChatText = () => {
         const chatView = document.getElementById('hh-chat-view');
         if (!chatView) return '';
 
@@ -621,7 +626,7 @@ const buildChatHistoryFromDOM = () => {
 
         const searchInput = chatView.querySelector('.hh-chat-search');
         const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
-        
+
         const startTime = chatView.querySelector('#hh-chat-start')?.value.trim();
         const endTime = chatView.querySelector('#hh-chat-end')?.value.trim();
         const hideServer = chatView.querySelector('#hh-hide-server')?.checked;
@@ -631,7 +636,7 @@ const buildChatHistoryFromDOM = () => {
                 if (sid !== 'ALL' && m.steamId !== sid) return false;
                 if (hideServer && m.steamId === "0") return false;
                 if (term && (!m.message || !m.message.toLowerCase().includes(term))) return false;
-                
+
                 if (startTime) {
                     if (m.timestamp === "History") return false;
                     if (m.timestamp < startTime) return false;
@@ -660,7 +665,7 @@ const buildChatHistoryFromDOM = () => {
         URL.revokeObjectURL(url);
     };
 
-	function createChatView() {
+    function createChatView() {
         const el = document.createElement('div');
         el.id = 'hh-chat-view';
         el.innerHTML = `
@@ -763,8 +768,8 @@ const buildChatHistoryFromDOM = () => {
         });
     };
 
-	// --- UI: QUEUE DISPLAY ---
-	const updateQueueDisplay = () => {
+    // --- UI: QUEUE DISPLAY ---
+    const updateQueueDisplay = () => {
         const isLogArea = window.location.href.includes("StreamFile") ||
             window.location.href.includes("Proxy.ashx") ||
             document.getElementById('ConsoleOutput');
@@ -868,102 +873,102 @@ const buildChatHistoryFromDOM = () => {
             }
         }
     };
-	
-const processChatLog = (text) => {
-    // 1. Standardize the string (No &nbsp;, trimmed)
-    const line = text.replace(/\u00a0/g, ' ').trim();
-    if (!line || line.length < 10) return;
 
-    // 2. Duplicate Check
-    // If we already saw this exact timestamp + message, stop immediately.
-    if (seenChatLines.has(line)) return;
-    seenChatLines.add(line);
+    const processChatLog = (text) => {
+        // 1. Standardize the string (No &nbsp;, trimmed)
+        const line = text.replace(/\u00a0/g, ' ').trim();
+        if (!line || line.length < 10) return;
 
-    // 3. Regex (Flexible for both Timestamp and Non-Timestamp lines)
-    const chatMatch = line.match(/(?:(\d{2}:\d{2}:\d{2}\.\d{3}):\s*)?Chat:\s*(.*?)\s*\(id:\s*(\d+)\):\s*(.*)/i);
-    
-    if (chatMatch) {
-        const timestamp = chatMatch[1] || "History";
-        const name = chatMatch[2].trim();
-        const steamId = chatMatch[3].trim();
-        const message = chatMatch[4].trim();
+        // 2. Duplicate Check
+        // If we already saw this exact timestamp + message, stop immediately.
+        if (seenChatLines.has(line)) return;
+        seenChatLines.add(line);
 
-        // 4. Verification Check
-        // If it's a "History" tag, check if we already have this message with a real timestamp
-        // to prevent [History] vs [23:00:00] duplicates
-        if (timestamp === "History") {
-            const isDuplicate = chatHistory.some(h => 
-                h.name === name && h.message === message && h.steamId === steamId
-            );
-            if (isDuplicate) return;
+        // 3. Regex (Flexible for both Timestamp and Non-Timestamp lines)
+        const chatMatch = line.match(/(?:(\d{2}:\d{2}:\d{2}\.\d{3}):\s*)?Chat:\s*(.*?)\s*\(id:\s*(\d+)\):\s*(.*)/i);
+
+        if (chatMatch) {
+            const timestamp = chatMatch[1] || "History";
+            const name = chatMatch[2].trim();
+            const steamId = chatMatch[3].trim();
+            const message = chatMatch[4].trim();
+
+            // 4. Verification Check
+            // If it's a "History" tag, check if we already have this message with a real timestamp
+            // to prevent [History] vs [23:00:00] duplicates
+            if (timestamp === "History") {
+                const isDuplicate = chatHistory.some(h =>
+                    h.name === name && h.message === message && h.steamId === steamId
+                );
+                if (isDuplicate) return;
+            }
+
+            chatHistory.push({timestamp, name, steamId, message});
+
+            if (chatHistory.length > 5000) chatHistory.shift();
+            if (window.currentViewedId === steamId) renderChatLines();
         }
+    };
 
-        chatHistory.push({ timestamp, name, steamId, message });
+    const playDing = () => {
+        if (isMuted) return;
+        if (!audioCtx || audioCtx.state !== 'running') return;
 
-        if (chatHistory.length > 5000) chatHistory.shift();
-        if (window.currentViewedId === steamId) renderChatLines();
-    }
-};
+        const now = Date.now();
+        if (now - lastDingTime < DING_COOLDOWN) return;
+        lastDingTime = now;
 
-	const playDing = () => {
-	if (isMuted) return;
-	if (!audioCtx || audioCtx.state !== 'running') return;
-	
-	const now = Date.now();
-	if (now - lastDingTime < DING_COOLDOWN) return;
-	lastDingTime = now;
-	
-	const osc = audioCtx.createOscillator();
-	const gain = audioCtx.createGain();
-	
-	osc.type = 'sine';
-	osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-	
-	gain.gain.setValueAtTime(0, audioCtx.currentTime);
-	gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.01);
-	gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-	
-	osc.connect(gain);
-	gain.connect(audioCtx.destination);
-	
-	osc.start();
-	osc.stop(audioCtx.currentTime + 0.5);
-	};
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
 
-	const playAlarm = () => {
-		if (isMuted) return;
-		if (!audioCtx || audioCtx.state !== 'running') return;
-	
-		const now = Date.now();
-		if (now - lastAlarmTime < DING_COOLDOWN) return;
-		
-		lastAlarmTime = now;
-		// Create two oscillators for a "thick" dissonant sound
-		const osc1 = audioCtx.createOscillator();
-		const osc2 = audioCtx.createOscillator();
-		
-		// 440Hz and 445Hz create a jarring interference pattern
-		osc1.frequency.setValueAtTime(440, audioCtx.currentTime);
-		osc2.frequency.setValueAtTime(445, audioCtx.currentTime);
-		
-		// Use 'sawtooth' or 'square' for a harsher, more "alarm-like" buzz
-		osc1.type = 'sawtooth';
-		osc2.type = 'sawtooth';
-		
-		const gain = audioCtx.createGain();
-		gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-		
-		// Connect both to the same gain node
-		osc1.connect(gain);
-		osc2.connect(gain);
-		gain.connect(audioCtx.destination);
-		
-		osc1.start();
-		osc2.start();
-		// Stop after a short burst
-		osc1.stop(audioCtx.currentTime + 0.3);
-		osc2.stop(audioCtx.currentTime + 0.3);
-	};
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+
+        gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.5);
+    };
+
+    const playAlarm = () => {
+        if (isMuted) return;
+        if (!audioCtx || audioCtx.state !== 'running') return;
+
+        const now = Date.now();
+        if (now - lastAlarmTime < DING_COOLDOWN) return;
+
+        lastAlarmTime = now;
+        // Create two oscillators for a "thick" dissonant sound
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+
+        // 440Hz and 445Hz create a jarring interference pattern
+        osc1.frequency.setValueAtTime(440, audioCtx.currentTime);
+        osc2.frequency.setValueAtTime(445, audioCtx.currentTime);
+
+        // Use 'sawtooth' or 'square' for a harsher, more "alarm-like" buzz
+        osc1.type = 'sawtooth';
+        osc2.type = 'sawtooth';
+
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+
+        // Connect both to the same gain node
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc1.start();
+        osc2.start();
+        // Stop after a short burst
+        osc1.stop(audioCtx.currentTime + 0.3);
+        osc2.stop(audioCtx.currentTime + 0.3);
+    };
 
 
     const scanForKeywords = (text) => {
@@ -974,15 +979,15 @@ const processChatLog = (text) => {
         const dingSecondWords = SECONDARYWORDS.filter(k2 => k2.enabled !== false && k2.ding === true);
 
         if (dingKeywords.some(k => normMsg.includes(normalize(getKeywordText(k))))) {
-			playAlarm();
-		}
-		
+            playAlarm();
+        }
+
         if (dingSecondWords.some(k2 => normMsg.includes(normalize(getKeywordText(k2))))) {
             playDing();
         }
     };
 
-	const processBanQueue = () => {
+    const processBanQueue = () => {
         if (banQueue.length === 0) return;
         safeSendMessage({action: "SET_QUEUE_MODE", value: true});
         let combinedLogs = [];
@@ -994,13 +999,13 @@ const processChatLog = (text) => {
                     cmd = `role ${item.sid}`;
                     if (item.role) cmd += `,${item.role}`;
                     combinedLogs.push(`${item.name} (${item.sid}) role set to ${item.role || 'Check'} by Server`);
-					console.log(combinedLogs);
+                    console.log(combinedLogs);
                 } else {
                     // Default to Ban
                     cmd = (item.dur === PERMA_DUR) ? `ban ${item.sid}` : `ban ${item.sid},${item.dur}`;
                     combinedLogs.push(`${item.name} (${item.sid}) banned by Server for ${item.dur} mins`);
                 }
-                
+
                 safeSendMessage({action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true});
 
                 if (index === banQueue.length - 1) {
@@ -1104,8 +1109,8 @@ const processChatLog = (text) => {
         if (!document.body) return;
         const root = document.documentElement;
         const wrapper = document.getElementById('hh-ui-wrapper');
-		
-		// Primary Colors (Pickr strings already contain alpha)
+
+        // Primary Colors (Pickr strings already contain alpha)
         root.style.setProperty('--hh-p-bg1', sync.primaryColorFirst);
         root.style.setProperty('--hh-p-bg-mid', sync.primaryColorMiddle);
         root.style.setProperty('--hh-p-bg-end', sync.primaryColorEnd);
@@ -1124,7 +1129,7 @@ const processChatLog = (text) => {
         root.style.setProperty('--hh-id-bg-mid', sync.steamidColorMiddle);
         root.style.setProperty('--hh-id-bg-end', sync.steamidColorEnd);
         root.style.setProperty('--hh-id-txt', sync.steamidTextColor);
-		
+
 
         if (sync.enabled === false) {
             document.body.classList.add('hh-disabled');
@@ -1143,9 +1148,9 @@ const processChatLog = (text) => {
             if (msg.cmd.startsWith('ban') && msg.isProcessingQueue) shouldAutoSubmit = true;
             if (msg.cmd.startsWith('message')) shouldAutoSubmit = true;
             if (msg.cmd.startsWith('restart')) shouldAutoSubmit = true;
-            if (msg.cmd.startsWith('users')) shouldAutoSubmit = true; 
-			
-			if (msg.autoSubmit) shouldAutoSubmit = true;
+            if (msg.cmd.startsWith('users')) shouldAutoSubmit = true;
+
+            if (msg.autoSubmit) shouldAutoSubmit = true;
 
             const input = document.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand");
             if (input) {
@@ -1185,13 +1190,14 @@ const processChatLog = (text) => {
         Object.values(NAME_MAP).forEach(p => {
             if (p.lastSeen && !p.online) {
                 p.online = true;
+                p.lastSeen = now;
             }
         });
 
         saveRegistry();
     }
 
-function scan() {
+    function scan() {
         if (!document.body || document.body.classList.contains('hh-disabled')) return;
 
         const logRoot = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
@@ -1337,12 +1343,12 @@ function scan() {
             safeSendMessage({action: "PROXY_COMMAND", cmd: `kick ${conn}`});
         } else if (type === 'unban') {
             safeSendMessage({action: "PROXY_COMMAND", cmd: `unban ${sid}`});
-		} else if (type === 'role') {
+        } else if (type === 'role') {
             const roleArg = item.getAttribute('data-role');
-            
+
             // --- CHANGED: Check isRacing to Queue ---
             if (isRacing && roleArg) {
-                banQueue.push({ type: 'role', sid, name: currentData.name, role: roleArg });
+                banQueue.push({type: 'role', sid, name: currentData.name, role: roleArg});
                 updateQueueDisplay();
                 showToast(`Queued Role: (${sid}) ${roleArg}`);
             } else {
@@ -1351,7 +1357,7 @@ function scan() {
                 safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
                 showToast(roleArg ? `Setting Role: ${sid} ${roleArg}` : `Checking Role Status`);
             }
-		} else if (type === 'ban') {
+        } else if (type === 'ban') {
             if (dur === "custom") {
                 dur = prompt("Enter ban duration in minutes:");
                 if (!dur || isNaN(dur)) return;
@@ -1485,23 +1491,23 @@ function scan() {
         actionMenu.style.visibility = 'visible';
     }, true);
 
-	const primeAudio = () => {
-	if (!AudioContext || audioCtx) return;
-	
-	audioCtx = new AudioContext();
-	
-	// Resume is optional but safe
-	if (audioCtx.state === 'suspended') {
-		audioCtx.resume();
-	}
-	
-	document.removeEventListener('pointerdown', primeAudio, true);
-	document.removeEventListener('click', primeAudio, true);
-	};
-	
-	// Capture phase helps extensions
-	document.addEventListener('pointerdown', primeAudio, true);
-	document.addEventListener('click', primeAudio, true);
+    const primeAudio = () => {
+        if (!AudioContext || audioCtx) return;
+
+        audioCtx = new AudioContext();
+
+        // Resume is optional but safe
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+
+        document.removeEventListener('pointerdown', primeAudio, true);
+        document.removeEventListener('click', primeAudio, true);
+    };
+
+    // Capture phase helps extensions
+    document.addEventListener('pointerdown', primeAudio, true);
+    document.addEventListener('click', primeAudio, true);
 
     document.addEventListener('click', (e) => {
         if (actionMenu && !actionMenu.contains(e.target)) actionMenu.style.display = 'none';
@@ -1565,14 +1571,14 @@ function scan() {
             });
         }
     });
-	
-	const bootstrapRaceStatusFromHistory = () => {
+
+    const bootstrapRaceStatusFromHistory = () => {
         const logRoot = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
         const rawText = logRoot.innerText || logRoot.textContent || "";
-        
+
         // Split by timestamp to analyze line by line chronologically
         const entries = rawText.split(/(?=\d{2}:\d{2}:\d{2}\.\d{3}:)/);
-        
+
         let lastRaceEvent = null; // Track the most recent status found
         let lastTrackFound = "No Track Detected";
 
@@ -1583,8 +1589,7 @@ function scan() {
             // 1. Check for Race Status Events
             if (lowerLine.includes("race started")) {
                 lastRaceEvent = "STARTED";
-            } 
-            else if (lowerLine.includes("race finished") || lowerLine.includes("race abandoned")) {
+            } else if (lowerLine.includes("race finished") || lowerLine.includes("race abandoned")) {
                 lastRaceEvent = "STOPPED";
             }
 
@@ -1611,128 +1616,128 @@ function scan() {
         // Update the UI with the last track we found in history
         const trackEl = document.getElementById('hh-track-name');
         if (trackEl) trackEl.textContent = lastTrackFound;
-        
+
         // Sync the visual UI state (the red/green bar)
         updateRaceUI(isRacing);
     };
-	
-const isLogFrame = () => {
-    return window.location.href.includes("StreamFile.aspx") ||
-           window.location.href.includes("Proxy.ashx") ||
-           !!document.querySelector('pre, .log-line, #ConsoleOutput');
-};
+
+    const isLogFrame = () => {
+        return window.location.href.includes("StreamFile.aspx") ||
+            window.location.href.includes("Proxy.ashx") ||
+            !!document.querySelector('pre, .log-line, #ConsoleOutput');
+    };
 
 // Improved detection function
-const isUsersCommandOutputVisible = () => {
-    const root = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
-    const text = root.innerText || "";
-    // Check for the header. Using a regex to handle varying whitespace/hidden chars
-    return /player-id,\s*name/i.test(text);
-};
+    const isUsersCommandOutputVisible = () => {
+        const root = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
+        const text = root.innerText || "";
+        // Check for the header. Using a regex to handle varying whitespace/hidden chars
+        return /player-id,\s*name/i.test(text);
+    };
 
-const init = async () => {
-    if (isInitializing) return;
-    isInitializing = true;
+    const init = async () => {
+        if (isInitializing) return;
+        isInitializing = true;
 
-    try {
-        const isLogFrame = window.location.href.includes("StreamFile.aspx") ||
-                           window.location.href.includes("Proxy.ashx") ||
-                           !!document.querySelector('pre, .log-line, #ConsoleOutput');
+        try {
+            const isLogFrame = window.location.href.includes("StreamFile.aspx") ||
+                window.location.href.includes("Proxy.ashx") ||
+                !!document.querySelector('pre, .log-line, #ConsoleOutput');
 
-        const sync = await chrome.storage.sync.get(null);
-        isEnabled = sync.enabled !== false;
-        
-        // ... (Rest of your settings/UI setup: KEYWORDS, createToolbar, etc.)
-        KEYWORDS = sync.keywords || [];
-        SECONDARYWORDS = sync.secondarykeywords || [];
-        MESSAGES = sync.messages || [];
-        isMuted = sync.muteAll !== false;
-        applyStyles(sync);
-        loadRegistry();
-        createToolbar();
-        updateQueueDisplay();
-        updateRegex();
+            const sync = await chrome.storage.sync.get(null);
+            isEnabled = sync.enabled !== false;
 
-        if (!isLogFrame || !isEnabled) {
-            isInitializing = false;
-            return;
-        }
+            // ... (Rest of your settings/UI setup: KEYWORDS, createToolbar, etc.)
+            KEYWORDS = sync.keywords || [];
+            SECONDARYWORDS = sync.secondarykeywords || [];
+            MESSAGES = sync.messages || [];
+            isMuted = sync.muteAll !== false;
+            applyStyles(sync);
+            loadRegistry();
+            createToolbar();
+            updateQueueDisplay();
+            updateRegex();
 
-        // 1. FAST POLLING for container
-        let logRoot = document.querySelector('pre, #ConsoleOutput, .log-container');
-        let attempts = 0;
-        while (!logRoot && attempts < 40) {
-            await new Promise(r => setTimeout(r, 50)); 
-            logRoot = document.querySelector('pre, #ConsoleOutput, .log-container');
-            attempts++;
-        }
-        if (!logRoot) logRoot = document.body;
+            if (!isLogFrame || !isEnabled) {
+                isInitializing = false;
+                return;
+            }
 
-        updateHeartbeat();
-        // 2. INSTANT START: Observer and Initial Scan
-        // This makes sure new lines and existing lines are highlighted immediately
-        scan(); 
-        if (window.hhObserver) window.hhObserver.disconnect();
-        window.hhObserver = new MutationObserver((mutations) => {
-            let shouldRescan = false;
-            for (const mutation of mutations) {
-                if (mutation.target.closest('#hh-ui-wrapper')) continue;
-                if (mutation.target.classList?.contains('hh-highlight')) continue;
-                for (const node of mutation.addedNodes) {
-                    if (node.textContent) {
-                        scanForKeywords(node.textContent);
-                        processChatLog(node.textContent);
-                        checkRaceStatus(node.textContent, false);
-                        shouldRescan = true;
+            // 1. FAST POLLING for container
+            let logRoot = document.querySelector('pre, #ConsoleOutput, .log-container');
+            let attempts = 0;
+            while (!logRoot && attempts < 40) {
+                await new Promise(r => setTimeout(r, 50));
+                logRoot = document.querySelector('pre, #ConsoleOutput, .log-container');
+                attempts++;
+            }
+            if (!logRoot) logRoot = document.body;
+
+            updateHeartbeat();
+            // 2. INSTANT START: Observer and Initial Scan
+            // This makes sure new lines and existing lines are highlighted immediately
+            scan();
+            if (window.hhObserver) window.hhObserver.disconnect();
+            window.hhObserver = new MutationObserver((mutations) => {
+                let shouldRescan = false;
+                for (const mutation of mutations) {
+                    if (mutation.target.closest('#hh-ui-wrapper')) continue;
+                    if (mutation.target.classList?.contains('hh-highlight')) continue;
+                    for (const node of mutation.addedNodes) {
+                        if (node.textContent) {
+                            scanForKeywords(node.textContent);
+                            processChatLog(node.textContent);
+                            checkRaceStatus(node.textContent, false);
+                            shouldRescan = true;
+                        }
                     }
                 }
-            }
-            if (shouldRescan) {
-                clearTimeout(scanTimeout);
-                scanTimeout = setTimeout(scan, 50);
-            }
-        });
-        window.hhObserver.observe(logRoot, {childList: true, subtree: true});
+                if (shouldRescan) {
+                    clearTimeout(scanTimeout);
+                    scanTimeout = setTimeout(scan, 50);
+                }
+            });
+            window.hhObserver.observe(logRoot, {childList: true, subtree: true});
 
-        // 3. INTELLIGENT BOOTSTRAP (The fix for the double >users)
-        if (!didBootstrap) {
+            // 3. INTELLIGENT BOOTSTRAP (The fix for the double >users)
+            if (!didBootstrap) {
 
-            // Wait until the log actually has content (history loading)
-            let historyWait = 0;
-            while (logRoot.innerText.length < 50 && historyWait < 20) {
-                await new Promise(r => setTimeout(r, 100)); // Wait up to 2 seconds for history
-                historyWait++;
+                // Wait until the log actually has content (history loading)
+                let historyWait = 0;
+                while (logRoot.innerText.length < 50 && historyWait < 20) {
+                    await new Promise(r => setTimeout(r, 100)); // Wait up to 2 seconds for history
+                    historyWait++;
+                }
+
+                buildChatHistoryFromDOM();
+                bootstrapOnlineFromHistory();
+                bootstrapRaceStatusFromHistory();
+                updateRaceUI(isRacing);
+
+                // Final check: Is the table there now?
+                if (!isUsersCommandOutputVisible()) {
+                    console.log("HH: No table found in history. Requesting 'users'...");
+                    safeSendMessage({action: "PROXY_COMMAND", cmd: "users"});
+                }
+                didBootstrap = true;
             }
 
-            buildChatHistoryFromDOM();
-            bootstrapOnlineFromHistory();
-			bootstrapRaceStatusFromHistory();
-            updateRaceUI(isRacing);
-
-            // Final check: Is the table there now?
-            if (!isUsersCommandOutputVisible()) {
-                console.log("HH: No table found in history. Requesting 'users'...");
-                safeSendMessage({action: "PROXY_COMMAND", cmd: "users"});
-            }
-            didBootstrap = true; 
+        } catch (e) {
+            console.error("HH Init Error:", e);
+        } finally {
+            isInitializing = false;
         }
+    };
+    const startExtension = () => {
+        if (!isLogFrame()) return;
 
-    } catch (e) {
-        console.error("HH Init Error:", e);
-    } finally {
-        isInitializing = false;
-    }
-};
-const startExtension = () => {
-    if (!isLogFrame()) return; 
+        if (!document.body) {
+            setTimeout(startExtension, 200);
+            return;
+        }
+        init();
+    };
 
-    if (!document.body) {
-        setTimeout(startExtension, 200);
-        return;
-    }
-    init();
-};
-
-startExtension();
+    startExtension();
 
 })();
