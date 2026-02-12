@@ -67,9 +67,14 @@
 				<span id="hh-mod-stats" style="font-size:10px; color:#666;">Showing 0 actions</span>
 			</div>
 		`;
-
-		document.body.appendChild(el);
-
+		let wrapper = document.getElementById('hh-ui-wrapper');
+		if (!wrapper) {
+			wrapper = document.createElement('div');
+			wrapper.id = 'hh-ui-wrapper';
+			document.body.appendChild(wrapper);
+		}
+		wrapper.appendChild(el);
+		
 		// Event Listeners for Live Filtering
 		const inputs = ['hh-mod-filter-type', 'hh-mod-search', 'hh-mod-time-start', 'hh-mod-time-end'];
 		inputs.forEach(id => {
@@ -120,8 +125,7 @@
                 <span class="hh-mod-action" style="color:${color}">${m.action}</span>
                 <span class="hh-mod-target">${m.targetName}</span>
                 <span style="color:#666">(${m.targetId})</span>
-                <span class="hh-mod-admin">${m.adminName}</span>
-                <span style="color:#888">${m.details}</span>
+                <span class="hh-mod-admin">by ${m.adminName}</span>
             `;
 			container.appendChild(line);
 		});
@@ -130,28 +134,71 @@
 	};
 	
 	const processModLog = (text) => {
-        // Regex to extract: [Time] Admin (ID) [Action] Player (ID) [Reason/Duration]
-        const modMatch = text.match(/(\d{2}:\d{2}:\d{2}\.\d{3}):\s*(.*?)\s*\(id:\s*(\d+)\)\s*(kicked|banned)\s*(.*?)\s*\(id:\s*(\d+)\)(.*)/i);
-        
-        if (modMatch) {
-            const entry = {
-                timestamp: modMatch[1],
-                targetName: modMatch[2],
-                targetId: modMatch[3],
-                action: modMatch[4].toUpperCase(),
-                adminName: modMatch[5],
-                adminId: modMatch[6],
-                details: modMatch[7].trim()
-            };
+		const line = text.replace(/\u00a0/g, ' ').trim();
+		if (!line) return;
 
-            // Prevent duplicates
-            if (!modHistory.some(h => h.timestamp === entry.timestamp && h.targetId === entry.targetId)) {
-                modHistory.push(entry);
-                if (modHistory.length > 1000) modHistory.shift();
-                renderModLines();
-            }
-        }
-    };
+		// STEP 1: Capture the Core Event
+		// We purposefully match the timestamp, target, and action.
+		// We capture EVERYTHING after "by " into a single group called 'details'.
+		const coreMatch = line.match(/(\d{2}:\d{2}:\d{2}\.\d{3}):\s+(.*?)\s+\((?:id:\s*)?(\d+)\)\s+(kicked|banned)\s+by\s+(.*)/i);
+
+		if (coreMatch) {
+			const timestamp = coreMatch[1];
+			const targetName = coreMatch[2].trim();
+			const targetId = coreMatch[3];
+			const action = coreMatch[4].toUpperCase();
+			const rawDetails = coreMatch[5].trim();
+
+			// STEP 2: Parse the "Details" string (Admin, ID, Duration)
+			// This handles:
+			// "Server"
+			// "Server for 99 minutes"
+			// "AdminName (12345)"
+			// "AdminName (12345) for 99 minutes"
+			let actor = rawDetails;
+			let actorId = null;
+			let duration = null;
+
+			// Try to find duration at the end
+			const durMatch = rawDetails.match(/(.*)\s+for\s+(\d+)\s+minutes\s*$/i);
+			if (durMatch) {
+				actor = durMatch[1].trim(); // "Server" or "Frozeni (123...)"
+				duration = durMatch[2];
+			}
+
+			// Try to find Admin ID in the actor string
+			const idMatch = actor.match(/(.*?)\s+\((?:id:\s*)?(\d+)\)$/i);
+			if (idMatch) {
+				actor = idMatch[1].trim();
+				actorId = idMatch[2];
+			}
+
+			// Create Entry
+			const entry = {
+				timestamp: timestamp,
+				targetName: targetName,
+				targetId: targetId,
+				action: action,
+				adminName: actor,
+				adminId: actorId, // Might be null if it was just "Server"
+				duration: duration,
+				raw: line
+			};
+
+			// Prevent duplicates
+			if (!modHistory.some(m => m.raw === line)) {
+				modHistory.push(entry);
+				
+				// Limit history size to prevent memory issues
+				if (modHistory.length > 1000) modHistory.shift();
+
+				// Refresh UI if open
+				if (document.getElementById('hh-mod-view')) {
+					renderModLines();
+				}
+			}
+		}
+	};
 
     function updateRegex() {
         const p = KEYWORDS.filter(k => k.enabled !== false).map(getKeywordText);
@@ -863,8 +910,13 @@
             downloadTextFile(text, filename);
             showToast(`Exported chat: ${filename}`);
         };
-
-        document.body.appendChild(el);
+		let wrapper = document.getElementById('hh-ui-wrapper');
+		if (!wrapper) {
+			wrapper = document.createElement('div');
+			wrapper.id = 'hh-ui-wrapper';
+			document.body.appendChild(wrapper);
+		}
+		wrapper.appendChild(el);
         el.querySelector('#hh-chat-close').onclick = () => {
             el.remove();
             window.currentViewedId = null;
@@ -1823,8 +1875,8 @@
             window.hhObserver = new MutationObserver((mutations) => {
                 let shouldRescan = false;
                 for (const mutation of mutations) {
-                    if (mutation.target.closest('#hh-ui-wrapper')) continue;
-                    if (mutation.target.classList?.contains('hh-highlight')) continue;
+                    if (mutation.target.closest('[id^="hh-"]') || mutation.target.classList?.contains('hh-highlight')) continue;
+                    
                     for (const node of mutation.addedNodes) {
                         if (node.textContent) {
                             scanForKeywords(node.textContent);
