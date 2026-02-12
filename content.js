@@ -8,6 +8,7 @@
     let banQueue = [];
     let isProcessingQueue = false;
     let chatHistory = [];
+	let modHistory = [];
     const seenChatLines = new Set();
     const ROLE_WORDS = new Set(['vip', 'admin', 'moderator', 'default', 'leader']);
     const ROLE_PATTERN = '\\b(?:vip|admin|moderator|default|leader)\\b';
@@ -25,6 +26,132 @@
 
     const getKeywordText = k => typeof k === 'string' ? k : k.text;
 
+	const openModLog = () => {
+		const view = document.getElementById('hh-mod-log-view') || createModLogView();
+		renderModLines();
+		view.style.display = 'flex';
+	};
+
+	function createModView() {
+		const el = document.createElement('div');
+		el.id = 'hh-mod-view';
+		el.className = 'hh-chat-view'; // Reusing chat window base styles
+		el.innerHTML = `
+			<div class="hh-panel-header">
+				<div class="hh-header-left">
+					<span class="hh-panel-title">🛡️ Moderation Log</span>
+				</div>
+				<span id="hh-mod-close" style="cursor:pointer;color:#ff4444;font-weight:bold;font-size:18px;">✖</span>
+			</div>
+			
+			<div class="hh-chat-filter-row">
+				<select id="hh-mod-filter-type" class="hh-chat-player-select" style="margin:0; width:100px;">
+					<option value="all">All Actions</option>
+					<option value="KICKED">Kicks</option>
+					<option value="BANNED">Bans</option>
+				</select>
+				
+				<input type="text" id="hh-mod-search" class="hh-chat-search" placeholder="Search name/ID..." style="margin:0; flex-grow:1;">
+				
+				<div style="display:flex; align-items:center; gap:5px;">
+					<span style="font-size:10px; color:#888;">From:</span>
+					<input type="text" id="hh-mod-time-start" class="hh-chat-time-input" placeholder="00:00:00">
+					<span style="font-size:10px; color:#888;">To:</span>
+					<input type="text" id="hh-mod-time-end" class="hh-chat-time-input" placeholder="23:59:59">
+				</div>
+			</div>
+
+			<div class="hh-chat-content" id="hh-mod-content"></div>
+			
+			<div class="hh-chat-footer">
+				<span id="hh-mod-stats" style="font-size:10px; color:#666;">Showing 0 actions</span>
+			</div>
+		`;
+
+		document.body.appendChild(el);
+
+		// Event Listeners for Live Filtering
+		const inputs = ['hh-mod-filter-type', 'hh-mod-search', 'hh-mod-time-start', 'hh-mod-time-end'];
+		inputs.forEach(id => {
+			el.querySelector(`#${id}`).addEventListener('input', renderModLines);
+		});
+
+		el.querySelector('#hh-mod-close').onclick = () => el.style.display = 'none';
+		return el;
+	}
+
+	const renderModLines = () => {
+		const container = document.getElementById('hh-mod-content');
+		if (!container) return;
+
+		// Get filter values
+		const typeFilter = document.getElementById('hh-mod-filter-type').value;
+		const searchText = document.getElementById('hh-mod-search').value.toLowerCase();
+		const startTime = document.getElementById('hh-mod-time-start').value;
+		const endTime = document.getElementById('hh-mod-time-end').value;
+
+		container.innerHTML = '';
+		
+		const filtered = modHistory.filter(m => {
+			// 1. Action Type Filter
+			if (typeFilter !== 'all' && m.action !== typeFilter) return false;
+
+			// 2. Search Text Filter (Name or ID)
+			if (searchText && !m.targetName.toLowerCase().includes(searchText) && !m.targetId.includes(searchText)) {
+				return false;
+			}
+
+			// 3. Timepoint Filter
+			if (startTime && m.timestamp < startTime) return false;
+			if (endTime && m.timestamp > endTime) return false;
+
+			return true;
+		});
+
+		filtered.forEach(m => {
+			const line = document.createElement('div');
+			line.className = 'hh-mod-line';
+			line.style.borderLeft = m.action === 'BANNED' ? '3px solid #ff4444' : '3px solid #ff8800';
+			
+			const details = m.duration ? ` for <span style="color:#ffcc00">${m.duration} mins</span>` : '';
+			const color = m.action === 'BANNED' ? '#ff4444' : '#ffcc00';
+			line.innerHTML = `
+                <span class="hh-mod-ts">[${m.timestamp}]</span>
+                <span class="hh-mod-action" style="color:${color}">${m.action}</span>
+                <span class="hh-mod-target">${m.targetName}</span>
+                <span style="color:#666">(${m.targetId})</span>
+                <span class="hh-mod-admin">${m.adminName}</span>
+                <span style="color:#888">${m.details}</span>
+            `;
+			container.appendChild(line);
+		});
+
+		document.getElementById('hh-mod-stats').innerText = `Showing ${filtered.length} of ${modHistory.length} actions`;
+	};
+	
+	const processModLog = (text) => {
+        // Regex to extract: [Time] Admin (ID) [Action] Player (ID) [Reason/Duration]
+        const modMatch = text.match(/(\d{2}:\d{2}:\d{2}\.\d{3}):\s*(.*?)\s*\(id:\s*(\d+)\)\s*(kicked|banned)\s*(.*?)\s*\(id:\s*(\d+)\)(.*)/i);
+        
+        if (modMatch) {
+            const entry = {
+                timestamp: modMatch[1],
+                targetName: modMatch[2],
+                targetId: modMatch[3],
+                action: modMatch[4].toUpperCase(),
+                adminName: modMatch[5],
+                adminId: modMatch[6],
+                details: modMatch[7].trim()
+            };
+
+            // Prevent duplicates
+            if (!modHistory.some(h => h.timestamp === entry.timestamp && h.targetId === entry.targetId)) {
+                modHistory.push(entry);
+                if (modHistory.length > 1000) modHistory.shift();
+                renderModLines();
+            }
+        }
+    };
 
     function updateRegex() {
         const p = KEYWORDS.filter(k => k.enabled !== false).map(getKeywordText);
@@ -121,10 +248,16 @@
 
         entries.forEach(entry => {
             const cleaned = entry.replace(/\u00a0/g, ' ').trim();
-            if (cleaned.toLowerCase().includes("chat:")) {
+			const lower = cleaned.toLowerCase();
+            
+			if (lower.includes("chat:")) {
                 // This now sends the string WITH the timestamp to processChatLog
                 processChatLog(cleaned);
             }
+			
+			if (lower.includes("kicked") || lower.includes("banned")) {
+						processModLog(cleaned);
+					}
         });
 
         console.log(`HH Debug: Bootstrap complete. Total chatHistory: ${chatHistory.length}`);
@@ -203,6 +336,7 @@
                 desc: 'Role and Ban actions by SteamID'
             },
             {label: 'Chat', type: 'info', icon: '💬', action: 'openChat', desc: 'View player chat logs'},
+			{label: 'Mod Log', type: 'info', icon: '🛡️', action: 'openModLog', desc: 'View kick and ban history'},
             {label: 'Messages', type: 'info', icon: '💬', id: 'hh-msg-trigger', desc: 'Send global announcements'},
             {label: 'Players', type: 'info', icon: '📋', action: 'togglePlayers', desc: 'Show/hide online player list'},
             {label: 'Users', type: 'info', icon: '👥', cmd: 'users', desc: 'List all connected users in console'},
@@ -264,7 +398,11 @@
                         });
                         showToast(`Banned: ${sid}`);
                     }
-                } else {
+                } else if (tool.action === 'openModLog') {
+					const view = document.getElementById('hh-mod-view') || createModView();
+					renderModLines();
+					view.style.display = 'flex';
+				} else {
                     // Standard commands (users, etc.)
                     safeSendMessage({action: "PROXY_COMMAND", cmd: tool.cmd});
                     showToast(`Sent: ${tool.label}`);
@@ -1184,6 +1322,10 @@
             // Reuse your *existing* parsers
             processJoinLeaveFromText(text);
             processChatLog(text);
+
+			if (text.toLowerCase().includes("kicked") || text.toLowerCase().includes("banned")) {
+				processModLog(text);
+}
         });
 
         // Anyone who chatted but never had join logged
@@ -1279,8 +1421,8 @@
                 if (!parent) return NodeFilter.FILTER_REJECT;
                 const isUI = parent.closest(
                     ".hh-highlight, .hh-idhighlight, .hh-secondaryhighlight, .hh-role-force-white, " +
-                    "#hh-ui-wrapper, #hh-player-panel, .hh-toast, #hh-chat-view, .hh-action-menu, " +
-                    "script, style, textarea, input"
+                    "#hh-ui-wrapper, #hh-player-panel, .hh-toast, #hh-chat-view, .hh-action-menu, " + 
+					".hh-mod-view, .hh-chat-content, script, style, textarea, input"
                 );
                 return isUI ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
             }
@@ -1687,6 +1829,9 @@
                         if (node.textContent) {
                             scanForKeywords(node.textContent);
                             processChatLog(node.textContent);
+							if (node.textContent.toLowerCase().includes("kicked") || node.textContent.toLowerCase().includes("banned")) {
+								processModLog(node.textContent);
+							}
                             checkRaceStatus(node.textContent, false);
                             shouldRescan = true;
                         }

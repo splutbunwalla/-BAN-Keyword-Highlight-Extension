@@ -582,14 +582,14 @@ body.hh-disabled .hh-secondaryhighlight {
     background: #5a5f69;
 }
 
-.hh-chat-filter-row {
-    display: flex;
-    gap: 10px;
-    padding: 8px 10px;
-    background: #2f3136;
-    border-bottom: 1px solid #444;
-    align-items: center;
-}
+/* .hh-chat-filter-row { */
+    /* display: flex; */
+    /* gap: 10px; */
+    /* padding: 8px 10px; */
+    /* background: #2f3136; */
+    /* border-bottom: 1px solid #444; */
+    /* align-items: center; */
+/* } */
 
 .hh-chat-time-input {
     background: #181a1d;
@@ -742,4 +742,92 @@ body.hh-disabled .hh-secondaryhighlight {
 
 #hh-heartbeat.pulsing {
     animation: hh-pulse 2s infinite ease-in-out;
+}
+
+/* Moderation Log specific styles */
+#hh-mod-log-view {
+    display: none;
+    position: fixed;
+    top: 60px;
+    right: 350px; /* Offset from player list/chat */
+    width: 500px;
+    height: 400px;
+    background: var(--hh-main-bg);
+    border: 1px solid var(--hh-border);
+    border-radius: 8px;
+    flex-direction: column;
+    z-index: 2147483646;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.mod-action-kicked .mod-label {
+    background: #ff8800;
+    color: #000;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    margin: 0 5px;
+}
+
+/* --- Fix: Single Line Queue & Mod Entries --- */
+.hh-queue-info {
+    display: flex;
+    flex-direction: row; /* Changed from column to row */
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+    white-space: nowrap; /* Prevents splitting into multiple lines */
+}
+
+.hh-mod-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    background: #000;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+}
+
+/* Ensure mod lines are single-row and don't wrap unless very long */
+.hh-mod-line {
+    padding: 4px 8px;
+    border-bottom: 1px solid #222;
+    white-space: nowrap; 
+    font-size: 12px;
+    display: flex;
+    gap: 8px;
+    color: #eee;
+}
+
+.hh-mod-ts { color: #888; }
+.hh-mod-action { font-weight: bold; }
+.hh-mod-target { color: #fff; }
+.hh-mod-admin { color: #aaa; font-style: italic; }
+
+/* Update your existing #hh-mod-view or replace with this for centering */
+#hh-mod-view {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Perfectly centers the window */
+    width: 850px;
+    height: 500px;
+    background: var(--hh-main-bg);
+    border: 1px solid var(--hh-border);
+    border-radius: 8px;
+    z-index: 100005;
+    display: none;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+}
+
+/* Ensure the filter row items are aligned and single-line */
+.hh-chat-filter-row {
+    display: flex;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--hh-alt-bg);
+    border-bottom: 1px solid var(--hh-border);
+    align-items: center;
+    flex-wrap: nowrap; /* Prevents splitting into multiple lines */
 }
