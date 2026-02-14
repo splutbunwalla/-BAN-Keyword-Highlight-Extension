@@ -33,7 +33,10 @@ document.querySelectorAll('.color-swatch').forEach(swatch => {
 });
 
 document.addEventListener('click', (e) => {
-    if (!container.contains(e.target) && !e.target.closest('.pcr-app')) {
+    const isInsideContainer = container.contains(e.target);
+    const isInsidePickr = e.target.closest('.pcr-app');
+    const isSwatch = e.target.classList.contains('color-swatch');
+    if (!isInsideContainer && !isInsidePickr && !isSwatch) {
         closePopup();
     }
 });
