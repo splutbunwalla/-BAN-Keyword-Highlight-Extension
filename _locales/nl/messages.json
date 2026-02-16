@@ -153,5 +153,8 @@
   "steamidColorFirst": { "message": "SteamID kleur begin" },
   "steamidColorMiddle": { "message": "SteamID kleur midden" },
   "steamidColorEnd": { "message": "SteamID kleur einde" },
-  "steamidTextColor": { "message": "SteamID tekstkleur" }
+  "steamidTextColor": { "message": "SteamID tekstkleur" },
+  
+  "menu_translate": { "message": "✍️ Vertalen naar het Engels" },
+  "menu_close": { "message": "Sluiten" }
 }

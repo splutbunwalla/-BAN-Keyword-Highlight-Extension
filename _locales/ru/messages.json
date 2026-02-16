@@ -153,5 +153,8 @@
   "steamidColorFirst": { "message": "Цвет SteamID (начало)" },
   "steamidColorMiddle": { "message": "Цвет SteamID (середина)" },
   "steamidColorEnd": { "message": "Цвет SteamID (конец)" },
-  "steamidTextColor": { "message": "Цвет текста SteamID" }
+  "steamidTextColor": { "message": "Цвет текста SteamID" },
+
+  "menu_translate": { "message": "✍️ Перевести на английский" },
+  "menu_close": { "message": "Закрыть" }
 }

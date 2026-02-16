@@ -153,5 +153,8 @@
   "steamidColorFirst": { "message": "SteamID färg början" },
   "steamidColorMiddle": { "message": "SteamID färg mitten" },
   "steamidColorEnd": { "message": "SteamID färg slut" },
-  "steamidTextColor": { "message": "SteamID textfärg" }
+  "steamidTextColor": { "message": "SteamID textfärg" },
+  
+  "menu_translate": { "message": "✍️ Översätt till engelska" },
+  "menu_close": { "message": "Stäng" }
 }

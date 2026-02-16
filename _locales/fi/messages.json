@@ -153,5 +153,8 @@
   "steamidColorFirst": { "message": "SteamID väri alku" },
   "steamidColorMiddle": { "message": "SteamID väri keskikohta" },
   "steamidColorEnd": { "message": "SteamID väri loppu" },
-  "steamidTextColor": { "message": "SteamID tekstin väri" }
+  "steamidTextColor": { "message": "SteamID tekstin väri" },
+  
+  "menu_translate": { "message": "✍️ Käännä englanniksi" },
+  "menu_close": { "message": "Sulje" }
 }

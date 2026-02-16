@@ -153,5 +153,7 @@
   "steamidColorFirst": { "message": "SteamID Farbe Anfang" },
   "steamidColorMiddle": { "message": "SteamID Farbe Mitte" },
   "steamidColorEnd": { "message": "SteamID Farbe Ende" },
-  "steamidTextColor": { "message": "SteamID Farbe Text" }
+  "steamidTextColor": { "message": "SteamID Farbe Text" },
+  "menu_translate": { "message": "✍️ Auf Englisch übersetzen" },
+  "menu_close": { "message": "Schließen" }
 }

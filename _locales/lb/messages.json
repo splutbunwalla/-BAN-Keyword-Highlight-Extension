@@ -153,5 +153,8 @@
   "steamidColorFirst": { "message": "SteamID Faarf Ufank" },
   "steamidColorMiddle": { "message": "SteamID Faarf Mëtt" },
   "steamidColorEnd": { "message": "SteamID Faarf Enn" },
-  "steamidTextColor": { "message": "SteamID Textfaarf" }
+  "steamidTextColor": { "message": "SteamID Textfaarf" },
+
+  "menu_translate": { "message": "✍️ Op Englesch iwwersetzen" },
+  "menu_close": { "message": "Zoumaachen" }
 }

@@ -28,6 +28,93 @@
 
     const getKeywordText = k => typeof k === 'string' ? k : k.text;
 
+// 1. The Translation Fetcher
+const translateText = async (text, targetLang = 'en') => {
+    try {
+        const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`);
+        const data = await response.json();
+        return data[0].map(x => x[0]).join('');
+    } catch (e) {
+        return "Translation error.";
+    }
+};
+
+const showTranslationMenu = (e, message, translationDiv) => {
+    // FIX: Check if actionMenu exists; if not, create it immediately.
+    if (!actionMenu) {
+        actionMenu = document.createElement('div');
+        actionMenu.className = 'hh-action-menu';
+        document.body.appendChild(actionMenu);
+        
+        // Add the click listener to close it when clicking elsewhere
+        document.addEventListener('click', (e) => {
+             if (actionMenu && !actionMenu.contains(e.target)) {
+                 actionMenu.style.display = 'none';
+             }
+        });
+    }
+
+    // 1. Setup the HTML
+    actionMenu.innerHTML = `
+        <div class="hh-menu-row" id="ctx-btn-translate">${chrome.i18n.getMessage("menu_translate")}</div>
+        <div class="hh-menu-row" id="ctx-btn-close">${chrome.i18n.getMessage("menu_close")}</div>
+    `;
+
+    // 2. Position and SHOW the menu
+    actionMenu.style.left = `${e.pageX}px`;
+    actionMenu.style.top = `${e.pageY}px`;
+    actionMenu.style.display = 'flex'; // Force display
+    actionMenu.style.visibility = 'visible';
+    actionMenu.style.zIndex = '2147483647'; // Ensure it is on top of the chat window
+
+    // 3. Attach listeners AFTER innerHTML is set
+    const btnTranslate = document.getElementById('ctx-btn-translate');
+    const btnClose = document.getElementById('ctx-btn-close');
+
+    if (btnTranslate) {
+        btnTranslate.onclick = async () => {
+            translationDiv.innerText = "Translating...";
+            translationDiv.style.display = 'block';
+            
+            const result = await translateText(message);
+            translationDiv.innerText = `[EN]: ${result}`;
+            
+            actionMenu.style.display = 'none';
+        };
+    }
+
+    if (btnClose) {
+        btnClose.onclick = () => {
+            actionMenu.style.display = 'none';
+        };
+    }
+};
+
+function buildChatLine(m) {
+    const line = document.createElement('div');
+    // Use 'hh-mod-line' to stay consistent with your existing CSS
+    line.className = 'hh-mod-line'; 
+    line.style.flexDirection = 'column'; // Stack message and translation
+    line.style.alignItems = 'flex-start';
+
+    line.innerHTML = `
+        <div class="hh-chat-row-main">
+            <span class="hh-mod-ts">[${m.timestamp}]</span> 
+            <strong>${m.name}</strong>: <span class="hh-message-body">${m.message}</span>
+        </div>
+        <div class="hh-chat-translation" style="display:none; color:#00ff88; font-size:11px; padding-left:15px; font-style:italic; white-space: normal;"></div>
+    `;
+
+    line.oncontextmenu = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const transDiv = line.querySelector('.hh-chat-translation');
+        showTranslationMenu(e, m.message, transDiv);
+    };
+
+    return line;
+}
+
 	const openModLog = () => {
 		const view = document.getElementById('hh-mod-log-view') || createModView();
 		renderModLines();
@@ -244,7 +331,7 @@
         compiledRegex = new RegExp(`(\\b\\d{17}\\b|${ROLE_PATTERN}${wordPattern ? '|' + wordPattern : ''})`, "gi");
     }
 
-const updateHeartbeat = () => {
+	const updateHeartbeat = () => {
         if (!chrome.runtime?.id) {
             return; 
         }
@@ -862,13 +949,6 @@ const updateHeartbeat = () => {
                 content.appendChild(buildChatLine(m));
             });
     };
-
-    function buildChatLine(m) {
-        const line = document.createElement('div');
-        line.className = 'hh-chat-line';
-        line.textContent = chrome.i18n.getMessage("chat_line_format",[m.timestamp, m.name, m.message]);
-        return line;
-    }
 
     const getVisibleChatText = () => {
         const chatView = document.getElementById('hh-chat-view');
