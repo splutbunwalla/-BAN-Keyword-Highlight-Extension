@@ -482,7 +482,7 @@
 
     <div class="toggle-section">
         <div class="title-wrapper">
-            <span class="section-title-big">Wreckfest 2 Admin Tool (HH)</span>
+            <span class="section-title-big" data-i18n="extension_name">Wreckfest 2 Admin Tool (HH)</span>
             <div class="version-tag">v1.8</div>
         </div>
         <label class="switch">
@@ -493,7 +493,7 @@
     <div class="control-group">
         <div class="toggle-wrapper"
              style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <span style="font-size: 13px; font-weight: 500;">Mute All Sounds</span>
+            <span style="font-size: 13px; font-weight: 500;" data-i18n="popup_mute_audio">Mute All Sounds</span>
             <label class="switch">
                 <input id="muteAllToggle" type="checkbox">
                 <span class="slider"></span>
@@ -501,14 +501,14 @@
         </div>
     </div>
     <div class="control-group">
-        <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">Primary Keywords</div>
+        <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px;" data-i18n="popup_title_keywords" ></div>
         <div class="keyword-list" id="primary-list"></div>
         <div class="add-keyword multiline">
-            <textarea id="new-primary" placeholder="Add words (one per line)..." rows="3"></textarea>
+            <textarea id="new-primary" rows="3" data-i18n-placeholder="popup_keywords_placeholder"></textarea>
             <button id="add-primary-btn">+</button>
         </div>
         <div class="setting-row multi-input">
-            <label>Primary Highlight</label>
+            <label data-i18n="popup_label_primary">Primary Highlight</label>
             <div class="input-stack">
                 <div class="input-group">
                     <div class="color-swatch" data-target="primaryColorFirst"></div>
@@ -529,15 +529,15 @@
 
 
     <div class="control-group">
-        <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">Secondary Keywords</div>
+        <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px;" data-i18n="popup_title_secondary" >Secondary Keywords</div>
         <div class="keyword-list" id="secondary-list"></div>
         <div class="add-keyword multiline">
-            <textarea id="new-secondary" placeholder="Add words (one per line)..." rows="3"></textarea>
+            <textarea id="new-secondary" data-i18n-placeholder="popup_keywords_placeholder" rows="3" ></textarea>
             <button id="add-secondary-btn">+</button>
         </div>
 
         <div class="setting-row multi-input">
-            <label>Secondary Highlight</label>
+            <label data-i18n="popup_label_secondary">Secondary Highlight</label>
             <div class="input-stack">
                 <div class="input-group">
                     <div class="color-swatch" data-target="secondaryColorFirst"></div>
@@ -558,7 +558,7 @@
 
     <div class="control-group">
         <div class="setting-row multi-input">
-            <label>SteamID Style</label>
+            <label data-i18n="popup_label_steamid">SteamID Style</label>
             <div class="input-stack">
                 <div class="input-group">
                     <div class="color-swatch" data-target="steamidColorFirst"></div>
@@ -577,10 +577,10 @@
 
     <div class="control-group" style="border-bottom: none;">
         <div class="section-header">
-            <div class="section-title">Messages</div>
+            <div class="section-title" data-i18n="popup_title_messages">Messages</div>
             <div class="message-actions">
-                <button class="mini-btn" id="export-messages" title="Export to JSON">Export</button>
-                <button class="mini-btn" id="import-messages" title="Import from JSON">Import</button>
+                <button class="mini-btn" id="export-messages" title="Export to JSON" data-i18n="popup_btn_export">Export</button>
+                <button class="mini-btn" id="import-messages" title="Import from JSON" data-i18n="popup_btn_import">Import</button>
                 <input accept=".json" id="import-file" style="display: none;" type="file">
             </div>
         </div>
@@ -588,8 +588,8 @@
         <div class="keyword-list" id="message-list" style="max-height: 160px;"></div>
         <div class="msg-grid-container">
             <div class="msg-inputs">
-                <input id="new-msg-label" placeholder="Label" type="text">
-                <input id="new-msg-text" placeholder="Message text..." type="text">
+                <input id="new-msg-label" type="text" data-i18n-placeholder="popup_placeholder_label">
+                <input id="new-msg-text" type="text" data-i18n-placeholder="popup_placeholder_msg">
             </div>
             <button id="add-msg-btn">+</button>
         </div>

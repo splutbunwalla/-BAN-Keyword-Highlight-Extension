@@ -109,19 +109,19 @@ function renderKeywords(containerId, words, storageKey) {
         const dingBtn = document.createElement('button');
         dingBtn.className = 'icon-btn ding-btn' + (item.ding ? ' active' : '');
         dingBtn.innerHTML = speakerIconSVG;
-        dingBtn.title = item.ding ? "Sound On" : "Sound Off";
+        dingBtn.title = item.ding ? chrome.i18n.getMessage("sound_on") : chrome.i18n.getMessage("sound_off");
 
         dingBtn.onclick = () => {
             item.ding = !item.ding;
 
             dingBtn.classList.toggle('active', item.ding);
-            dingBtn.title = item.ding ? "Sound On" : "Sound Off";
+            dingBtn.title = item.ding ? chrome.i18n.getMessage("sound_on") : chrome.i18n.getMessage("sound_off");
 
             chrome.storage.sync.set({[storageKey]: words}, () => {
                 chrome.tabs.query({active: true, currentWindow: true}, tabs => {
                     if (tabs[0]?.id) {
                         chrome.tabs.sendMessage(tabs[0].id, {
-                            action: "updateKeywordsOnly", // New action to avoid re-scan
+                            action: "updateKeywordsOnly", 
                             keywords: storageKey === "keywords" ? words : KEYWORDS,
                             secondarykeywords: storageKey === "secondarykeywords" ? words : SECONDARYWORDS
                         });
@@ -132,7 +132,7 @@ function renderKeywords(containerId, words, storageKey) {
 
         const cb = document.createElement("input");
         cb.type = "checkbox";
-        cb.checked = item.enabled !== false; // Default to true
+        cb.checked = item.enabled !== false; 
         cb.onchange = () => {
             words[index].enabled = cb.checked;
             chrome.storage.sync.set({[storageKey]: words}, () => {
@@ -169,7 +169,6 @@ function renderMessages(messages) {
 
         const info = document.createElement("div");
         info.className = "item-info";
-        // Tooltip: shows the full message when hovering
         info.setAttribute('title', m.text);
 
         info.innerHTML = `
@@ -185,7 +184,7 @@ function renderMessages(messages) {
             messages.splice(index, 1);
             chrome.storage.sync.set({messages: messages}, () => {
                 renderMessages(messages);
-                saveSettingsSilently(); // Update the broadcast to content script
+                saveSettingsSilently();
             });
         };
 
@@ -199,7 +198,6 @@ function addKeyword(inputId, storageKey, listId) {
     const rawValue = input.value.trim();
     if (!rawValue) return;
 
-    // Split by newlines, trim each line, and remove empty results
     const newEntries = rawValue.split(/\r?\n/)
         .map(line => line.trim())
         .filter(line => line.length > 0);
@@ -207,16 +205,14 @@ function addKeyword(inputId, storageKey, listId) {
     chrome.storage.sync.get([storageKey], (data) => {
         let currentKeywords = data[storageKey] || [];
 
-        // Add all new lines to the list
         newEntries.forEach(word => {
-            // Avoid exact duplicates
             if (!currentKeywords.some(k => (typeof k === 'string' ? k : k.text) === word)) {
                 currentKeywords.push({text: word, enabled: true, ding: true});
             }
         });
 
         chrome.storage.sync.set({[storageKey]: currentKeywords}, () => {
-            input.value = ""; // Clear the textarea
+            input.value = ""; 
             renderKeywords(listId, currentKeywords, listId);
             updateContentScript();
         });
@@ -232,7 +228,7 @@ function addMessage() {
     if (text) {
         chrome.storage.sync.get(["messages"], data => {
             const msgs = data.messages || [];
-            msgs.push({label: label || "Msg", text: text});
+            msgs.push({label: label || chrome.i18n.getMessage("default_message_label"), text: text});
             chrome.storage.sync.set({messages: msgs}, () => {
                 renderMessages(msgs);
                 labelInput.value = "";
@@ -250,7 +246,6 @@ function loadSettings() {
         "secondaryColorFirst", "secondaryColorMiddle", "secondaryColorEnd", "secondaryTextColor", "secondaryBorderColor",
         "steamidColorFirst", "steamidColorMiddle", "steamidColorEnd", "steamidTextColor"
     ], (data) => {
-        // 1. Load Lists & Toggles
         KEYWORDS = data.keywords || [];
         SECONDARYWORDS = data.secondarykeywords || [];
         renderKeywords("primary-list", KEYWORDS, "keywords");
@@ -262,28 +257,25 @@ function loadSettings() {
         if (muteAllToggle) muteAllToggle.checked = !!data.muteAll;
         container.classList.toggle('disabled', !enabled);
 
-        // 2. Initialize Pickr for each swatch using the data we just loaded
         document.querySelectorAll('.color-swatch').forEach(swatch => {
             const targetId = swatch.dataset.target;
             const input = document.getElementById(targetId);
 
-            // Get the color from storage, or use a specific fallback
             const savedColor = data[targetId] || (targetId.includes('TextColor') ? '#ffffff' : '#3399ff');
 
-            // Update hidden input and swatch visual immediately
             if (input) input.value = savedColor;
             swatch.style.backgroundColor = savedColor;
-            const readableName = targetId
-                .replace(/([A-Z])/g, ' $1')
-                .replace(/^./, str => str.toUpperCase());
-            swatch.title = readableName;
+            
+            // Localize swatch title based on ID
+            swatch.title = chrome.i18n.getMessage(targetId) || targetId;
+
             const pickr = Pickr.create({
                 el: swatch,
-                theme: 'nano', // Nano is better for small popups
+                theme: 'nano', 
                 default: savedColor,
                 padding: 8,
                 closeOnScroll: false,
-                useAsButton: true, // Swatch acts as the button
+                useAsButton: true, 
                 components: {
                     preview: true,
                     opacity: true,
@@ -295,7 +287,6 @@ function loadSettings() {
                 }
             });
 
-            // Handle live updates
             pickr.on('change', (color) => {
                 const hexa = color.toHEXA().toString();
                 swatch.style.backgroundColor = hexa;
@@ -314,11 +305,8 @@ function loadSettings() {
 
 muteAllToggle.addEventListener("change", () => {
     const isCurrentlyMuted = muteAllToggle.checked;
-
-    // Save to storage (for next time popup opens)
     chrome.storage.sync.set({muteAll: isCurrentlyMuted});
 
-    // Update content script immediately
     chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
         if (tabs[0]?.id) {
             chrome.tabs.sendMessage(tabs[0].id, {
@@ -337,8 +325,7 @@ toggleCheckbox.addEventListener("change", () => {
         chrome.tabs.query({active: true, currentWindow: true}, tabs => {
             if (tabs[0] && tabs[0].id) {
                 chrome.tabs.sendMessage(tabs[0].id, {action: "toggle"}, (response) => {
-                    if (chrome.runtime.lastError) { /* Ignore error */
-                    }
+                    if (chrome.runtime.lastError) { /* Ignore error */ }
                 });
             }
         });
@@ -379,55 +366,46 @@ document.getElementById('import-file').addEventListener('change', (e) => {
             const importedMessages = JSON.parse(event.target.result);
 
             if (!Array.isArray(importedMessages)) {
-                alert("Invalid format: Messages must be an array.");
+                alert(chrome.i18n.getMessage("error_invalid_format"));
                 return;
             }
 
-            if (confirm(`Import ${importedMessages.length} messages? This will overwrite your current list.`)) {
+            if (confirm(chrome.i18n.getMessage("import_confirm_count", [importedMessages.length.toString()]))) {
                 chrome.storage.sync.set({messages: importedMessages}, () => {
-                    // Refresh the UI list
                     renderMessages(importedMessages);
-                    // Notify content script
                     updateContentScript();
-                    alert("Messages imported successfully!");
+                    alert(chrome.i18n.getMessage("import_success"));
                 });
             }
         } catch (err) {
-            alert("Error parsing JSON file.");
+            alert(chrome.i18n.getMessage("error_json_parse"));
             console.error(err);
         }
     };
     reader.readAsText(file);
-    // Reset input so the same file can be imported again if needed
     e.target.value = '';
 });
 
-// Attach listeners to ALL inputs for live-updating and debounced saving
 let saveTimeout;
 document.querySelectorAll('input, select, textarea').forEach(input => {
     input.addEventListener('input', () => {
-        // 1. Instant visual update to the active tab
         updateContentScript();
 
-        // 2. Debounced save to storage (waits 500ms after last move)
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(() => {
             const settings = {
-                // Primary
                 primaryColorFirst: document.getElementById("primaryColorFirst").value,
                 primaryColorMiddle: document.getElementById("primaryColorMiddle").value,
                 primaryColorEnd: document.getElementById("primaryColorEnd").value,
                 primaryTextColor: document.getElementById("primaryTextColor").value,
                 primaryBorderColor: document.getElementById("primaryBorderColor").value,
 
-                // Secondary
                 secondaryColorFirst: document.getElementById("secondaryColorFirst").value,
                 secondaryColorMiddle: document.getElementById("secondaryColorMiddle").value,
                 secondaryColorEnd: document.getElementById("secondaryColorEnd").value,
                 secondaryTextColor: document.getElementById("secondaryTextColor").value,
                 secondaryBorderColor: document.getElementById("secondaryBorderColor").value,
 
-                // SteamID
                 steamidColorFirst: document.getElementById("steamidColorFirst").value,
                 steamidColorMiddle: document.getElementById("steamidColorMiddle").value,
                 steamidColorEnd: document.getElementById("steamidColorEnd").value,
@@ -441,10 +419,8 @@ document.querySelectorAll('input, select, textarea').forEach(input => {
                 }
             });
 
-            // Save to storage
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
-
                 chrome.storage.sync.set(settings);
             }, 100);
         });
@@ -452,3 +428,15 @@ document.querySelectorAll('input, select, textarea').forEach(input => {
 });
 
 loadSettings();
+
+function localizeHtml() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const message = chrome.i18n.getMessage(el.getAttribute('data-i18n'));
+        if (message) el.textContent = message;
+    });
+	document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+		const messageKey = el.getAttribute('data-i18n-placeholder');
+		el.setAttribute('placeholder', chrome.i18n.getMessage(messageKey));
+	});
+}
+localizeHtml();

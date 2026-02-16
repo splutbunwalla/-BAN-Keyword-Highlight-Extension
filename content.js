@@ -20,6 +20,8 @@
     let isMuted = false;
     let didBootstrap = false;
     let compiledRegex = null;
+	let matrixInterval = null;
+	let matrixCanvas = null;	
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -27,7 +29,7 @@
     const getKeywordText = k => typeof k === 'string' ? k : k.text;
 
 	const openModLog = () => {
-		const view = document.getElementById('hh-mod-log-view') || createModLogView();
+		const view = document.getElementById('hh-mod-log-view') || createModView();
 		renderModLines();
 		view.style.display = 'flex';
 	};
@@ -39,32 +41,35 @@
 		el.innerHTML = `
 			<div class="hh-panel-header">
 				<div class="hh-header-left">
-					<span class="hh-panel-title">🛡️ Moderation Log</span>
+					<span class="hh-panel-title">${chrome.i18n.getMessage("mod_panel_title")}</span>
 				</div>
 				<span id="hh-mod-close" style="cursor:pointer;color:#ff4444;font-weight:bold;font-size:18px;">✖</span>
 			</div>
 			
 			<div class="hh-chat-filter-row">
 				<select id="hh-mod-filter-type" class="hh-chat-player-select" style="margin:0; width:100px;">
-					<option value="all">All Actions</option>
-					<option value="KICKED">Kicks</option>
-					<option value="BANNED">Bans</option>
+					<option value="all">${chrome.i18n.getMessage("mod_filter_all")}</option>
+					<option value="KICKED">${chrome.i18n.getMessage("mod_filter_kick")}</option>
+					<option value="BANNED">${chrome.i18n.getMessage("mod_filter_ban")}</option>
 				</select>
 				
-				<input type="text" id="hh-mod-search" class="hh-chat-search" placeholder="Search name/ID..." style="margin:0; flex-grow:1;">
+				<input type="text" id="hh-mod-search" class="hh-chat-search" placeholder="${chrome.i18n.getMessage("mod_search_placeholder")}" style="margin:0; flex-grow:1;">
 				
 				<div style="display:flex; align-items:center; gap:5px;">
-					<span style="font-size:10px; color:#888;">From:</span>
-					<input type="text" id="hh-mod-time-start" class="hh-chat-time-input" placeholder="00:00:00">
-					<span style="font-size:10px; color:#888;">To:</span>
-					<input type="text" id="hh-mod-time-end" class="hh-chat-time-input" placeholder="23:59:59">
+					<span style="font-size:10px; color:#888;">${chrome.i18n.getMessage("mod_label_from")}</span>
+					<input type="text" id="hh-mod-time-start" class="hh-chat-time-input" placeholder="${chrome.i18n.getMessage("time_player_holder")}">
+					<span style="font-size:10px; color:#888;">${chrome.i18n.getMessage("mod_label_to")}</span>
+					<input type="text" id="hh-mod-time-end" class="hh-chat-time-input" placeholder="${chrome.i18n.getMessage("time_player_holder2")}">
 				</div>
 			</div>
 
 			<div class="hh-chat-content" id="hh-mod-content"></div>
-			
 			<div class="hh-chat-footer">
-				<span id="hh-mod-stats" style="font-size:10px; color:#666;">Showing 0 actions</span>
+				<span id="hh-mod-stats" style="font-size:10px; color:#666;">${chrome.i18n.getMessage("mod_0_actions")}</span>
+				<div style="display:flex; gap:5px;">
+					<button id="hh-export-mod" class="hh-tool-btn info">${chrome.i18n.getMessage("mod_btn_export")}</button>
+					<button id="hh-copy-mod" class="hh-tool-btn info">${chrome.i18n.getMessage("mod_btn_copy")}</button>
+				</div>
 			</div>
 		`;
 		let wrapper = document.getElementById('hh-ui-wrapper');
@@ -80,10 +85,41 @@
 		inputs.forEach(id => {
 			el.querySelector(`#${id}`).addEventListener('input', renderModLines);
 		});
+		
+		// Copy Visible Mod Log
+		el.querySelector('#hh-copy-mod').onclick = () => {
+			const text = getVisibleModText();
+			navigator.clipboard.writeText(text);
+			showToast(chrome.i18n.getMessage("toast_mod_copied"));
+		};
+
+		// Export Mod Log
+		el.querySelector('#hh-export-mod').onclick = () => {
+			const text = getVisibleModText();
+			const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+			downloadTextFile(text, `mod-log-${ts}.txt`);
+		};
 
 		el.querySelector('#hh-mod-close').onclick = () => el.style.display = 'none';
 		return el;
 	}
+
+	const getVisibleModText = () => {
+		const typeFilter = document.getElementById('hh-mod-filter-type').value;
+		const searchText = document.getElementById('hh-mod-search').value.toLowerCase();
+		const startTime = document.getElementById('hh-mod-time-start').value;
+		const endTime = document.getElementById('hh-mod-time-end').value;
+
+		return modHistory.filter(m => {
+			if (typeFilter !== 'all' && m.action !== typeFilter) return false;
+			if (searchText && !m.targetName.toLowerCase().includes(searchText) && !m.targetId.includes(searchText)) return false;
+			if (startTime && m.timestamp < startTime) return false;
+			if (endTime && m.timestamp > endTime) return false;
+			return true;
+		})
+		.map(m => `${chrome.i18n.getMessage("mod_entry_format", [m.timestamp, m.action, m.targetName, m.targetId, m.adminName])}${m.duration ? chrome.i18n.getMessage("mod_entry_duration",[m.duration.toString()]) : ''}`)
+		.join('\n');
+	};
 
 	const renderModLines = () => {
 		const container = document.getElementById('hh-mod-content');
@@ -118,7 +154,6 @@
 			line.className = 'hh-mod-line';
 			line.style.borderLeft = m.action === 'BANNED' ? '3px solid #ff4444' : '3px solid #ff8800';
 			
-			const details = m.duration ? ` for <span style="color:#ffcc00">${m.duration} mins</span>` : '';
 			const color = m.action === 'BANNED' ? '#ff4444' : '#ffcc00';
 			line.innerHTML = `
                 <span class="hh-mod-ts">[${m.timestamp}]</span>
@@ -130,7 +165,7 @@
 			container.appendChild(line);
 		});
 
-		document.getElementById('hh-mod-stats').innerText = `Showing ${filtered.length} of ${modHistory.length} actions`;
+		document.getElementById('hh-mod-stats').innerText = `${chrome.i18n.getMessage("mod_stats", [filtered.length.toString(), modHistory.length.toString()])}`;
 	};
 	
 	const processModLog = (text) => {
@@ -209,7 +244,12 @@
         compiledRegex = new RegExp(`(\\b\\d{17}\\b|${ROLE_PATTERN}${wordPattern ? '|' + wordPattern : ''})`, "gi");
     }
 
-    const updateHeartbeat = () => {
+const updateHeartbeat = () => {
+        if (!chrome.runtime?.id) {
+            return; 
+        }
+        // ---------------------------------------
+
         const isLogFrame = window.location.href.includes("StreamFile.aspx") ||
             window.location.href.includes("Proxy.ashx") ||
             document.querySelector('pre, .log-line, #ConsoleOutput');
@@ -228,11 +268,11 @@
         if (isEnabled) {
             dot.style.background = "#00ff00"; // Green
             dot.style.boxShadow = "0 0 5px #00ff00";
-            dot.title = "HH Monitor Active";
+            dot.title = chrome.i18n.getMessage("status_active");
         } else {
             dot.style.background = "#ffcc00"; // Yellow
             dot.style.boxShadow = "0 0 5px #ffcc00";
-            dot.title = "HH Monitor Disabled (Standby)";
+            dot.title = chrome.i18n.getMessage("status_standby");
         }
     };
 
@@ -273,7 +313,7 @@
         const existing = NAME_MAP[id] || {};
 
         NAME_MAP[id] = {
-            name: name || existing.name || "Unknown",
+            name: name || existing.name || chrome.i18n.getMessage("name_unknown"),
             connId: connId || existing.connId,
             online: joined,
             lastSeen: joined ? Date.now() : existing.lastSeen || 0
@@ -337,17 +377,19 @@
     const updateRaceUI = (active) => {
         const el = document.getElementById('hh-race-status');
         if (!el) return;
+		
+		if (!chrome.runtime?.id) { return; }
 
         const count = getOnlineCount();
-        const countText = ` (${count}/24)`;
+        const countText = chrome.i18n.getMessage("player_count", [count]);
 
         if (active) {
-            el.innerHTML = `🔴 Race In Progress${countText}`;
+            el.innerHTML = `${chrome.i18n.getMessage("race_active")}${countText}`;
             el.style.background = 'rgba(255, 0, 0, 0.2)';
             el.style.color = '#ff4d4d';
             el.style.border = '1px solid #ff4d4d';
         } else {
-            el.innerHTML = `🏁 No Race${countText}`;
+            el.innerHTML = `${chrome.i18n.getMessage("race_none")}${countText}`;
             el.style.background = 'rgba(255, 255, 255, 0.1)';
             el.style.color = '#ccc';
             el.style.border = '1px solid #444';
@@ -375,19 +417,14 @@
 
         // Standard Tools
         const tools = [
-            {
-                label: 'SID Actions',
-                type: 'info',
-                icon: '🛠️',
-                id: 'hh-sid-trigger',
-                desc: 'Role and Ban actions by SteamID'
-            },
-            {label: 'Chat', type: 'info', icon: '💬', action: 'openChat', desc: 'View player chat logs'},
-			{label: 'Mod Log', type: 'info', icon: '🛡️', action: 'openModLog', desc: 'View kick and ban history'},
-            {label: 'Messages', type: 'info', icon: '💬', id: 'hh-msg-trigger', desc: 'Send global announcements'},
-            {label: 'Players', type: 'info', icon: '📋', action: 'togglePlayers', desc: 'Show/hide online player list'},
-            {label: 'Users', type: 'info', icon: '👥', cmd: 'users', desc: 'List all connected users in console'},
-            {label: 'Restart', type: 'danger', icon: '🔄', cmd: 'restart', desc: 'Double-click to RESTART server'}
+            {label: chrome.i18n.getMessage("tool_sid_label"), type: 'info', icon: '🛠️', id: 'hh-sid-trigger', desc: chrome.i18n.getMessage("tool_sid_desc")},
+            {label: chrome.i18n.getMessage("tool_chat_label"), type: 'info', icon: '💬', action: 'openChat', desc: chrome.i18n.getMessage("tool_chat_desc")}, //'View player chat logs'},
+			{label: chrome.i18n.getMessage("tool_mod_label"), type: 'info', icon: '🛡️', action: 'openModLog', desc: chrome.i18n.getMessage("tool_mod_desc")}, //'View kick and ban history'},
+            {label: chrome.i18n.getMessage("tool_msg_label"), type: 'info', icon: '💬', id: 'hh-msg-trigger', desc: chrome.i18n.getMessage("tool_msg_desc")}, //'Send global announcements'},
+            {label: chrome.i18n.getMessage("tool_players_label"), type: 'info', icon: '📋', action: 'togglePlayers', desc: chrome.i18n.getMessage("tool_players_desc")}, //'Show/hide online player list'},
+            {label: chrome.i18n.getMessage("tool_users_label"), type: 'info', icon: '👥', cmd: 'users', desc: chrome.i18n.getMessage("tool_users_desc")}, //'List all connected users in console'},
+            {label: chrome.i18n.getMessage("tool_restart_label"), type: 'danger', icon: '🔄', cmd: 'restart', desc: chrome.i18n.getMessage("tool_restart_desc")}, //'Double-click to RESTART server'},
+			{label: '', type: 'info', icon: '🕶️', action: 'matrix', desc: chrome.i18n.getMessage("tool_spluts_desc")}, //'Spluts eye view of the server' }
         ];
 
         tools.forEach(tool => {
@@ -395,6 +432,8 @@
             btn.className = `hh-tool-btn ${tool.type}`;
             btn.innerHTML = `<span>${tool.icon}</span> ${tool.label}`;
             btn.title = tool.desc;
+
+			if (tool.id) btn.id = tool.id;
 
             btn.onclick = (e) => {
                 if (tool.id === 'hh-sid-trigger') {
@@ -416,26 +455,26 @@
                         // First click
                         restartClickTimer = setTimeout(() => {
                             restartClickTimer = null;
-                            showToast("Double-click to RESTART");
+                            showToast(chrome.i18n.getMessage("toast_restart_confirm"));
                         }, 500); // Window for the second click
                     } else {
                         // Second click within 500ms
                         clearTimeout(restartClickTimer);
                         restartClickTimer = null;
                         safeSendMessage({action: "PROXY_COMMAND", cmd: "restart"});
-                        showToast("🚀 Restarting server...");
+                        showToast(chrome.i18n.getMessage("toast_restarting"));
                     }
                 } else if (tool.action === 'openChat') {
                     openChatSelector();
                 } else if (tool.action === 'perma') {
-                    sid = prompt("Enter SteamId to ban:");
+                    sid = prompt(chrome.i18n.getMessage("prompt_steam_id_to_ban"));
                     if (!sid || isNaN(sid)) return;
                     dur = PERMA_DUR;
                     // Chances are not online as will be a perma of an id from a different server
                     if (isRacing) {
                         banQueue.push({sid, dur});
                         updateQueueDisplay();
-                        showToast(`Queued Ban: ${sid} (Offline)`);
+                        showToast(chrome.i18n.getMessage("toast_queued_ban",[sid]));
                     } else {
                         const cmd = `ban ${sid}`;
                         safeSendMessage({
@@ -443,16 +482,18 @@
                             cmd: cmd,
                             autoSubmit: true
                         });
-                        showToast(`Banned: ${sid}`);
+                        showToast(chrome.i18n.getMessage("toast_banned",[sid]));
                     }
                 } else if (tool.action === 'openModLog') {
 					const view = document.getElementById('hh-mod-view') || createModView();
 					renderModLines();
 					view.style.display = 'flex';
+				} else if (tool.action === 'matrix') {
+					enterTheMatrix();
 				} else {
                     // Standard commands (users, etc.)
                     safeSendMessage({action: "PROXY_COMMAND", cmd: tool.cmd});
-                    showToast(`Sent: ${tool.label}`);
+                    showToast(chrome.i18n.getMessage("toast_sent", [tool.label]));
                 }
             };
             toolbar.appendChild(btn);
@@ -462,19 +503,31 @@
         const infoGroup = document.createElement('div');
         infoGroup.className = 'hh-info-group';
         infoGroup.innerHTML = `
-    <div id="hh-race-status" class="hh-status-tag" title="Current race state detected from logs">🏁 No Race</div>
-    <div id="hh-track-name" class="hh-track-display" title="Last loaded track name">Waiting for track...</div>
+    <div id="hh-race-status" class="hh-status-tag" title="${chrome.i18n.getMessage("race_title")}">${chrome.i18n.getMessage("race_none")}</div>
+    <div id="hh-track-name" class="hh-track-display" title="${chrome.i18n.getMessage("race_track_title")}">${chrome.i18n.getMessage("waiting_for_track")}</div>
   `;
 
         updateRaceUI(isRacing);
         toolbar.appendChild(infoGroup);
 
-        const msgSubmenu = document.createElement('div');
+		const msgSubmenu = document.createElement('div');
         msgSubmenu.id = 'hh-toolbar-msg-submenu';
         msgSubmenu.className = 'hh-action-menu';
         msgSubmenu.style.display = 'none';
+        
+        // Ensure it sits below the button, aligned to the left
+        msgSubmenu.style.top = '100%';
+        msgSubmenu.style.left = '0';
+        msgSubmenu.style.marginTop = '5px'; // Optional gap
+        msgSubmenu.style.minWidth = '150px'; // Ensure it isn't too squashed
 
-        toolbar.appendChild(msgSubmenu);
+		const msgBtn = toolbar.querySelector('#hh-msg-trigger');
+        if (msgBtn) {
+            msgBtn.style.position = 'relative'; // Make button the anchor
+            msgBtn.appendChild(msgSubmenu);
+        } else {
+            toolbar.appendChild(msgSubmenu); // Fallback
+        }
 
         // Inside createToolbar, after msgSubmenu creation...
 
@@ -486,11 +539,11 @@
         sidSubmenu.style.bottom = 'auto';
 
         const sidActions = [
-            {label: '🔨 Permanent Ban', type: 'ban', dur: PERMA_DUR},
-            {label: '👤 Set Default', type: 'role', role: 'default'},
-            {label: '⭐ Set VIP', type: 'role', role: 'vip'},
-            {label: '🛡️ Set Moderator', type: 'role', role: 'moderator'},
-            {label: '👑 Set Admin', type: 'role', role: 'admin'}
+            {label: chrome.i18n.getMessage("submenu_permanent_ban"), type: 'ban', dur: PERMA_DUR},
+            {label: chrome.i18n.getMessage("submenu_set_default"), type: 'role', role: 'default'},
+            {label: chrome.i18n.getMessage("submenu_set_vip"), type: 'role', role: 'vip'},
+            {label: chrome.i18n.getMessage("submenu_set_moderator"), type: 'role', role: 'moderator'},
+            {label: chrome.i18n.getMessage("submenu_set_admin"), type: 'role', role: 'admin'}
         ];
 
         sidActions.forEach(act => {
@@ -499,24 +552,25 @@
             item.textContent = act.label;
             item.onclick = (e) => {
                 e.stopPropagation();
-                const sid = prompt(`Enter SteamID for ${act.label}:`);
+                const sid = prompt(`${chrome.i18n.getMessage("prompt_steam_id",[act.label])}`);
                 if (!sid || isNaN(sid) || sid.length !== 17) return;
 
                 if (isRacing) {
-                    outmsg = `Queued: ${sid}`;
+                    outmsg = ``;
                     if (act.type === 'role') {
-                        banQueue.push({type: 'role', sid, name: "Manual Entry", role: act.role});
-                        outmsg += ` ${act.role}`;
+                        banQueue.push({type: 'role', sid, name: chrome.i18n.getMessage("queue_manual_entry"), role: act.role});
+                        outmsg = chrome.i18n.getMessage("toast_queued_role",[sid,act.role]);
                     } else {
-                        banQueue.push({type: 'ban', sid, name: "Manual Entry", dur: act.dur});
-                        outmsg += ` banned`;
+                        banQueue.push({type: 'ban', sid, name: chrome.i18n.getMessage("queue_manual_entry"), dur: act.dur});
+                        outmsg = chrome.i18n.getMessage("toast_queued_banned",[sid]);
                     }
                     updateQueueDisplay();
                     showToast(outmsg);
                 } else {
                     let cmd = act.type === 'role' ? `role ${sid}${act.role ? ',' + act.role : ''}` : `ban ${sid}`;
                     safeSendMessage({action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true});
-                    showToast(`Sent: ${act.label}`);
+                    showToast(chrome.i18n.getMessage("toast_sent", [act.label]));
+
                 }
                 sidSubmenu.style.display = 'none';
             };
@@ -564,7 +618,7 @@
         select.className = 'hh-chat-player-select';
         const filter = document.createElement('input');
         filter.type = 'text';
-        filter.placeholder = 'filter users…';
+        filter.placeholder = chrome.i18n.getMessage("filter_users");
         filter.className = 'hh-chat-player-filter';
 
         const rebuildOptions = () => {
@@ -574,7 +628,7 @@
             // Add ALL Option
             const allOpt = document.createElement('option');
             allOpt.value = "ALL";
-            allOpt.textContent = "👥 -- ALL PLAYERS --";
+            allOpt.textContent = chrome.i18n.getMessage("all_players_option");
             select.appendChild(allOpt);
 
             // Filter and sort players
@@ -614,10 +668,10 @@
             const title = chatView.querySelector('.hh-panel-title');
 
             if (select.value === 'ALL') {
-                title.innerText = `Chat: Global History`;
+                title.innerText = `${chrome.i18n.getMessage("chat_history_title")}`;
             } else {
                 const data = NAME_MAP[select.value];
-                if (data) title.innerText = `Chat: ${data.name}`;
+                if (data) title.innerText = `${chrome.i18n.getMessage("chat_username", [data.name])}`;
             }
             renderChatLines();
         };
@@ -640,8 +694,8 @@
         panel.style.pointerEvents = 'auto';
         panel.innerHTML = `
     <div class="hh-panel-header">
-      <span>Online Players</span>
-      <input type="text" id="hh-player-search" placeholder="Search...">
+      <span>${chrome.i18n.getMessage("online_players")}</span>
+      <input type="text" id="hh-player-search" placeholder="${chrome.i18n.getMessage("search_placeholder")}">
       <button id="hh-panel-close">×</button>
     </div>
     <div id="hh-player-list-content"></div>
@@ -673,21 +727,21 @@
                         const row = document.createElement('div');
                         row.className = 'hh-player-row';
                         row.innerHTML = `
-            <div class="hh-player-info" title="Click to copy ID">
+            <div class="hh-player-info" title="${chrome.i18n.getMessage("player_list_copy_title")}">
               <span class="hh-player-name">${data.name}</span>
               <span class="hh-player-id">${id}</span>
             </div>
             <div class="hh-player-actions">
-              <button class="hh-btn-profile" title="Profile">P</button>
-              <button class="hh-btn-kick" title="Kick">K</button>
-              <button class="hh-btn-ban" title="Ban (Perma)">B</button>
+              <button class="hh-btn-profile" title="${chrome.i18n.getMessage("player_list_profile_title")}">P</button>
+              <button class="hh-btn-kick" 	 title="${chrome.i18n.getMessage("player_list_kick_title")}">K</button>
+              <button class="hh-btn-ban" 	 title="${chrome.i18n.getMessage("player_list_ban_title")}">B</button>
             </div>
           `;
 
                         // Copy ID logic
                         row.querySelector('.hh-player-info').onclick = () => {
                             navigator.clipboard.writeText(id);
-                            showToast(`Copied ID: ${id}`);
+                            showToast(chrome.i18n.getMessage("toast_copied_id",[id]));
                         };
 
                         // Profile Action
@@ -705,7 +759,21 @@
                         // Ban Action
                         row.querySelector('.hh-btn-ban').onclick = (e) => {
                             e.stopPropagation();
-                            safeSendMessage({action: "PROXY_COMMAND", cmd: `ban ${id}`});
+							if (isRacing) {
+								banQueue.push({id, name: data.name, dur: PERMA_DUR});
+								updateQueueDisplay();
+
+								if (data.online && data.connId) {
+									safeSendMessage({action: "PROXY_COMMAND", cmd: `kick ${data.connId}`, autoSubmit: true });
+									showToast(chrome.i18n.getMessage("toast_queued_banned_kicked",[data.name]));
+								} else {
+									showToast(chrome.i18n.getMessage("toast_queued_ban",[data.name]));
+								}
+							}
+							else {
+								safeSendMessage({action: "PROXY_COMMAND", cmd: `ban ${id}`});
+								showToast(chrome.i18n.getMessage("toast_banned",[data.name]));
+							}
                         };
 
                         content.appendChild(row);
@@ -734,7 +802,7 @@
         window.currentViewedId = steamId;
 
         // Update panel title
-        title.innerText = `Chat: ${name}`;
+        title.innerText = `${chrome.i18n.getMessage("chat_username", [name])}`;
         if (searchInput) searchInput.value = ''; // Clear search on open
 
         // Sync dropdown selection
@@ -798,7 +866,7 @@
     function buildChatLine(m) {
         const line = document.createElement('div');
         line.className = 'hh-chat-line';
-        line.textContent = `[${m.timestamp}] ${m.name}: ${m.message}`;
+        line.textContent = chrome.i18n.getMessage("chat_line_format",[m.timestamp, m.name, m.message]);
         return line;
     }
 
@@ -856,28 +924,28 @@
         el.innerHTML = `
         <div class="hh-panel-header">
             <div class="hh-header-left">
-                <span class="hh-panel-title">Chat History</span>
+                <span class="hh-panel-title">${chrome.i18n.getMessage("chat_history")}</span>
             </div>
             <div style="display:flex; align-items:center;">
-                <input type="text" class="hh-chat-search" placeholder="Search keywords...">
+                <input type="text" class="hh-chat-search" placeholder="${chrome.i18n.getMessage("search_keywords_placeholder")}">
                 <span id="hh-chat-close" style="cursor:pointer;color:#ff4444;font-weight:bold;">✖</span>
             </div>
         </div>
         
         <div class="hh-chat-filter-row">
-            <input type="text" id="hh-chat-start" class="hh-chat-time-input" placeholder="Start (HH:MM:SS)">
-            <input type="text" id="hh-chat-end" class="hh-chat-time-input" placeholder="End (HH:MM:SS)">
+            <input type="text" id="hh-chat-start" class="hh-chat-time-input" placeholder="${chrome.i18n.getMessage("time_start_placeholder")}">
+            <input type="text" id="hh-chat-end" class="hh-chat-time-input" placeholder="${chrome.i18n.getMessage("time_end_placeholder")}">
             
-            <label class="hh-chat-checkbox-label" title="Hide messages from Server (ID: 0)">
+            <label class="hh-chat-checkbox-label" title="${chrome.i18n.getMessage("search_hide_title")}">
                 <input type="checkbox" id="hh-hide-server" checked> 
-                Hide Server
+                ${chrome.i18n.getMessage("search_hide_server")}
             </label>
         </div>
         
         <div class="hh-chat-content"></div>
         <div class="hh-chat-footer">
-            <button id="hh-export-chat" class="hh-tool-btn info">Export</button>
-            <button id="hh-copy-chat" class="hh-tool-btn info">Copy Visible</button>
+            <button id="hh-export-chat" class="hh-tool-btn info">${chrome.i18n.getMessage("popup_btn_export")}</button>
+            <button id="hh-copy-chat" class="hh-tool-btn info">${chrome.i18n.getMessage("popup_btn_import")}</button>
         </div>
     `;
 
@@ -891,24 +959,24 @@
         el.querySelector('#hh-copy-chat').onclick = () => {
             const content = el.querySelector('.hh-chat-content').innerText;
             navigator.clipboard.writeText(content);
-            showToast("Copied filtered logs!");
+            showToast(chrome.i18n.getMessage("toast_mod_copied"));
         };
 
         // Export
         el.querySelector('#hh-export-chat').onclick = () => {
             const text = getVisibleChatText();
             if (!text) {
-                showToast("No chat content to export");
+				showToast(chrome.i18n.getMessage("toast_mod_no_content"));
                 return;
             }
 
             const sid = window.currentViewedId || "ALL";
-            const name = (NAME_MAP[sid]?.name || 'Global_Chat').replace(/[^\w\d_-]+/g, '_');
+			const name = (NAME_MAP[sid]?.name || chrome.i18n.getMessage("global_chat")).replace(/[^\w\d_-]+/g, '_');
             const ts = new Date().toISOString().replace(/[:T]/g, '-').split('.')[0];
             const filename = `chat_${name}_${ts}.txt`;
 
             downloadTextFile(text, filename);
-            showToast(`Exported chat: ${filename}`);
+            showToast(chrome.i18n.getMessage("toast_exported",[filename]));
         };
 		let wrapper = document.getElementById('hh-ui-wrapper');
 		if (!wrapper) {
@@ -933,7 +1001,7 @@
         const globalMessages = messages.filter(m => !m.text.includes('{player}'));
 
         if (globalMessages.length === 0) {
-            container.innerHTML = '<div class="hh-menu-item disabled">No global messages</div>';
+            container.innerHTML = `<div class="hh-menu-item disabled">${chrome.i18n.getMessage("messages_global_empty")}</div>`;
             return;
         }
 
@@ -950,7 +1018,7 @@
                 // We must send a message to the Input Frame.
                 safeSendMessage({action: "PROXY_COMMAND", cmd: `message ${msg.text}`});
 
-                showToast(`Signal Sent: ${msg.label}`);
+                showToast(chrome.i18n.getMessage("toast_signal",[msg.label]));
                 container.style.display = 'none';
             };
 
@@ -974,7 +1042,7 @@
             container = document.createElement('div');
             container.id = 'hh-queue-container';
             container.innerHTML = `
-        <div id="hh-queue-header"><span>Action Queue</span><span id="hh-queue-count">0</span></div>
+        <div id="hh-queue-header"><span>${chrome.i18n.getMessage("queue_title")}</span><span id="hh-queue-count">0</span></div>
         <div id="hh-queue-list"></div>
       `;
             wrapper.appendChild(container);
@@ -999,10 +1067,10 @@
                 // --- NEW: Generate label for same-line display ---
                 let extraLabel = "";
                 if (item.type === 'role') {
-                    extraLabel = `<span style="margin-left:8px; color:#00ffff; font-weight:bold;">[Role: ${item.role || 'Check'}]</span>`;
+                    extraLabel = `<span style="margin-left:8px; color:#00ffff; font-weight:bold;">[Role: ${item.role || chrome.i18n.getMessage("queue_role_check")}]</span>`;
                 } else {
                     const d = (item.dur === PERMA_DUR) ? "Perma" : `${item.dur}m`;
-                    extraLabel = `<span style="margin-left:8px; color:#ffbc00; font-weight:bold;">[Ban: ${d}]</span>`;
+                    extraLabel = `<span style="margin-left:8px; color:#ffbc00; font-weight:bold;">[${chrome.i18n.getMessage("menu_ban_prefix")} ${d}]</span>`;
                 }
 
                 row.innerHTML = `
@@ -1050,14 +1118,14 @@
             if (!isRacing) {
                 isRacing = true;
                 safeSendMessage({action: "SET_RACE_MODE", value: true});
-                if (isSilent) showToast("🏁 Race Mode Active: Bans will be queued");
+                if (isSilent) showToast(chrome.i18n.getMessage("toast_queued_bans"));
                 updateRaceUI(true);
             }
         } else if (/race\s+finished/i.test(text) || /race\s+abandoned/i.test(text)) {
             if (isRacing) {
                 isRacing = false;
                 safeSendMessage({action: "SET_RACE_MODE", value: false});
-                if (isSilent) showToast("🏁 Race Mode Disabled: Bans no longer queued");
+                if (isSilent) showToast(chrome.i18n.getMessage("toast_bans_not_queued"));
                 processBanQueue();
                 updateRaceUI(false);
             }
@@ -1181,6 +1249,7 @@
         if (banQueue.length === 0) return;
         safeSendMessage({action: "SET_QUEUE_MODE", value: true});
         let combinedLogs = [];
+		queuedBansMsgs = [];
 
         banQueue.forEach((item, index) => {
             setTimeout(() => {
@@ -1189,11 +1258,12 @@
                     cmd = `role ${item.sid}`;
                     if (item.role) cmd += `,${item.role}`;
                     combinedLogs.push(`${item.name} (${item.sid}) role set to ${item.role || 'Check'} by Server`);
-                    console.log(combinedLogs);
                 } else {
                     // Default to Ban
                     cmd = (item.dur === PERMA_DUR) ? `ban ${item.sid}` : `ban ${item.sid},${item.dur}`;
-                    combinedLogs.push(`${item.name} (${item.sid}) banned by Server for ${item.dur} mins`);
+					const msg = `${item.name} (${item.sid}) banned by Server for ${item.dur} minutes`
+                    combinedLogs.push(msg);
+					queuedBansMsgs.push(msg);
                 }
 
                 safeSendMessage({action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true});
@@ -1206,8 +1276,8 @@
             }, index * 2000);
         });
 
-        copyToClipboard(combinedLogs.join("\n"));
-        showToast(`Processing ${banQueue.length} queued actions...`);
+        copyToClipboard(queuedBansMsgs.join("\n"));
+        showToast( chrome.i18n.getMessage("toast_processing",[banQueue.length]));
         banQueue = [];
         updateQueueDisplay();
     };
@@ -1436,7 +1506,7 @@
                 // Only update if status actually changes to avoid spamming saveRegistry
                 if (existing.online !== joined) {
                     NAME_MAP[id] = {
-                        name: logMatch[3].trim() || existing.name || "Unknown",
+                        name: logMatch[3].trim() || existing.name || chrome.i18n.getMessage("name_unknown"),
                         connId: logMatch[2] || existing.connId,
                         online: joined,
                         lastSeen: joined ? Date.now() : (existing.lastSeen || 0)
@@ -1544,16 +1614,16 @@
             if (isRacing && roleArg) {
                 banQueue.push({type: 'role', sid, name: currentData.name, role: roleArg});
                 updateQueueDisplay();
-                showToast(`Queued Role: (${sid}) ${roleArg}`);
+                showToast(chrome.i18n.getMessage("toast_queued_role",[sid, roleArg]));
             } else {
                 let cmd = `role ${sid}`;
                 if (roleArg) cmd += `,${roleArg}`;
                 safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
-                showToast(roleArg ? `Setting Role: ${sid} ${roleArg}` : `Checking Role Status`);
+                showToast(roleArg ? chrome.i18n.getMessage("toast_setting_role",[sid,roleArg]) : chrome.i18n.getMessage("toast_checking_role"));
             }
         } else if (type === 'ban') {
             if (dur === "custom") {
-                dur = prompt("Enter ban duration in minutes:");
+                dur = prompt(chrome.i18n.getMessage("prompt_duration"));
                 if (!dur || isNaN(dur)) return;
             }
 
@@ -1563,15 +1633,15 @@
 
                 if (currentData.online && currentData.connId) {
                     safeSendMessage({action: "PROXY_COMMAND", cmd: `kick ${currentData.connId}`});
-                    showToast(`Queued Ban & Kicked: ${currentData.name}`);
+                    showToast(chrome.i18n.getMessage("toast_queued_banned_kicked",[currentData.name]));
                 } else {
-                    showToast(`Queued Ban: ${currentData.name} (Offline)`);
+                    showToast(chrome.i18n.getMessage("toast_queued_ban",[currentData.name]));
                 }
             } else {
                 const cmd = (dur === PERMA_DUR) ? `ban ${sid}` : `ban ${sid},${dur}`;
                 safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
                 copyToClipboard(`${currentData.name} (${sid}) banned by Server for ${dur} minutes`);
-                showToast(`Banned: ${currentData.name}`);
+                showToast(chrome.i18n.getMessage("toast_banned"));
             }
         } else if (type === 'msg') {
             const msgText = item.getAttribute('data-text');
@@ -1580,17 +1650,17 @@
 
             const cmd = `message ${finalText}`;
             safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
-            showToast(`Message Sent`);
+            showToast(chrome.i18n.getMessage("toast_message_sent"));
         } else if (type === 'restart') {
             const cmd = `restart`
             safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
-            showToast(`Server restarting....`);
+            showToast(chrome.i18n.getMessage("toast_restarting"));
         } else if (type === 'lookup') {
             safeSendMessage({action: "OPEN_TAB", url: `https://steamcommunity.com/profiles/${sid}`});
         } else if (type === 'users') {
             const cmd = `users`
             safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
-            showToast(`User listing`);
+            showToast(chrome.i18n.getMessage("submenu_user_listing"));
         } else if (type === 'chatlog') {
             openPlayerChat(sid, currentData.name);
         } else {
@@ -1611,47 +1681,47 @@
         }
 
         const sid = target.textContent.trim();
-        const data = NAME_MAP[sid] || {name: "Offline Player", connId: null, online: false};
+        const data = NAME_MAP[sid] || {name: chrome.i18n.getMessage("offline_player"), connId: null, online: false};
 
         actionMenu.innerHTML = `
       <div class="hh-menu-header">
         <div class="hh-header-left"><span class="hh-status-dot ${data.online ? 'hh-status-online' : 'hh-status-offline'}"></span><span>${data.name}</span></div>
         <span id="hh-close-x">✕</span>
       </div>
-      <div class="hh-menu-row ${!data.online ? 'disabled' : ''}" data-type="kick" data-sid="${sid}" data-conn="${data.connId || ''}">👢 Kick</div>
-      <div class="hh-menu-row" data-type="parent" id="hh-ban-row">🔨 Ban
+	<div class="hh-menu-row ${!data.online ? 'disabled' : ''}" data-type="kick" data-sid="${sid}" data-conn="${data.connId || ''}">${chrome.i18n.getMessage("menu_kick")}</div>
+      <div class="hh-menu-row" data-type="parent" id="hh-ban-row">${chrome.i18n.getMessage("menu_ban")}
         <div class="hh-submenu" id="hh-ban-submenu">
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="${PERMA_DUR}">🔨 Permanent</div>
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="2880">🔨 2 Days (2880)</div>
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="5000">🔨 ~3.5 Days (5000)</div>
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="10000">🔨 7 Days (10000)</div>
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="custom">🔨 Custom...</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="${PERMA_DUR}" >${chrome.i18n.getMessage("submenu_permanent_ban")}</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="2880" >${chrome.i18n.getMessage("submenu_ban_2880")}</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="5000" >${chrome.i18n.getMessage("submenu_ban_5000")}</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="10000" >${chrome.i18n.getMessage("submenu_ban_10000")}</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="custom" >${chrome.i18n.getMessage("submenu_ban_custom")}</div>
         </div>
       </div>
-      <div class="hh-menu-row" data-type="unban" data-sid="${sid}">🔓 Unban ID</div>
-      <div class="hh-menu-row" data-type="parent" id="hh-role-row">👤 Role
+      <div class="hh-menu-row" data-type="unban" data-sid="${sid}">${chrome.i18n.getMessage("menu_unban")}</div>
+      <div class="hh-menu-row" data-type="parent" id="hh-role-row">${chrome.i18n.getMessage("menu_role")}
          <div class="hh-submenu" id="hh-role-submenu">
-             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="">❔ Check Status</div>
-             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="default">Default</div>
-             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="vip">⭐ VIP</div>
-             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="moderator">🛡️ Moderator</div>
-             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="admin">👑 Admin</div>
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="">${chrome.i18n.getMessage("submenu_check_status")}</div>
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="default">${chrome.i18n.getMessage("submenu_set_default")}</div>
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="vip">${chrome.i18n.getMessage("submenu_set_vip")}</div>
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="moderator">${chrome.i18n.getMessage("submenu_set_moderator")}</div>
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="admin">${chrome.i18n.getMessage("submenu_set_admin")}</div>
          </div>
       </div>
-      <div class="hh-menu-row" data-type="parent" id="hh-message-row">💬 Message
+      <div class="hh-menu-row" data-type="parent" id="hh-message-row">${chrome.i18n.getMessage("submenu_message")}
         <div class="hh-submenu" id="hh-message-submenu">
 			${MESSAGES.filter(m => m.text.includes('{player}')).length > 0
             ? MESSAGES.filter(m => m.text.includes('{player}')).map(m => {
                 const safeText = m.text.replace(/"/g, '&quot;');
                 return `<div class="hh-submenu-item" data-type="msg" data-sid="${sid}" data-text="${safeText}">${m.label}</div>`;
             }).join('')
-            : '<div class="hh-submenu-item disabled">No player-specific messages</div>'
+            : `<div class="hh-submenu-item disabled">${chrome.i18n.getMessage("submenu_no_messages")}</div>`
         }
         </div>
       </div>
-	  <div class="hh-menu-row" data-type="lookup" data-sid="${sid}">🌐 Steam Profile</div>
-      <div class="hh-menu-row" data-type="copy" data-sid="${sid}">📋 Copy ID</div>
-      <div class="hh-menu-row" data-type="chatlog" data-sid="${sid}">💬 View Chat Logs</div>`;
+	  <div class="hh-menu-row" data-type="lookup" data-sid="${sid}">${chrome.i18n.getMessage("menu_profile")}</div>
+      <div class="hh-menu-row" data-type="copy" data-sid="${sid}">${chrome.i18n.getMessage("menu_copy_id")}</div>
+      <div class="hh-menu-row" data-type="chatlog" data-sid="${sid}">${chrome.i18n.getMessage("menu_chat_logs")}</div>`;
 
         actionMenu.onclick = (ev) => handleMenuClick(ev, data, sid);
 
@@ -1774,7 +1844,7 @@
         const entries = rawText.split(/(?=\d{2}:\d{2}:\d{2}\.\d{3}:)/);
 
         let lastRaceEvent = null; // Track the most recent status found
-        let lastTrackFound = "No Track Detected";
+        let lastTrackFound = chrome.i18n.getMessage("race_track_none");
 
         entries.forEach(entry => {
             const line = entry.replace(/\u00a0/g, ' ').trim();
@@ -1936,5 +2006,81 @@
     };
 
     startExtension();
+
+
+
+/**
+ * Matrix Easter Egg for HH Monitor
+ * Call enterTheMatrix() in the console to trigger
+ */
+const enterTheMatrix = () => {
+	if (matrixInterval || matrixCanvas) {
+        clearInterval(matrixInterval);
+        matrixInterval = null;
+        
+        if (matrixCanvas) {
+            matrixCanvas.remove();
+            matrixCanvas = null;
+        }
+        
+		showToast(chrome.i18n.getMessage("toast_matrix_exit"));
+        return; // Stop execution here
+    }
+	
+	matrixCanvas = document.createElement('canvas');
+    matrixCanvas.id = 'hh-matrix-canvas';
+    Object.assign(matrixCanvas.style, {
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        width: '100%',
+        height: '100%',
+        zIndex: '2147483000', 
+        background: '#000'
+    });
+    document.body.appendChild(matrixCanvas);
+
+    const ctx = matrixCanvas.getContext('2d');
+    let width = matrixCanvas.width = window.innerWidth;
+    let height = matrixCanvas.height = window.innerHeight;
+
+    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$+-*/=%\"'#&_(),.;:?!\\|{}<>[]^~";
+    const fontSize = 16;
+    const columns = Math.floor(width / fontSize);
+    const drops = new Array(columns).fill(1);
+
+    const draw = () => {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = "#0F0";
+        ctx.font = fontSize + "px monospace";
+
+        for (let i = 0; i < drops.length; i++) {
+            const text = characters.charAt(Math.floor(Math.random() * characters.length));
+            ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+            if (drops[i] * fontSize > height && Math.random() > 0.975) {
+                drops[i] = 0;
+            }
+            drops[i]++;
+        }
+    };
+
+    matrixInterval = setInterval(draw, 33);
+	
+	matrixCanvas.onclick = () => {
+        clearInterval(matrixInterval);		
+        matrixInterval = null;
+        if (matrixCanvas) {
+            matrixCanvas.remove();
+            matrixCanvas = null;
+        }
+		showToast(chrome.i18n.getMessage("toast_matrix_exit"));
+    };
+    showToast(chrome.i18n.getMessage("toast_matrix_welcome"));
+};
+
+
+// Expose it to the window so you can call it from the browser console
+window.enterTheMatrix = enterTheMatrix;
 
 })();
