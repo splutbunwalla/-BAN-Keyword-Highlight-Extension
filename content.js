@@ -1176,7 +1176,7 @@
         <div class="hh-chat-content"></div>
         <div class="hh-chat-footer">
             <button id="hh-export-chat" class="hh-tool-btn info">${chrome.i18n.getMessage("popup_btn_export")}</button>
-            <button id="hh-copy-chat" class="hh-tool-btn info">${chrome.i18n.getMessage("popup_btn_import")}</button>
+            <button id="hh-copy-chat" class="hh-tool-btn info">${chrome.i18n.getMessage("mod_btn_copy")}</button>
         </div>
     `;
 
