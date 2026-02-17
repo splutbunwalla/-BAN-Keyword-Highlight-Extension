@@ -1400,6 +1400,7 @@
     };
 
     const playDing = () => {
+		if (!isEnabled) return;
         if (isMuted) return;
         if (!audioCtx || audioCtx.state !== 'running') return;
 
@@ -1425,6 +1426,7 @@
     };
 
     const playAlarm = () => {
+        if (!isEnabled) return;
         if (isMuted) return;
         if (!audioCtx || audioCtx.state !== 'running') return;
 
