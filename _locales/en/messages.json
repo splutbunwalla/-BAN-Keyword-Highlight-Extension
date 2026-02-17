@@ -191,5 +191,7 @@
   
   "prompt_num": { "message": "Enter the event entry to select" },
   "tool_commands_label": { "message": "Commands" },
-  "tool_commands_desc": { "message": "Useful commands for the server." }
+  "tool_commands_desc": { "message": "Useful commands for the server." },
+  "menu_copy": {"message": "📋 Copy" }
+  
  }

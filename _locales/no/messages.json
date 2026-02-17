@@ -165,5 +165,6 @@
   
   "prompt_num": { "message": "Skriv inn hendelsen som skal velges" },
   "tool_commands_label": { "message": "Kommandoer" },
-  "tool_commands_desc": { "message": "Nyttige kommandoer for serveren." }
+  "tool_commands_desc": { "message": "Nyttige kommandoer for serveren." },
+  "menu_copy": {"message": "📋 Kopier"}
 }

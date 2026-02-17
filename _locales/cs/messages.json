@@ -165,5 +165,6 @@
   
   "prompt_num": { "message": "Zadejte položku události pro výběr" },
   "tool_commands_label": { "message": "Příkazy" },
-  "tool_commands_desc": { "message": "Užitečné příkazy pro server." }
+  "tool_commands_desc": { "message": "Užitečné příkazy pro server." },
+  "menu_copy": {"message": "📋 Kopírovat"}
 }

@@ -165,5 +165,6 @@
   
   "prompt_num": { "message": "Introduce la entrada del evento a seleccionar" },
   "tool_commands_label": { "message": "Comandos" },
-  "tool_commands_desc": { "message": "Comandos útiles para el servidor." }
+  "tool_commands_desc": { "message": "Comandos útiles para el servidor." },
+  "menu_copy": {"message": "📋 Copiar"}
 }

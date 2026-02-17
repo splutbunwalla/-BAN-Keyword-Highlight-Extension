@@ -165,5 +165,6 @@
   
   "prompt_num": { "message": "Voer het evenement in om te selecteren" },
   "tool_commands_label": { "message": "Commando's" },
-  "tool_commands_desc": { "message": "Handige commando's voor de server." }
+  "tool_commands_desc": { "message": "Handige commando's voor de server." },
+  "menu_copy": {"message": "📋 Kopiëren"}
 }

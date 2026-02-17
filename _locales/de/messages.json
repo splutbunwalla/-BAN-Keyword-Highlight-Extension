@@ -164,5 +164,6 @@
   
   "prompt_num": { "message": "Geben Sie den Ereigniseintrag zum Auswählen ein" },
   "tool_commands_label": { "message": "Befehle" },
-  "tool_commands_desc": { "message": "Nützliche Befehle für den Server." }  
+  "tool_commands_desc": { "message": "Nützliche Befehle für den Server." },
+  "menu_copy": {"message": "📋 Kopieren"}
 }

@@ -165,5 +165,6 @@
   
   "prompt_num": { "message": "Ange händelseposten som ska väljas" },
   "tool_commands_label": { "message": "Kommandon" },
-  "tool_commands_desc": { "message": "Användbara kommandon för servern." }
+  "tool_commands_desc": { "message": "Användbara kommandon för servern." },
+  "menu_copy": {"message": "📋 Kopiera"}
 }

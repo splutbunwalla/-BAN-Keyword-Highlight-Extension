@@ -114,6 +114,7 @@
 
 		actionMenu.innerHTML = `
 			<div class="hh-menu-row" id="ctx-btn-translate">${chrome.i18n.getMessage("menu_translate")}</div>
+			<div class="hh-menu-row" id="ctx-btn-copy">${chrome.i18n.getMessage("menu_copy")}</div>
 			<div class="hh-menu-row" id="ctx-btn-close">${chrome.i18n.getMessage("menu_close")}</div>
 		`;
 
@@ -143,6 +144,7 @@
 
 		const btnTranslate = document.getElementById('ctx-btn-translate');
 		const btnClose = document.getElementById('ctx-btn-close');
+		const btnCopy = document.getElementById('ctx-btn-copy');
 
 		if (btnTranslate) {
 			btnTranslate.onclick = async () => {
@@ -158,6 +160,13 @@
 					}, 12000);
 				}
 
+				actionMenu.style.display = 'none';
+			};
+		}
+		
+		if( btnCopy) {
+			btnCopy.onclick = async () => {
+				copyToClipboard(message);
 				actionMenu.style.display = 'none';
 			};
 		}
@@ -184,6 +193,8 @@
 		`;
 
 		line.oncontextmenu = (e) => {
+			if (!isEnabled) return;
+			
 			e.preventDefault();
 			e.stopPropagation();
 			const transDiv = line.querySelector('.hh-chat-translation');
@@ -996,6 +1007,8 @@
                         };
 
 						row.oncontextmenu = (e) => {
+							if (!isEnabled) return;
+							
 							e.preventDefault();
 							e.stopPropagation();
 							showPlayerContextMenu(e, { name: data.name, id: id });
@@ -1888,6 +1901,8 @@
     };
 
     document.addEventListener('contextmenu', (e) => {
+		if (!isEnabled) return;
+
         const target = e.target.closest('.hh-idhighlight');
         if (!target) return;
         e.preventDefault();
@@ -1975,18 +1990,14 @@
 
 // Global right-click listener for the Console Window
 document.addEventListener('contextmenu', (e) => {
-// 1. IGNORE if clicking on your custom UI (Toolbar, Chat Window, Menus, Toasts)
-    if (e.target.closest('#hh-ui-wrapper, .hh-action-menu, .hh-chat-view, .hh-mod-view, .hh-toast')) return;
+	if (!isEnabled) return;
 
-    // 2. IGNORE if clicking on a Steam ID (Let the other Player Menu listener handle it)
+	if (e.target.closest('#hh-ui-wrapper, .hh-action-menu, .hh-chat-view, .hh-mod-view, .hh-toast')) return;
+
     if (e.target.closest('.hh-idhighlight')) return;
 
-    // 3. IGNORE if clicking inside the Chat History or Mod Log lines (Let their specific listeners handle it)
     if (e.target.closest('.hh-mod-line')) return;
 
-    // 4. CHECK Context: Are we in a log view?
-    // We check if we are in a log file/proxy URL OR if we are inside a known console container.
-    // We fallback to 'true' if the body itself seems to be the log.
     const isLogContext = window.location.href.includes("StreamFile.aspx") ||
                          window.location.href.includes("Proxy.ashx") ||
                          e.target.closest('pre, #ConsoleOutput, #consoleOutput, .log-container') ||
@@ -2207,16 +2218,17 @@ document.addEventListener('contextmenu', (e) => {
             SECONDARYWORDS = sync.secondarykeywords || [];
             MESSAGES = sync.messages || [];
             isMuted = sync.muteAll !== false;
-            applyStyles(sync);
-            loadRegistry();
-            createToolbar();
-            updateQueueDisplay();
-            updateRegex();
 
             if (!isLogFrame || !isEnabled) {
                 isInitializing = false;
                 return;
             }
+
+            applyStyles(sync);
+            loadRegistry();
+            createToolbar();
+            updateQueueDisplay();
+            updateRegex();
 
             // 1. FAST POLLING for container
             let logRoot = document.querySelector('pre, #ConsoleOutput, .log-container');
@@ -2257,7 +2269,6 @@ document.addEventListener('contextmenu', (e) => {
             });
             window.hhObserver.observe(logRoot, {childList: true, subtree: true});
 
-            // 3. INTELLIGENT BOOTSTRAP (The fix for the double >users)
             if (!didBootstrap) {
 
                 // Wait until the log actually has content (history loading)

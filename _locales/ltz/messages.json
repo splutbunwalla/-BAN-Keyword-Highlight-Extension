@@ -165,5 +165,6 @@
   
   "prompt_num": { "message": "Gitt den Event-Entrag an fir auszewielen" },
   "tool_commands_label": { "message": "Befeler" },
-  "tool_commands_desc": { "message": "Nëtzlech Befeler fir de Server." }
+  "tool_commands_desc": { "message": "Nëtzlech Befeler fir de Server." },
+  "menu_copy": {"message": "📋 Kopéieren"}
 }

@@ -146,7 +146,7 @@ body.hh-disabled .hh-secondaryhighlight {
     box-shadow: 4px 4px 15px rgba(0, 0, 0, 0.6);
     animation: hhSubmenuFadeIn 0.15s ease-out forwards;
     overflow: hidden;
-    padding-left: 5px;
+    padding-left: 5px;                                                                                                                                                                                                                                                                                                                                                                                          
 }
 
 .hh-submenu::before {
@@ -878,26 +878,4 @@ body.hh-disabled .hh-secondaryhighlight {
     border: 1px solid #444;
     flex-direction: column;
     pointer-events: auto !important;
-}
-
-#hh-cmd-trigger {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-#hh-toolbar-cmd-submenu {
-    position: absolute;
-    top: 100%;      
-    left: 0;        
-    display: none;
-    flex-direction: column;
-    background: var(--hh-main-bg);
-    border: 1px solid var(--hh-border);
-    min-width: 160px;
-    z-index: 10003;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    text-align: left;
-    cursor: default;
 }

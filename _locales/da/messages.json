@@ -165,5 +165,6 @@
   
   "prompt_num": { "message": "Indtast begivenheden for at vælge" },
   "tool_commands_label": { "message": "Kommandoer" },
-  "tool_commands_desc": { "message": "Nyttige kommandoer til serveren." }
+  "tool_commands_desc": { "message": "Nyttige kommandoer til serveren." },
+  "menu_copy": {"message": "📋 Kopier"}
 }

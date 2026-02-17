@@ -165,5 +165,6 @@
   
   "prompt_num": { "message": "Syötä valittava tapahtumamerkintä" },
   "tool_commands_label": { "message": "Komennot" },
-  "tool_commands_desc": { "message": "Hyödyllisiä komentoja palvelimelle." }
+  "tool_commands_desc": { "message": "Hyödyllisiä komentoja palvelimelle." },
+  "menu_copy": {"message": "📋 Kopioi"}
 }
