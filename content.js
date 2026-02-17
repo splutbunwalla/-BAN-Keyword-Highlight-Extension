@@ -117,11 +117,29 @@
 			<div class="hh-menu-row" id="ctx-btn-close">${chrome.i18n.getMessage("menu_close")}</div>
 		`;
 
-		actionMenu.style.left = `${e.pageX}px`;
-		actionMenu.style.top = `${e.pageY}px`;
 		actionMenu.style.display = 'flex'; 
 		actionMenu.style.visibility = 'visible';
 		actionMenu.style.zIndex = '2147483647'; 
+
+
+		const menuWidth = actionMenu.offsetWidth || 150;
+		const menuHeight = actionMenu.offsetHeight || 100;
+		const viewportWidth = window.innerWidth;
+		const viewportHeight = window.innerHeight;
+
+		let posX = e.pageX;
+		let posY = e.pageY;
+
+		if (e.clientX + menuWidth > viewportWidth) {
+			posX = e.pageX - menuWidth;
+		}
+
+		if (e.clientY + menuHeight > viewportHeight) {
+			posY = e.pageY - menuHeight;
+		}
+
+		actionMenu.style.left = `${posX}px`;
+		actionMenu.style.top = `${posY}px`;
 
 		const btnTranslate = document.getElementById('ctx-btn-translate');
 		const btnClose = document.getElementById('ctx-btn-close');
@@ -133,7 +151,13 @@
 				
 				const result = await translateText(message);
 				translationDiv.innerText = `[EN]: ${result}`;
-				
+
+				if (translationDiv.id === 'hh-console-translation-tip') {
+					setTimeout(() => { 
+						translationDiv.style.display = 'none'; 
+					}, 12000);
+				}
+
 				actionMenu.style.display = 'none';
 			};
 		}
@@ -1948,6 +1972,79 @@
         actionMenu.style.top = y + "px";
         actionMenu.style.visibility = 'visible';
     }, true);
+
+// Global right-click listener for the Console Window
+document.addEventListener('contextmenu', (e) => {
+// 1. IGNORE if clicking on your custom UI (Toolbar, Chat Window, Menus, Toasts)
+    if (e.target.closest('#hh-ui-wrapper, .hh-action-menu, .hh-chat-view, .hh-mod-view, .hh-toast')) return;
+
+    // 2. IGNORE if clicking on a Steam ID (Let the other Player Menu listener handle it)
+    if (e.target.closest('.hh-idhighlight')) return;
+
+    // 3. IGNORE if clicking inside the Chat History or Mod Log lines (Let their specific listeners handle it)
+    if (e.target.closest('.hh-mod-line')) return;
+
+    // 4. CHECK Context: Are we in a log view?
+    // We check if we are in a log file/proxy URL OR if we are inside a known console container.
+    // We fallback to 'true' if the body itself seems to be the log.
+    const isLogContext = window.location.href.includes("StreamFile.aspx") ||
+                         window.location.href.includes("Proxy.ashx") ||
+                         e.target.closest('pre, #ConsoleOutput, #consoleOutput, .log-container') ||
+                         document.body; // Fallback: If we are running, the body is likely the log.
+    if (isLogContext) {
+		e.preventDefault();
+        e.stopPropagation();
+		
+		const selectedText = window.getSelection().toString().trim();
+        const textToTranslate = selectedText || e.target.innerText;
+
+        if (textToTranslate && textToTranslate.length > 1) {
+            let tip = document.getElementById('hh-console-translation-tip');
+            if (!tip) {
+                tip = document.createElement('div');
+                tip.id = 'hh-console-translation-tip';
+				tip.style.cssText = `
+                    position: absolute; 
+                    color: #00ff88; 
+                    background: rgba(10, 10, 10, 0.95); 
+                    padding: 10px; 
+                    border-radius: 6px; 
+                    font-size: 13px; 
+                    z-index: 2147483647; 
+                    display: none; 
+                    border: 1px solid #00ff88; 
+                    max-width: 450px; 
+                    min-width: 150px;
+                    max-height: 300px;
+                    overflow-y: auto;
+                    white-space: pre-wrap; 
+                    word-wrap: break-word;
+                    font-style: italic; 
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+                    pointer-events: auto;
+                `;
+                document.body.appendChild(tip);
+            }
+            const scrollY = window.scrollY;
+            const viewportHeight = window.innerHeight;
+            
+            let topPos = e.pageY + 15;
+            let leftPos = e.pageX + 5;
+
+            if (e.clientY + 200 > viewportHeight) { 
+                topPos = e.pageY - 150; // Offset upwards
+            }
+
+            if (e.clientX + 450 > window.innerWidth) {
+                leftPos = e.pageX - 400;
+            }
+
+            tip.style.left = `${leftPos}px`;
+            tip.style.top = `${topPos}px`;
+            showTranslationMenu(e, textToTranslate, tip);
+        }
+    }
+}, true);
 
     const primeAudio = () => {
         if (!AudioContext || audioCtx) return;
