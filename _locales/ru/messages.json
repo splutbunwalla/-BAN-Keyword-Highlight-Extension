@@ -21,8 +21,6 @@
   "tool_msg_desc": { "message": "Отправить глобальное объявление" },
   "tool_players_label": { "message": "Игроки" },
   "tool_players_desc": { "message": "Показать/скрыть список игроков" },
-  "tool_users_label": { "message": "Пользователи" },
-  "tool_users_desc": { "message": "Список подключенных пользователей в консоли" },
   "tool_restart_label": { "message": "Рестарт" },
   "tool_restart_desc": { "message": "Двойной клик для ПЕРЕЗАПУСКА сервера" },
   "tool_matrix_label": { "message": "Матрица" },
@@ -156,5 +154,16 @@
   "steamidTextColor": { "message": "Цвет текста SteamID" },
 
   "menu_translate": { "message": "✍️ Перевести на английский" },
-  "menu_close": { "message": "Закрыть" }
+  "menu_close": { "message": "Закрыть" },
+    
+  "tool_users_label": { "message": "Пользователи" },
+  "tool_users_desc": { "message": "Список всех подключенных пользователей в консоли" },
+  "tool_list_label": { "message": "el list" },
+  "tool_list_desc": { "message": "Список всех событий в цикле" },
+  "tool_select_label": { "message": "el select" },
+  "tool_select_desc": { "message": "Выбрать событие в цикле" },
+  
+  "prompt_num": { "message": "Введите номер события для выбора" },
+  "tool_commands_label": { "message": "Команды" },
+  "tool_commands_desc": { "message": "Полезные команды для сервера." }
 }

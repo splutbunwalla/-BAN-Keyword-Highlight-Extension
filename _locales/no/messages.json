@@ -21,8 +21,6 @@
   "tool_msg_desc": { "message": "Send globale kunngjøringer" },
   "tool_players_label": { "message": "Spillere" },
   "tool_players_desc": { "message": "Vis/skjul spillerliste" },
-  "tool_users_label": { "message": "Brukere" },
-  "tool_users_desc": { "message": "List tilkoblede brukere i konsollen" },
   "tool_restart_label": { "message": "Omstart" },
   "tool_restart_desc": { "message": "Dobbeltklikk for å STARTE SERVER PÅ NYTT" },
   "tool_matrix_label": { "message": "Matrix" },
@@ -156,5 +154,16 @@
   "steamidTextColor": { "message": "SteamID tekstfarge" },
   
   "menu_translate": { "message": "✍️ Oversett til engelsk" },
-  "menu_close": { "message": "Lukk" }  
+  "menu_close": { "message": "Lukk" },
+  
+  "tool_users_label": { "message": "Brukere" },
+  "tool_users_desc": { "message": "Vis alle tilkoblede brukere i konsollen" },
+  "tool_list_label": { "message": "el list" },
+  "tool_list_desc": { "message": "Vis alle hendelser i loopen" },
+  "tool_select_label": { "message": "el select" },
+  "tool_select_desc": { "message": "Velg en hendelse i loopen" },
+  
+  "prompt_num": { "message": "Skriv inn hendelsen som skal velges" },
+  "tool_commands_label": { "message": "Kommandoer" },
+  "tool_commands_desc": { "message": "Nyttige kommandoer for serveren." }
 }

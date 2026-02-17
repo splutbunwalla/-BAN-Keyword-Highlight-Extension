@@ -21,8 +21,6 @@
   "tool_msg_desc": { "message": "Send global announcements" },
   "tool_players_label": { "message": "Players" },
   "tool_players_desc": { "message": "Show/hide online player list" },
-  "tool_users_label": { "message": "Users" },
-  "tool_users_desc": { "message": "List all connected users in console" },
   "tool_restart_label": { "message": "Restart" },
   "tool_restart_desc": { "message": "Double-click to RESTART server" },
   "tool_matrix_label": { "message": "Matrix" },
@@ -182,5 +180,16 @@
   "steamidTextColor": { "message": "SteamID Text Color" },
   
   "menu_translate": { "message": "✍️ Translate To English" },
-  "menu_close": { "message": "Close" }
-}
+  "menu_close": { "message": "Close" },
+  
+  "tool_users_label": { "message": "Users" },
+  "tool_users_desc": { "message": "List all connected users in console" },
+  "tool_list_label": { "message": "el list" },
+  "tool_list_desc": { "message": "List all events in the loop" },
+  "tool_select_label": { "message": "el select" },
+  "tool_select_desc": { "message": "Select an event in the loop" },
+  
+  "prompt_num": { "message": "Enter the event entry to select" },
+  "tool_commands_label": { "message": "Commands" },
+  "tool_commands_desc": { "message": "Useful commands for the server." }
+ }

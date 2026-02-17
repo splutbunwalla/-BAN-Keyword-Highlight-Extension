@@ -21,8 +21,6 @@
   "tool_msg_desc": { "message": "Odeslat globální oznámení" },
   "tool_players_label": { "message": "Hráči" },
   "tool_players_desc": { "message": "Zobrazit/skrýt seznam hráčů" },
-  "tool_users_label": { "message": "Uživatelé" },
-  "tool_users_desc": { "message": "Seznam připojených uživatelů v konzoli" },
   "tool_restart_label": { "message": "Restart" },
   "tool_restart_desc": { "message": "Dvojklik pro RESTART serveru" },
   "tool_matrix_label": { "message": "Matrix" },
@@ -156,5 +154,16 @@
   "steamidTextColor": { "message": "Barva textu SteamID" },
   
   "menu_translate": { "message": "✍️ Přeložit do angličtiny" },
-  "menu_close": { "message": "Zavřít" }
+  "menu_close": { "message": "Zavřít" },
+ 
+  "tool_users_label": { "message": "Uživatelé" },
+  "tool_users_desc": { "message": "Seznam všech připojených uživatelů v konzoli" },
+  "tool_list_label": { "message": "el list" },
+  "tool_list_desc": { "message": "Seznam všech událostí ve smyčce" },
+  "tool_select_label": { "message": "el select" },
+  "tool_select_desc": { "message": "Vybrat událost ve smyčce" },
+  
+  "prompt_num": { "message": "Zadejte položku události pro výběr" },
+  "tool_commands_label": { "message": "Příkazy" },
+  "tool_commands_desc": { "message": "Užitečné příkazy pro server." }
 }

@@ -21,8 +21,6 @@
   "tool_msg_desc": { "message": "Global Ukënnegungen schécken" },
   "tool_players_label": { "message": "Spiller" },
   "tool_players_desc": { "message": "Spillerlëscht uweisen/verstoppen" },
-  "tool_users_label": { "message": "Benotzer" },
-  "tool_users_desc": { "message": "Verbonnen Benotzer an der Konsol oplëschten" },
   "tool_restart_label": { "message": "Neistart" },
   "tool_restart_desc": { "message": "Duebelklick fir SERVER NEISTART" },
   "tool_matrix_label": { "message": "Matrix" },
@@ -156,5 +154,16 @@
   "steamidTextColor": { "message": "SteamID Textfaarf" },
 
   "menu_translate": { "message": "✍️ Op Englesch iwwersetzen" },
-  "menu_close": { "message": "Zoumaachen" }
+  "menu_close": { "message": "Zoumaachen" },
+  
+  "tool_users_label": { "message": "Benotzer" },
+  "tool_users_desc": { "message": "Lëscht vun alle verbonne Benotzer an der Konsol" },
+  "tool_list_label": { "message": "el list" },
+  "tool_list_desc": { "message": "All Eventer am Loop oplëschten" },
+  "tool_select_label": { "message": "el select" },
+  "tool_select_desc": { "message": "En Event am Loop auswielen" },
+  
+  "prompt_num": { "message": "Gitt den Event-Entrag an fir auszewielen" },
+  "tool_commands_label": { "message": "Befeler" },
+  "tool_commands_desc": { "message": "Nëtzlech Befeler fir de Server." }
 }

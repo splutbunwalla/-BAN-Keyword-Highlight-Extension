@@ -21,8 +21,6 @@
   "tool_msg_desc": { "message": "Stuur wereldwijde aankondigingen" },
   "tool_players_label": { "message": "Spelers" },
   "tool_players_desc": { "message": "Toon/verberg spelerslijst" },
-  "tool_users_label": { "message": "Gebruikers" },
-  "tool_users_desc": { "message": "Lijst verbonden gebruikers in console" },
   "tool_restart_label": { "message": "Herstart" },
   "tool_restart_desc": { "message": "Dubbelklik om server te HERSTARTEN" },
   "tool_matrix_label": { "message": "Matrix" },
@@ -156,5 +154,16 @@
   "steamidTextColor": { "message": "SteamID tekstkleur" },
   
   "menu_translate": { "message": "✍️ Vertalen naar het Engels" },
-  "menu_close": { "message": "Sluiten" }
+  "menu_close": { "message": "Sluiten" },
+  
+  "tool_users_label": { "message": "Gebruikers" },
+  "tool_users_desc": { "message": "Lijst van alle verbonden gebruikers in de console" },
+  "tool_list_label": { "message": "el list" },
+  "tool_list_desc": { "message": "Toon alle gebeurtenissen in de loop" },
+  "tool_select_label": { "message": "el select" },
+  "tool_select_desc": { "message": "Selecteer een gebeurtenis in de loop" },
+  
+  "prompt_num": { "message": "Voer het evenement in om te selecteren" },
+  "tool_commands_label": { "message": "Commando's" },
+  "tool_commands_desc": { "message": "Handige commando's voor de server." }
 }

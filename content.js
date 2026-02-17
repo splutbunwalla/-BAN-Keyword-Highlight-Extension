@@ -559,13 +559,13 @@
         // Standard Tools
         const tools = [
             {label: chrome.i18n.getMessage("tool_sid_label"), type: 'info', icon: '🛠️', id: 'hh-sid-trigger', desc: chrome.i18n.getMessage("tool_sid_desc")},
-            {label: chrome.i18n.getMessage("tool_chat_label"), type: 'info', icon: '💬', action: 'openChat', desc: chrome.i18n.getMessage("tool_chat_desc")}, //'View player chat logs'},
-			{label: chrome.i18n.getMessage("tool_mod_label"), type: 'info', icon: '🛡️', action: 'openModLog', desc: chrome.i18n.getMessage("tool_mod_desc")}, //'View kick and ban history'},
-            {label: chrome.i18n.getMessage("tool_msg_label"), type: 'info', icon: '💬', id: 'hh-msg-trigger', desc: chrome.i18n.getMessage("tool_msg_desc")}, //'Send global announcements'},
-            {label: chrome.i18n.getMessage("tool_players_label"), type: 'info', icon: '📋', action: 'togglePlayers', desc: chrome.i18n.getMessage("tool_players_desc")}, //'Show/hide online player list'},
-            {label: chrome.i18n.getMessage("tool_users_label"), type: 'info', icon: '👥', cmd: 'users', desc: chrome.i18n.getMessage("tool_users_desc")}, //'List all connected users in console'},
-            {label: chrome.i18n.getMessage("tool_restart_label"), type: 'danger', icon: '🔄', cmd: 'restart', desc: chrome.i18n.getMessage("tool_restart_desc")}, //'Double-click to RESTART server'},
-			{label: '', type: 'info', icon: '🕶️', action: 'matrix', desc: chrome.i18n.getMessage("tool_spluts_desc")}, //'Spluts eye view of the server' }
+            {label: chrome.i18n.getMessage("tool_chat_label"), type: 'info', icon: '💬', action: 'openChat', desc: chrome.i18n.getMessage("tool_chat_desc")},
+			{label: chrome.i18n.getMessage("tool_mod_label"), type: 'info', icon: '🛡️', action: 'openModLog', desc: chrome.i18n.getMessage("tool_mod_desc")},
+            {label: chrome.i18n.getMessage("tool_msg_label"), type: 'info', icon: '💬', id: 'hh-msg-trigger', desc: chrome.i18n.getMessage("tool_msg_desc")},
+            {label: chrome.i18n.getMessage("tool_players_label"), type: 'info', icon: '📋', action: 'togglePlayers', desc: chrome.i18n.getMessage("tool_players_desc")},
+            {label: chrome.i18n.getMessage("tool_commands_label"), type: 'info', icon: '🖥️', id: 'hh-cmd-trigger', desc: chrome.i18n.getMessage("tool_commands_desc")},
+            {label: chrome.i18n.getMessage("tool_restart_label"), type: 'danger', icon: '🔄', cmd: 'restart', desc: chrome.i18n.getMessage("tool_restart_desc")}
+			
         ];
 
         tools.forEach(tool => {
@@ -582,12 +582,21 @@
                     const menu = document.getElementById('hh-toolbar-sid-submenu');
                     // Close other menus
                     document.getElementById('hh-toolbar-msg-submenu').style.display = 'none';
+                    document.getElementById('hh-toolbar-cmd-submenu').style.display = 'none';
                     menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+                } else if (tool.id === 'hh-cmd-trigger') {
+					e.stopPropagation();
+                    const menu = document.getElementById('hh-toolbar-cmd-submenu');
+                    // Close other menus
+                    document.getElementById('hh-toolbar-msg-submenu').style.display = 'none';
+                    document.getElementById('hh-toolbar-sid-submenu').style.display = 'none';
+                    menu.style.display = menu.style.display === 'block' ? 'none' : 'block'					
                 } else if (tool.id === 'hh-msg-trigger') {
                     e.stopPropagation();
                     const menu = document.getElementById('hh-toolbar-msg-submenu');
                     // Close other menus
                     document.getElementById('hh-toolbar-sid-submenu').style.display = 'none';
+                    document.getElementById('hh-toolbar-cmd-submenu').style.display = 'none';
                     menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
                 } else if (tool.action === 'togglePlayers') {
                     togglePlayerList();
@@ -629,8 +638,6 @@
 					const view = document.getElementById('hh-mod-view') || createModView();
 					renderModLines();
 					view.style.display = 'flex';
-				} else if (tool.action === 'matrix') {
-					enterTheMatrix();
 				} else {
                     // Standard commands (users, etc.)
                     safeSendMessage({action: "PROXY_COMMAND", cmd: tool.cmd});
@@ -656,11 +663,10 @@
         msgSubmenu.className = 'hh-action-menu';
         msgSubmenu.style.display = 'none';
         
-        // Ensure it sits below the button, aligned to the left
         msgSubmenu.style.top = '100%';
         msgSubmenu.style.left = '0';
-        msgSubmenu.style.marginTop = '5px'; // Optional gap
-        msgSubmenu.style.minWidth = '150px'; // Ensure it isn't too squashed
+        msgSubmenu.style.marginTop = '5px'; 
+        msgSubmenu.style.minWidth = '150px';
 
 		const msgBtn = toolbar.querySelector('#hh-msg-trigger');
         if (msgBtn) {
@@ -670,8 +676,55 @@
             toolbar.appendChild(msgSubmenu); // Fallback
         }
 
-        // Inside createToolbar, after msgSubmenu creation...
+        const cmdSubmenu = document.createElement('div');
+		cmdSubmenu.id = 'hh-toolbar-cmd-submenu';
+        cmdSubmenu.className = 'hh-action-menu';
+		Object.assign(cmdSubmenu.style, {
+			display: 'none',
+			top: '100%',
+			left: '0',
+			marginTop: '5px',
+			minWidth: '150px',
+		});
 
+		const cmdBtn = toolbar.querySelector('#hh-cmd-trigger');
+        if (cmdBtn) {
+            cmdBtn.style.position = 'relative'; // Make button the anchor
+            cmdBtn.appendChild(cmdSubmenu);
+        } else {
+            toolbar.appendChild(cmdSubmenu); // Fallback
+        }
+
+        const cmdActions = [
+            {label: chrome.i18n.getMessage("tool_users_label"), type: 'users', icon: '👥', cmd: 'users', desc: chrome.i18n.getMessage("tool_users_desc")},
+            {label: chrome.i18n.getMessage("tool_list_label"), type: 'list', icon: '🗒️', cmd: 'el list', desc: chrome.i18n.getMessage("tool_list_desc")},
+            {label: chrome.i18n.getMessage("tool_select_label"), type: 'select', icon: '✅', cmd: 'el select', desc: chrome.i18n.getMessage("tool_select_desc")},
+			{label: '', type: 'matrix', icon: '🕶️', desc: chrome.i18n.getMessage("tool_spluts_desc")}
+        ];
+				
+	    cmdActions.forEach(act => {
+            const item = document.createElement('div');
+            item.className = 'hh-menu-item';
+            item.innerHTML = `<span>${act.icon}</span> ${act.label}`;
+			item.title = act.desc;
+            item.onclick = (e) => {
+                e.stopPropagation();
+				if(act.type === 'select') {
+					const num = prompt(`${chrome.i18n.getMessage("prompt_num")}`);
+					if (!num || isNaN(num)) return;
+					const finalCmd = `${act.cmd} ${num}`;
+					safeSendMessage({action: "PROXY_COMMAND", cmd: finalCmd, autoSubmit: true});
+				} else if (act.type === 'matrix') {
+					enterTheMatrix();
+				} else {
+					safeSendMessage({action: "PROXY_COMMAND", cmd: act.cmd, autoSubmit: true});
+				}
+                   
+                cmdSubmenu.style.display = 'none';
+            };
+            cmdSubmenu.appendChild(item);
+        });
+		
         const sidSubmenu = document.createElement('div');
         sidSubmenu.id = 'hh-toolbar-sid-submenu';
         sidSubmenu.className = 'hh-action-menu';
@@ -726,6 +779,7 @@
         document.addEventListener('click', () => {
             msgSubmenu.style.display = 'none';
             sidSubmenu.style.display = 'none';
+            cmdSubmenu.style.display = 'none';
         });
 
         updateToolbarMessages(MESSAGES, msgSubmenu);

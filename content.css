@@ -879,3 +879,25 @@ body.hh-disabled .hh-secondaryhighlight {
     flex-direction: column;
     pointer-events: auto !important;
 }
+
+#hh-cmd-trigger {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#hh-toolbar-cmd-submenu {
+    position: absolute;
+    top: 100%;      
+    left: 0;        
+    display: none;
+    flex-direction: column;
+    background: var(--hh-main-bg);
+    border: 1px solid var(--hh-border);
+    min-width: 160px;
+    z-index: 10003;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    text-align: left;
+    cursor: default;
+}

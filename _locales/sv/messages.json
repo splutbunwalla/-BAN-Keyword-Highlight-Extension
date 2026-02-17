@@ -21,8 +21,6 @@
   "tool_msg_desc": { "message": "Skicka globala meddelanden" },
   "tool_players_label": { "message": "Spelare" },
   "tool_players_desc": { "message": "Visa/dölj spelarlista" },
-  "tool_users_label": { "message": "Användare" },
-  "tool_users_desc": { "message": "Lista anslutna användare i konsol" },
   "tool_restart_label": { "message": "Starta om" },
   "tool_restart_desc": { "message": "Dubbelklicka för att STARTA OM server" },
   "tool_matrix_label": { "message": "Matrix" },
@@ -156,5 +154,16 @@
   "steamidTextColor": { "message": "SteamID textfärg" },
   
   "menu_translate": { "message": "✍️ Översätt till engelska" },
-  "menu_close": { "message": "Stäng" }
+  "menu_close": { "message": "Stäng" },
+  
+  "tool_users_label": { "message": "Användare" },
+  "tool_users_desc": { "message": "Visa alla anslutna användare i konsolen" },
+  "tool_list_label": { "message": "el list" },
+  "tool_list_desc": { "message": "Visa alla händelser i loopen" },
+  "tool_select_label": { "message": "el select" },
+  "tool_select_desc": { "message": "Välj en händelse i loopen" },
+  
+  "prompt_num": { "message": "Ange händelseposten som ska väljas" },
+  "tool_commands_label": { "message": "Kommandon" },
+  "tool_commands_desc": { "message": "Användbara kommandon för servern." }
 }

@@ -21,8 +21,6 @@
   "tool_msg_desc": { "message": "Enviar anuncios globales" },
   "tool_players_label": { "message": "Jugadores" },
   "tool_players_desc": { "message": "Mostrar/ocultar lista de jugadores" },
-  "tool_users_label": { "message": "Usuarios" },
-  "tool_users_desc": { "message": "Listar usuarios conectados en consola" },
   "tool_restart_label": { "message": "Reiniciar" },
   "tool_restart_desc": { "message": "Doble clic para REINICIAR servidor" },
   "tool_matrix_label": { "message": "Matrix" },
@@ -156,5 +154,16 @@
   "steamidTextColor": { "message": "Color de texto de SteamID" },
   
   "menu_translate": { "message": "✍️ Traducir al inglés" },
-  "menu_close": { "message": "Cerrar" }
+  "menu_close": { "message": "Cerrar" },
+  
+  "tool_users_label": { "message": "Usuarios" },
+  "tool_users_desc": { "message": "Listar todos los usuarios conectados en la consola" },
+  "tool_list_label": { "message": "el list" },
+  "tool_list_desc": { "message": "Listar todos los eventos en el bucle" },
+  "tool_select_label": { "message": "el select" },
+  "tool_select_desc": { "message": "Seleccionar un evento en el bucle" },
+  
+  "prompt_num": { "message": "Introduce la entrada del evento a seleccionar" },
+  "tool_commands_label": { "message": "Comandos" },
+  "tool_commands_desc": { "message": "Comandos útiles para el servidor." }
 }

@@ -21,8 +21,6 @@
   "tool_msg_desc": { "message": "Globale Ankündigungen senden" },
   "tool_players_label": { "message": "Spieler" },
   "tool_players_desc": { "message": "Spielerliste anzeigen/verbergen" },
-  "tool_users_label": { "message": "Benutzer" },
-  "tool_users_desc": { "message": "Alle verbundenen Benutzer in Konsole listen" },
   "tool_restart_label": { "message": "Neustart" },
   "tool_restart_desc": { "message": "Doppelklick für SERVER-NEUSTART" },
   "tool_matrix_label": { "message": "Matrix" },
@@ -155,5 +153,16 @@
   "steamidColorEnd": { "message": "SteamID Farbe Ende" },
   "steamidTextColor": { "message": "SteamID Farbe Text" },
   "menu_translate": { "message": "✍️ Auf Englisch übersetzen" },
-  "menu_close": { "message": "Schließen" }
+  "menu_close": { "message": "Schließen" },
+  
+  "tool_users_label": { "message": "Benutzer" },
+  "tool_users_desc": { "message": "Alle verbundenen Benutzer in der Konsole auflisten" },
+  "tool_list_label": { "message": "el list" },
+  "tool_list_desc": { "message": "Alle Ereignisse im Loop auflisten" },
+  "tool_select_label": { "message": "el select" },
+  "tool_select_desc": { "message": "Ein Ereignis im Loop auswählen" },
+  
+  "prompt_num": { "message": "Geben Sie den Ereigniseintrag zum Auswählen ein" },
+  "tool_commands_label": { "message": "Befehle" },
+  "tool_commands_desc": { "message": "Nützliche Befehle für den Server." }  
 }

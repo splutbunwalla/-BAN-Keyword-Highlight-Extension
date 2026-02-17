@@ -21,8 +21,6 @@
   "tool_msg_desc": { "message": "Envoyer des annonces globales" },
   "tool_players_label": { "message": "Joueurs" },
   "tool_players_desc": { "message": "Afficher/Masquer la liste des joueurs" },
-  "tool_users_label": { "message": "Utilisateurs" },
-  "tool_users_desc": { "message": "Lister les utilisateurs connectés dans la console" },
   "tool_restart_label": { "message": "Redémarrer" },
   "tool_restart_desc": { "message": "Double-clic pour REDÉMARRER le serveur" },
   "tool_matrix_label": { "message": "Matrix" },
@@ -156,5 +154,16 @@
   "steamidTextColor": { "message": "Couleur texte SteamID" },
   
   "menu_translate": { "message": "✍️ Traduire en anglais" },
-  "menu_close": { "message": "Fermer" }
+  "menu_close": { "message": "Fermer" },
+  
+  "tool_users_label": { "message": "Utilisateurs" },
+  "tool_users_desc": { "message": "Lister tous les utilisateurs connectés dans la console" },
+  "tool_list_label": { "message": "el list" },
+  "tool_list_desc": { "message": "Lister tous les événements de la boucle" },
+  "tool_select_label": { "message": "el select" },
+  "tool_select_desc": { "message": "Sélectionner un événement dans la boucle" },
+  
+  "prompt_num": { "message": "Saisissez l'entrée d'événement à sélectionner" },
+  "tool_commands_label": { "message": "Commandes" },
+  "tool_commands_desc": { "message": "Commandes utiles pour le serveur." }
 }

@@ -21,8 +21,6 @@
   "tool_msg_desc": { "message": "Lähetä yleisiä ilmoituksia" },
   "tool_players_label": { "message": "Pelaajat" },
   "tool_players_desc": { "message": "Näytä/piilota pelaajalista" },
-  "tool_users_label": { "message": "Käyttäjät" },
-  "tool_users_desc": { "message": "Listaa yhdistetyt käyttäjät konsolissa" },
   "tool_restart_label": { "message": "Käynnistä uudelleen" },
   "tool_restart_desc": { "message": "Kaksoisnapsauta KÄYNNISTÄÄKSESI palvelimen uudelleen" },
   "tool_matrix_label": { "message": "Matrix" },
@@ -156,5 +154,16 @@
   "steamidTextColor": { "message": "SteamID tekstin väri" },
   
   "menu_translate": { "message": "✍️ Käännä englanniksi" },
-  "menu_close": { "message": "Sulje" }
+  "menu_close": { "message": "Sulje" },
+  
+  "tool_users_label": { "message": "Käyttäjät" },
+  "tool_users_desc": { "message": "Listaa kaikki yhdistetyt käyttäjät konsolissa" },
+  "tool_list_label": { "message": "el list" },
+  "tool_list_desc": { "message": "Listaa kaikki tapahtumasilmukan tapahtumat" },
+  "tool_select_label": { "message": "el select" },
+  "tool_select_desc": { "message": "Valitse tapahtuma silmukasta" },
+  
+  "prompt_num": { "message": "Syötä valittava tapahtumamerkintä" },
+  "tool_commands_label": { "message": "Komennot" },
+  "tool_commands_desc": { "message": "Hyödyllisiä komentoja palvelimelle." }
 }

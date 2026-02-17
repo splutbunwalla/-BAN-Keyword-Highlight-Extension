@@ -21,8 +21,6 @@
   "tool_msg_desc": { "message": "Invia annunci globali" },
   "tool_players_label": { "message": "Giocatori" },
   "tool_players_desc": { "message": "Mostra/nascondi lista giocatori" },
-  "tool_users_label": { "message": "Utenti" },
-  "tool_users_desc": { "message": "Elenca utenti connessi nella console" },
   "tool_restart_label": { "message": "Riavvia" },
   "tool_restart_desc": { "message": "Doppio clic per RIAVVIARE il server" },
   "tool_matrix_label": { "message": "Matrix" },
@@ -156,5 +154,16 @@
   "steamidTextColor": { "message": "Colore testo SteamID" },
   
   "menu_translate": { "message": "✍️ Traduci in inglese" },
-  "menu_close": { "message": "Chiudi" }
+  "menu_close": { "message": "Chiudi" },
+  
+  "tool_users_label": { "message": "Utenti" },
+  "tool_users_desc": { "message": "Elenca tutti gli utenti connessi nella console" },
+  "tool_list_label": { "message": "el list" },
+  "tool_list_desc": { "message": "Elenca tutti gli eventi nel loop" },
+  "tool_select_label": { "message": "el select" },
+  "tool_select_desc": { "message": "Seleziona un evento nel loop" },
+  
+  "prompt_num": { "message": "Inserisci la voce dell'evento da selezionare" },
+  "tool_commands_label": { "message": "Comandi" },
+  "tool_commands_desc": { "message": "Comandi utili per il server." }
 }

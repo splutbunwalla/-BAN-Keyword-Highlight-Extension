@@ -21,8 +21,6 @@
   "tool_msg_desc": { "message": "Send globale meddelelser" },
   "tool_players_label": { "message": "Spillere" },
   "tool_players_desc": { "message": "Vis/skjul spillerliste" },
-  "tool_users_label": { "message": "Brugere" },
-  "tool_users_desc": { "message": "List tilsluttede brugere i konsol" },
   "tool_restart_label": { "message": "Genstart" },
   "tool_restart_desc": { "message": "Dobbeltklik for at GENSTARTE server" },
   "tool_matrix_label": { "message": "Matrix" },
@@ -156,5 +154,16 @@
   "steamidTextColor": { "message": "SteamID tekstfarve" },
   
   "menu_translate": { "message": "✍️ Oversæt til engelsk" },
-  "menu_close": { "message": "Luk" }  
+  "menu_close": { "message": "Luk" },
+  
+  "tool_users_label": { "message": "Brugere" },
+  "tool_users_desc": { "message": "Vis alle tilsluttede brugere i konsollen" },
+  "tool_list_label": { "message": "el list" },
+  "tool_list_desc": { "message": "Vis alle hændelser i loopen" },
+  "tool_select_label": { "message": "el select" },
+  "tool_select_desc": { "message": "Vælg en hændelse i loopen" },
+  
+  "prompt_num": { "message": "Indtast begivenheden for at vælge" },
+  "tool_commands_label": { "message": "Kommandoer" },
+  "tool_commands_desc": { "message": "Nyttige kommandoer til serveren." }
 }
