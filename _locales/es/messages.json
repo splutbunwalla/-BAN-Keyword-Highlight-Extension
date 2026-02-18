@@ -174,4 +174,3 @@
   "server_commands": { "message": "Comandos del servidor" },
   "prompt_params": { "message": "Introduce parámetros para $1", "placeholders": { "1": { "content": "$1" } } }
 }
-}

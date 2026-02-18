@@ -28,6 +28,46 @@
 
     const getKeywordText = k => typeof k === 'string' ? k : k.text;
 
+	const handleModAction = (type, sid, options = {}) => {
+		if (!sid || isNaN(sid)) return;
+
+		const { 
+			duration = PERMA_DUR, 
+			role = 'default', 
+			name = chrome.i18n.getMessage("queue_manual_entry") 
+		} = options;
+
+		if (isRacing) {
+			// Add to queue
+			const data = NAME_MAP[sid];
+			const queueEntry = { type, sid, name };
+			if (type === 'ban') {
+				queueEntry.dur = duration;
+				if( data && data.online && data.connId ) {
+					safeSendMessage({ action: "PROXY_COMMAND", cmd: `kick ${data.connId}`, autoSubmit: true });
+				}					
+			}
+			if (type === 'role') queueEntry.role = role;
+			
+			banQueue.push(queueEntry);
+			updateQueueDisplay();
+			
+            copyToClipboard(`${data.name || name} (${sid}) banned by Server for ${dur} minutes`);
+			const toastMsg = type === 'role' 
+				? chrome.i18n.getMessage("toast_queued_role", [sid, role])
+				: chrome.i18n.getMessage(`toast_queued_${type}`, [sid]);
+			showToast(toastMsg);
+		} else {
+			let cmd = "";
+			switch (type) {
+				case 'ban': cmd = `ban ${sid} ${duration}`; break;
+				case 'role': cmd = `role ${sid},${role}`; break;
+			}
+			
+			safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true });
+			showToast(chrome.i18n.getMessage("toast_sent", [type.toUpperCase()]));
+		}
+	};
 
 	const SERVER_COMMANDS = [
 		{ cmd: "countdown", aliases: "", desc: "Set starting lobby countdown (seconds).", params: true },
@@ -146,6 +186,22 @@
 				<button class="hh-tool-btn info" style="padding: 2px 8px;">${chrome.i18n.getMessage("btn_run")}</button>
 			`;
 			line.onclick = () => {
+				if (['ban', 'kick', 'role'].includes(c.cmd)) {
+					const input = prompt(chrome.i18n.getMessage("prompt_params", [c.cmd]));
+					if (!input) return;
+
+					const parts = input.split(/[ ,]+/);
+					const sid = parts[0];
+
+					if (c.cmd === 'ban') {
+						handleModAction('ban', sid, { duration: parts[1] || PERMA_DUR });
+					} else if (c.cmd === 'role') {
+						handleModAction('role', sid, { role: parts[1] || 'default' });
+					} 
+					
+					return;
+				}
+				
 				const input = c.params ? prompt(chrome.i18n.getMessage("prompt_params",[c.cmd])) : "";
 				if(input) {
 					safeSendMessage({ action: "PROXY_COMMAND", cmd: `${c.cmd} ${input}`, autoSubmit: true });
@@ -786,21 +842,9 @@
                 } else if (tool.action === 'perma') {
                     sid = prompt(chrome.i18n.getMessage("prompt_steam_id_to_ban"));
                     if (!sid || isNaN(sid)) return;
-                    dur = PERMA_DUR;
-                    // Chances are not online as will be a perma of an id from a different server
-                    if (isRacing) {
-                        banQueue.push({sid, dur});
-                        updateQueueDisplay();
-                        showToast(chrome.i18n.getMessage("toast_queued_ban",[sid]));
-                    } else {
-                        const cmd = `ban ${sid}`;
-                        safeSendMessage({
-                            action: "PROXY_COMMAND",
-                            cmd: cmd,
-                            autoSubmit: true
-                        });
-                        showToast(chrome.i18n.getMessage("toast_banned",[sid]));
-                    }
+                    
+					handleBanAction(sid, PERMA_DUR);
+					
                 } else if (tool.action === 'openModLog') {
 					const view = document.getElementById('hh-mod-view') || createModView();
 					renderModLines();
@@ -920,23 +964,11 @@
                 const sid = prompt(`${chrome.i18n.getMessage("prompt_steam_id",[act.label])}`);
                 if (!sid || isNaN(sid) || sid.length !== 17) return;
 
-                if (isRacing) {
-                    outmsg = ``;
-                    if (act.type === 'role') {
-                        banQueue.push({type: 'role', sid, name: chrome.i18n.getMessage("queue_manual_entry"), role: act.role});
-                        outmsg = chrome.i18n.getMessage("toast_queued_role",[sid,act.role]);
-                    } else {
-                        banQueue.push({type: 'ban', sid, name: chrome.i18n.getMessage("queue_manual_entry"), dur: act.dur});
-                        outmsg = chrome.i18n.getMessage("toast_queued_banned",[sid]);
-                    }
-                    updateQueueDisplay();
-                    showToast(outmsg);
-                } else {
-                    let cmd = act.type === 'role' ? `role ${sid}${act.role ? ',' + act.role : ''}` : `ban ${sid}`;
-                    safeSendMessage({action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true});
-                    showToast(chrome.i18n.getMessage("toast_sent", [act.label]));
-
-                }
+				handleModAction(act.type, sid, {
+							role: act.role,
+							duration: act.dur,
+							name: chrome.i18n.getMessage("queue_manual_entry")
+						});
                 sidSubmenu.style.display = 'none';
             };
             sidSubmenu.appendChild(item);
@@ -1125,21 +1157,7 @@
                         // Ban Action
                         row.querySelector('.hh-btn-ban').onclick = (e) => {
                             e.stopPropagation();
-							if (isRacing) {
-								banQueue.push({id, name: data.name, dur: PERMA_DUR});
-								updateQueueDisplay();
-
-								if (data.online && data.connId) {
-									safeSendMessage({action: "PROXY_COMMAND", cmd: `kick ${data.connId}`, autoSubmit: true });
-									showToast(chrome.i18n.getMessage("toast_queued_banned_kicked",[data.name]));
-								} else {
-									showToast(chrome.i18n.getMessage("toast_queued_ban",[data.name]));
-								}
-							}
-							else {
-								safeSendMessage({action: "PROXY_COMMAND", cmd: `ban ${id}`});
-								showToast(chrome.i18n.getMessage("toast_banned",[data.name]));
-							}
+							handleModAction('ban', id, PERMA_DUR);
                         };
 
 						row.oncontextmenu = (e) => {
@@ -1978,40 +1996,18 @@
             safeSendMessage({action: "PROXY_COMMAND", cmd: `unban ${sid}`});
         } else if (type === 'role') {
             const roleArg = item.getAttribute('data-role');
-
-            // --- CHANGED: Check isRacing to Queue ---
-            if (isRacing && roleArg) {
-                banQueue.push({type: 'role', sid, name: currentData.name, role: roleArg});
-                updateQueueDisplay();
-                showToast(chrome.i18n.getMessage("toast_queued_role",[sid, roleArg]));
-            } else {
+			if( roleArg ) handleModAction('role', sid, {role: roleArg || 'default'});
+			else {
                 let cmd = `role ${sid}`;
-                if (roleArg) cmd += `,${roleArg}`;
                 safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
-                showToast(roleArg ? chrome.i18n.getMessage("toast_setting_role",[sid,roleArg]) : chrome.i18n.getMessage("toast_checking_role"));
+                showToast(chrome.i18n.getMessage("toast_checking_role"));
             }
         } else if (type === 'ban') {
             if (dur === "custom") {
                 dur = prompt(chrome.i18n.getMessage("prompt_duration"));
                 if (!dur || isNaN(dur)) return;
             }
-
-            if (isRacing) {
-                banQueue.push({sid, name: currentData.name, dur});
-                updateQueueDisplay();
-
-                if (currentData.online && currentData.connId) {
-                    safeSendMessage({action: "PROXY_COMMAND", cmd: `kick ${currentData.connId}`});
-                    showToast(chrome.i18n.getMessage("toast_queued_banned_kicked",[currentData.name]));
-                } else {
-                    showToast(chrome.i18n.getMessage("toast_queued_ban",[currentData.name]));
-                }
-            } else {
-                const cmd = (dur === PERMA_DUR) ? `ban ${sid}` : `ban ${sid},${dur}`;
-                safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
-                copyToClipboard(`${currentData.name} (${sid}) banned by Server for ${dur} minutes`);
-                showToast(chrome.i18n.getMessage("toast_banned"));
-            }
+			handleModAction(type, sid, {duration: dur || PERMA_DUR});
         } else if (type === 'msg') {
             const msgText = item.getAttribute('data-text');
 
