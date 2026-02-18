@@ -166,5 +166,11 @@
   "prompt_num": { "message": "Saisissez l'entrée d'événement à sélectionner" },
   "tool_commands_label": { "message": "Commandes" },
   "tool_commands_desc": { "message": "Commandes utiles pour le serveur." },
-  "menu_copy": {"message": "📋 Copier"}
+  "menu_copy": {"message": "📋 Copier"},
+  "tool_help_label": { "message": "Aide" },
+  "tool_help_desc": { "message": "Afficher les commandes du serveur" },
+  "message_run": { "message": "Cliquez sur une commande pour l'exécuter" },
+  "btn_run": { "message": "Exécuter" },
+  "server_commands": { "message": "Commandes du serveur" },
+  "prompt_params": { "message": "Entrez les paramètres pour $1", "placeholders": { "1": { "content": "$1" } } }
 }

@@ -28,6 +28,139 @@
 
     const getKeywordText = k => typeof k === 'string' ? k : k.text;
 
+
+	const SERVER_COMMANDS = [
+		{ cmd: "countdown", aliases: "", desc: "Set starting lobby countdown (seconds).", params: true },
+		{ cmd: "users", aliases: "clients", desc: "List all human clients.", params: false },
+		{ cmd: "kick", aliases: "", desc: "Kick a player (requires player-id).", params: true },
+		{ cmd: "ban", aliases: "", desc: "Ban a player (user-id, duration).", params: true },
+		{ cmd: "unban", aliases: "pardon", desc: "Unban a player (user-id).", params: true },
+		{ cmd: "laps", aliases: "", desc: "Change or print the number of laps.", params: true },
+		{ cmd: "grid_size", aliases: "", desc: "Set max participants (grid size).", params: true },
+		{ cmd: "race_end", aliases: "abandon", desc: "End race without processing results.", params: false },
+		{ cmd: "restart_countdown", aliases: "", desc: "Restart the lobby countdown timer.", params: false },
+		
+		
+		// { cmd: "banlist", aliases: "", desc: "Print the current ban list.", params: false },
+		// { cmd: "idle_kick", aliases: "", desc: "Print or set idle kick timer.", params: true },
+		// { cmd: "name", aliases: "", desc: "Print or set the server name.", params: true },
+		// { cmd: "description", aliases: "", desc: "Print or set server description.", params: true },
+		{ cmd: "role", aliases: "", desc: "Get or set user role (user-id, role).", params: true },
+		{ cmd: "race_director", aliases: "", desc: "Print/set auto-assigned director role.", params: true },
+		{ cmd: "password", aliases: "", desc: "Set/check password (use 'disabled' to open).", params: true },
+		{ cmd: "status", aliases: "", desc: "Print current game server status.", params: false },
+		// { cmd: "version", aliases: "", desc: "Print game version.", params: false },
+		// { cmd: "print_config", aliases: "", desc: "Print current server configuration.", params: false },
+		{ cmd: "restart", aliases: "", desc: "Restart the server immediately.", params: false },
+		{ cmd: "shutdown", aliases: "", desc: "Request a graceful server shutdown.", params: false },
+		{ cmd: "exit", aliases: "quit", desc: "Exit the server application.", params: false },
+		
+		{ cmd: "players", aliases: "plrs", desc: "List all connected players.", params: false },
+		{ cmd: "bot", aliases: "add_bot", desc: "Add AI players (optional count).", params: true },
+		{ cmd: "bots", aliases: "bot_count", desc: "Print or set total number of bots.", params: true },
+
+		
+		// { cmd: "level", aliases: "track", desc: "Print or set the current track.", params: true },
+		// { cmd: "levels", aliases: "tracks", desc: "List all available environments and levels.", params: false },
+		// { cmd: "weather", aliases: "", desc: "Print or set the current weather.", params: true },
+		// { cmd: "weathers", aliases: "", desc: "List weathers for the current level.", params: false },
+		{ cmd: "damage", aliases: "", desc: "Change damage settings or list types.", params: true },
+		{ cmd: "rules", aliases: "", desc: "List current event rules.", params: false },
+		{ cmd: "event", aliases: "", desc: "Print current event settings.", params: false },
+
+		{ cmd: "roles", aliases: "", desc: "List all available roles and admins.", params: false },
+
+		// --- Utilities ---
+		{ cmd: "countdown", aliases: "", desc: "Set starting lobby countdown (seconds).", params: true },
+		// { cmd: "race_end_timer", aliases: "", desc: "Print or set the race end timer.", params: true },
+		// { cmd: "telemetry_player", aliases: "", desc: "Set player ID for rich data packets.", params: true },
+		// { cmd: "show_join_errors", aliases: "", desc: "Toggle console visibility for join errors.", params: true },
+		{ cmd: "cup", aliases: "", desc: "Manage cup settings.", params: true },
+		{ cmd: "eventloop", aliases: "el", desc: "Manage event loop settings.", params: true },
+		// { cmd: "help", aliases: "commands, ?", desc: "List all available commands.", params: false }
+	];
+
+	let helpPage = 0;
+	const HELP_PER_PAGE = 8;	
+
+	const openHelpWindow = () => {
+		const view = document.getElementById('hh-help-view') || createHelpView();
+		renderHelpLines();
+		view.style.display = 'flex';
+	};
+
+	function createHelpView() {
+		const el = document.createElement('div');
+		el.id = 'hh-help-view';
+		el.className = 'hh-chat-view'; // Reuses your modal base styles
+		el.innerHTML = `
+			<div class="hh-panel-header">
+				<span class="hh-panel-title">${chrome.i18n.getMessage("server_commands")}</span>
+				<span id="hh-help-close" style="cursor:pointer;color:#ff4444;font-weight:bold;font-size:18px;">✖</span>
+			</div>
+			<div class="hh-chat-filter-row">
+				<input type="text" id="hh-help-search" class="hh-chat-search" placeholder="${chrome.i18n.getMessage("search_placeholder")}" style="flex-grow:1;">
+			</div>
+			<div class="hh-chat-content" id="hh-help-content"></div>
+			<div class="hh-chat-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
+				<div id="hh-help-pagination" style="display: flex; align-items: center; gap: 5px;">
+					<button id="hh-help-prev" class="hh-tool-btn info" style="margin: 0;">◀</button>
+					<span id="hh-help-page-num" style="color: #ccc; min-width: 20px; text-align: center;">1</span>
+					<button id="hh-help-next" class="hh-tool-btn info" style="margin: 0;">▶</button>
+				</div>
+				<span style="font-size: 10px; color: #666; font-style: italic;">${chrome.i18n.getMessage("message_run")}</span>
+			</div>
+		`;
+		getUIWrapper().appendChild(el);
+
+		el.querySelector('#hh-help-search').oninput = () => { helpPage = 0; renderHelpLines(); };
+		el.querySelector('#hh-help-prev').onclick = () => { if(helpPage > 0) { helpPage--; renderHelpLines(); }};
+		el.querySelector('#hh-help-next').onclick = () => { helpPage++; renderHelpLines(); };
+		el.querySelector('#hh-help-close').onclick = () => el.style.display = 'none';
+
+		return el;
+	}	
+
+	function renderHelpLines() {
+		const container = document.getElementById('hh-help-content');
+		const search = document.getElementById('hh-help-search').value.toLowerCase();
+		
+		const filtered = SERVER_COMMANDS.filter(c => 
+			c.cmd.includes(search) || c.aliases.includes(search) || c.desc.toLowerCase().includes(search)
+		);
+
+		const start = helpPage * HELP_PER_PAGE;
+		const paginated = filtered.slice(start, start + HELP_PER_PAGE);
+
+		container.innerHTML = '';
+		paginated.forEach(c => {
+			const line = document.createElement('div');
+			line.className = 'hh-mod-line'; // Reuses styling for rows
+			line.style.cursor = 'pointer';
+			line.innerHTML = `
+				<div style="flex-grow:1">
+					<strong style="color: var(--hh-accent)">${c.cmd}</strong> 
+					<span style="color: #888; font-size: 11px;">${c.aliases ? '('+c.aliases+')' : ''}</span>
+					<div style="font-size: 12px; color: #bbb;">${c.desc}</div>
+				</div>
+				<button class="hh-tool-btn info" style="padding: 2px 8px;">${chrome.i18n.getMessage("btn_run")}</button>
+			`;
+			line.onclick = () => {
+				const input = c.params ? prompt(chrome.i18n.getMessage("prompt_params",[c.cmd])) : "";
+				if(input) {
+					safeSendMessage({ action: "PROXY_COMMAND", cmd: `${c.cmd} ${input}`, autoSubmit: true });
+				} else {
+					safeSendMessage({ action: "PROXY_COMMAND", cmd: `${c.cmd}`, autoSubmit: true });
+				}
+				showToast(`Sent: ~${c.cmd}`);
+			};
+			container.appendChild(line);
+		});
+
+		document.getElementById('hh-help-page-num').innerText = `${helpPage + 1}`;
+		document.getElementById('hh-help-next').disabled = (start + HELP_PER_PAGE) >= filtered.length;
+	}
+
 	const showPlayerContextMenu = (e, player) => {
 		if (!actionMenu) {
 			actionMenu = document.createElement('div');
@@ -599,8 +732,7 @@
             {label: chrome.i18n.getMessage("tool_msg_label"), type: 'info', icon: '💬', id: 'hh-msg-trigger', desc: chrome.i18n.getMessage("tool_msg_desc")},
             {label: chrome.i18n.getMessage("tool_players_label"), type: 'info', icon: '📋', action: 'togglePlayers', desc: chrome.i18n.getMessage("tool_players_desc")},
             {label: chrome.i18n.getMessage("tool_commands_label"), type: 'info', icon: '🖥️', id: 'hh-cmd-trigger', desc: chrome.i18n.getMessage("tool_commands_desc")},
-            {label: chrome.i18n.getMessage("tool_restart_label"), type: 'danger', icon: '🔄', cmd: 'restart', desc: chrome.i18n.getMessage("tool_restart_desc")}
-			
+			{label: chrome.i18n.getMessage("tool_restart_label"), type: 'danger', icon: '🔄', cmd: 'restart', desc: chrome.i18n.getMessage("tool_restart_desc")}
         ];
 
         tools.forEach(tool => {
@@ -734,6 +866,8 @@
             {label: chrome.i18n.getMessage("tool_users_label"), type: 'users', icon: '👥', cmd: 'users', desc: chrome.i18n.getMessage("tool_users_desc")},
             {label: chrome.i18n.getMessage("tool_list_label"), type: 'list', icon: '🗒️', cmd: 'el list', desc: chrome.i18n.getMessage("tool_list_desc")},
             {label: chrome.i18n.getMessage("tool_select_label"), type: 'select', icon: '✅', cmd: 'el select', desc: chrome.i18n.getMessage("tool_select_desc")},
+	        {label: chrome.i18n.getMessage("tool_help_label"), type: 'info', icon: '❓', action: 'openHelp', desc: chrome.i18n.getMessage("tool_help_desc")},
+
 			{label: '', type: 'matrix', icon: '🕶️', desc: chrome.i18n.getMessage("tool_spluts_desc")}
         ];
 				
@@ -749,6 +883,8 @@
 					if (!num || isNaN(num)) return;
 					const finalCmd = `${act.cmd} ${num}`;
 					safeSendMessage({action: "PROXY_COMMAND", cmd: finalCmd, autoSubmit: true});
+				} else if (act.action === 'openHelp') {
+					openHelpWindow();
 				} else if (act.type === 'matrix') {
 					enterTheMatrix();
 				} else {

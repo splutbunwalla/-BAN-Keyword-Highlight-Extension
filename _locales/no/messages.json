@@ -166,5 +166,11 @@
   "prompt_num": { "message": "Skriv inn hendelsen som skal velges" },
   "tool_commands_label": { "message": "Kommandoer" },
   "tool_commands_desc": { "message": "Nyttige kommandoer for serveren." },
-  "menu_copy": {"message": "📋 Kopier"}
+  "menu_copy": {"message": "📋 Kopier"},
+  "tool_help_label": { "message": "Hjelp" },
+  "tool_help_desc": { "message": "Vis serverkommandoer" },
+  "message_run": { "message": "Klikk på en kommando for å kjøre" },
+  "btn_run": { "message": "Kjør" },
+  "server_commands": { "message": "Serverkommandoer" },
+  "prompt_params": { "message": "Skriv inn parametere for $1", "placeholders": { "1": { "content": "$1" } } }
 }

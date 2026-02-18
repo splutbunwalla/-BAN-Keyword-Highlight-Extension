@@ -165,5 +165,11 @@
   "prompt_num": { "message": "Geben Sie den Ereigniseintrag zum Auswählen ein" },
   "tool_commands_label": { "message": "Befehle" },
   "tool_commands_desc": { "message": "Nützliche Befehle für den Server." },
-  "menu_copy": {"message": "📋 Kopieren"}
+  "menu_copy": {"message": "📋 Kopieren"},
+  "tool_help_label": { "message": "Hilfe" },
+   "tool_help_desc": { "message": "Serverbefehle anzeigen" },
+   "message_run": { "message": "Klicken Sie auf einen Befehl zum Ausführen" },
+  "btn_run": { "message": "Ausführen" },
+  "server_commands": { "message": "Serverbefehle" },
+  "prompt_params": { "message": "Parameter für $1 eingeben", "placeholders": { "1": { "content": "$1" } } }
 }

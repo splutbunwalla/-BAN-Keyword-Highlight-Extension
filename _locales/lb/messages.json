@@ -57,8 +57,8 @@
   "popup_label_primary": { "message": "Primär Hervirhiewung" },
   "popup_label_secondary": { "message": "Sekundär Hervirhiewung" },
   "popup_label_steamid": { "message": "SteamID Stil" },
-  "popup_placeholder_label": { "message": "Label" },
-  "popup_placeholder_msg": { "message": "Message Text..." },
+  "popup_placeholder_label": { "message": "Etikett" },
+  "popup_placeholder_msg": { "message": "Norrichtentext..." },
   "popup_btn_export": { "message": "Exportéieren" },
   "popup_btn_import": { "message": "Importéieren" },
   "toast_restart_confirm": { "message": "Duebelklick fir NEISTART" },
@@ -166,5 +166,11 @@
   "prompt_num": { "message": "Gitt den Event-Entrag an fir auszewielen" },
   "tool_commands_label": { "message": "Befeler" },
   "tool_commands_desc": { "message": "Nëtzlech Befeler fir de Server." },
-  "menu_copy": {"message": "📋 Kopéieren"}
+  "menu_copy": {"message": "📋 Kopéieren"},
+  "tool_help_label": { "message": "Hëllef" },
+  "tool_help_desc": { "message": "Server-Kommandoen uweisen" },
+  "message_run": { "message": "Klickt op e Kommando fir en auszeféieren" },
+  "btn_run": { "message": "Ausféieren" },
+  "server_commands": { "message": "Server-Kommandoen" },
+  "prompt_params": { "message": "Parameter fir $1 aginn", "placeholders": { "1": { "content": "$1" } } }
 }

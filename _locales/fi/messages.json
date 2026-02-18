@@ -166,5 +166,11 @@
   "prompt_num": { "message": "Syötä valittava tapahtumamerkintä" },
   "tool_commands_label": { "message": "Komennot" },
   "tool_commands_desc": { "message": "Hyödyllisiä komentoja palvelimelle." },
-  "menu_copy": {"message": "📋 Kopioi"}
+  "menu_copy": {"message": "📋 Kopioi"},
+  "tool_help_label": { "message": "Apua" },
+  "tool_help_desc": { "message": "Näytä palvelimen komennot" },
+  "message_run": { "message": "Klikkaa komentoa suorittaaksesi" },
+  "btn_run": { "message": "Suorita" },
+  "server_commands": { "message": "Palvelimen komennot" },
+  "prompt_params": { "message": "Syötä parametrit kohteelle $1", "placeholders": { "1": { "content": "$1" } } }
 }

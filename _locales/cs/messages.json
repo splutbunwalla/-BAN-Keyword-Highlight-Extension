@@ -166,5 +166,11 @@
   "prompt_num": { "message": "Zadejte položku události pro výběr" },
   "tool_commands_label": { "message": "Příkazy" },
   "tool_commands_desc": { "message": "Užitečné příkazy pro server." },
-  "menu_copy": {"message": "📋 Kopírovat"}
+  "menu_copy": {"message": "📋 Kopírovat"},
+  "tool_help_label": { "message": "Nápověda" },
+  "tool_help_desc": { "message": "Zobrazit příkazy serveru" },
+  "message_run": { "message": "Kliknutím na příkaz jej spustíte" },
+  "btn_run": { "message": "Spustit" },
+  "server_commands": { "message": "Příkazy serveru" },
+  "prompt_params": { "message": "Zadejte parametry pro $1", "placeholders": { "1": { "content": "$1" } } }
 }

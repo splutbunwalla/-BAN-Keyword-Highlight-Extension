@@ -166,5 +166,11 @@
   "prompt_num": { "message": "Indtast begivenheden for at vælge" },
   "tool_commands_label": { "message": "Kommandoer" },
   "tool_commands_desc": { "message": "Nyttige kommandoer til serveren." },
-  "menu_copy": {"message": "📋 Kopier"}
+  "menu_copy": {"message": "📋 Kopier"},
+  "tool_help_label": { "message": "Hjælp" },
+  "tool_help_desc": { "message": "Vis serverkommandoer" },
+  "message_run": { "message": "Klik på en kommando for at køre" },
+  "btn_run": { "message": "Kør" },
+  "server_commands": { "message": "Serverkommandoer" },
+  "prompt_params": { "message": "Indtast parametre for $1", "placeholders": { "1": { "content": "$1" } } }
 }

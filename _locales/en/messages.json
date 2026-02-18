@@ -192,6 +192,11 @@
   "prompt_num": { "message": "Enter the event entry to select" },
   "tool_commands_label": { "message": "Commands" },
   "tool_commands_desc": { "message": "Useful commands for the server." },
-  "menu_copy": {"message": "📋 Copy" }
-  
+  "menu_copy": {"message": "📋 Copy" },
+  "tool_help_label": {"message": "Help" },
+  "tool_help_desc": {"message": "Show server commands" },
+  "message_run": {"message": "Click a command to run" }, 
+  "btn_run": {"message": "Run" }, 
+  "server_commands": {"message": "Server Commands"},
+  "prompt_params": {"message": "Enter parameters for $1", "placeholders": {"1": { "content": "$1" }} }
  }

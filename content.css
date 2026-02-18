@@ -879,3 +879,28 @@ body.hh-disabled .hh-secondaryhighlight {
     flex-direction: column;
     pointer-events: auto !important;
 }
+
+/* Specific tweaks for the Help Window */
+#hh-help-view {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Centers on screen */
+    width: 450px;
+    height: 475px;
+    background: var(--hh-main-bg);
+    border: 1px solid var(--hh-border);
+    z-index: 100005;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+}
+
+#hh-help-content .hh-mod-line:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+#hh-help-pagination button:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
