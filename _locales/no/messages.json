@@ -172,5 +172,6 @@
   "message_run": { "message": "Klikk på en kommando for å kjøre" },
   "btn_run": { "message": "Kjør" },
   "server_commands": { "message": "Serverkommandoer" },
-  "prompt_params": { "message": "Skriv inn parametere for $1", "placeholders": { "1": { "content": "$1" } } }
+  "prompt_params": { "message": "Skriv inn parametere for $1", "placeholders": { "1": { "content": "$1" } } },
+  "disconnected_title": {"message": "Frakoblet – Klikk for å oppdatere"}
 }

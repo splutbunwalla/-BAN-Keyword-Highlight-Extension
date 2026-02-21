@@ -172,5 +172,6 @@
   "message_run": { "message": "Klik op een commando om uit te voeren" },
   "btn_run": { "message": "Uitvoeren" },
   "server_commands": { "message": "Servercommando's" },
-  "prompt_params": { "message": "Voer parameters in voor $1", "placeholders": { "1": { "content": "$1" } } }
+  "prompt_params": { "message": "Voer parameters in voor $1", "placeholders": { "1": { "content": "$1" } } },
+  "disconnected_title": {"message": "Verbinding verbroken - Klik om te vernieuwen"}
 }

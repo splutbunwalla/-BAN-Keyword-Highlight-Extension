@@ -172,5 +172,6 @@
   "message_run": { "message": "Klikkaa komentoa suorittaaksesi" },
   "btn_run": { "message": "Suorita" },
   "server_commands": { "message": "Palvelimen komennot" },
-  "prompt_params": { "message": "Syötä parametrit kohteelle $1", "placeholders": { "1": { "content": "$1" } } }
+  "prompt_params": { "message": "Syötä parametrit kohteelle $1", "placeholders": { "1": { "content": "$1" } } },
+  "disconnected_title": {"message": "Yhteys katkesi - Päivitä napsauttamalla"}
 }

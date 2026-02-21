@@ -87,7 +87,7 @@
 			banQueue.push(queueEntry);
 			updateQueueDisplay();
 			
-            copyToClipboard(`${data.name || name} (${sid}) banned by Server for ${dur} minutes`);
+            copyToClipboard(`${data.name || options.name} (${sid}) banned by Server for ${duration} minutes`);
 			const toastMsg = type === 'role' 
 				? getI18nMsg("toast_queued_role", [sid, role])
 				: getI18nMsg(`toast_queued_${type}`, [sid]);
@@ -95,7 +95,11 @@
 		} else {
 			let cmd = "";
 			switch (type) {
-				case 'ban': cmd = (duration === PERMA_DUR ? `ban ${sid}` : `ban ${sid},${duration}`); break;
+				case 'ban': { cmd = (duration === PERMA_DUR ? `ban ${sid}` : `ban ${sid},${duration}`); 
+				
+					copyToClipboard(`${data.name || options.name} (${sid}) banned by Server for ${dur} minutes`);
+					break;
+				}
 				case 'role': cmd = `role ${sid},${role}`; break;
 			}
 			
@@ -576,9 +580,6 @@
 		const line = text.replace(/\u00a0/g, ' ').trim();
 		if (!line) return;
 
-		// STEP 1: Capture the Core Event
-		// We purposefully match the timestamp, target, and action.
-		// We capture EVERYTHING after "by " into a single group called 'details'.
 		const coreMatch = line.match(/(\d{2}:\d{2}:\d{2}\.\d{3}):\s+(.*?)\s+\((?:id:\s*)?(\d+)\)\s+(kicked|banned)\s+by\s+(.*)/i);
 
 		if (coreMatch) {
@@ -587,51 +588,39 @@
 			const targetId = coreMatch[3];
 			const action = coreMatch[4].toUpperCase();
 			const rawDetails = coreMatch[5].trim();
-
-			// STEP 2: Parse the "Details" string (Admin, ID, Duration)
-			// This handles:
-			// "Server"
-			// "Server for 99 minutes"
-			// "AdminName (12345)"
-			// "AdminName (12345) for 99 minutes"
+			
 			let actor = rawDetails;
 			let actorId = null;
 			let duration = null;
 
-			// Try to find duration at the end
 			const durMatch = rawDetails.match(/(.*)\s+for\s+(\d+)\s+minutes\s*$/i);
 			if (durMatch) {
-				actor = durMatch[1].trim(); // "Server" or "Frozeni (123...)"
+				actor = durMatch[1].trim(); 
 				duration = durMatch[2];
 			}
 
-			// Try to find Admin ID in the actor string
 			const idMatch = actor.match(/(.*?)\s+\((?:id:\s*)?(\d+)\)$/i);
 			if (idMatch) {
 				actor = idMatch[1].trim();
 				actorId = idMatch[2];
 			}
 
-			// Create Entry
 			const entry = {
 				timestamp: timestamp,
 				targetName: targetName,
 				targetId: targetId,
 				action: action,
 				adminName: actor,
-				adminId: actorId, // Might be null if it was just "Server"
+				adminId: actorId,
 				duration: duration,
 				raw: line
 			};
 
-			// Prevent duplicates
 			if (!modHistory.some(m => m.raw === line)) {
 				modHistory.push(entry);
 				
-				// Limit history size to prevent memory issues
 				if (modHistory.length > 1000) modHistory.shift();
 
-				// Refresh UI if open
 				if (document.getElementById('hh-mod-view')) {
 					renderModLines();
 				}
@@ -648,37 +637,60 @@
         compiledRegex = new RegExp(`(\\b\\d{17}\\b|${ROLE_PATTERN}${wordPattern ? '|' + wordPattern : ''})`, "gi");
     }
 
-	const updateHeartbeat = () => {
-        if (!chrome.runtime?.id) {
-            return; 
+let isDisconnected = false; 
+let reloadInitiated = false;
+
+const updateHeartbeat = () => {
+    if (!chrome.runtime?.id) return;
+
+    const isLogFrame = window.location.href.includes("StreamFile.aspx") ||
+        window.location.href.includes("Proxy.ashx") ||
+        document.querySelector('pre, .log-line, #ConsoleOutput');
+
+    if (!isLogFrame) return;
+
+    // Detection Logic: If the stream stops loading, it is 'complete'
+    if (document.readyState === 'complete' && !isDisconnected) {
+        console.log("HH: Stream finished (ReadyState Complete). Marking as disconnected.");
+        isDisconnected = true;
+    }
+
+    let dot = document.getElementById('hh-heartbeat');
+    if (!dot) {
+        dot = document.createElement('div');
+        dot.id = 'hh-heartbeat';
+        dot.classList.add('pulsing');
+        document.body.appendChild(dot);
+    }
+
+    if (isDisconnected) {
+        // Disconnected/Stuck State
+        dot.style.background = "#ffcc00"; // Yellow
+        dot.style.boxShadow = "0 0 10px #ffcc00";
+        dot.title = "Disconnected - Page Load Complete";
+        dot.classList.remove('pulsing'); 
+        
+        // Prevent refresh loops by using a flag
+        if (!reloadInitiated) {
+            reloadInitiated = true;
+            console.log("HH: Connection lost. Reloading in 3 seconds...");
+            setTimeout(() => {
+                window.top.location.reload()
+            }, 3000);
         }
-        // ---------------------------------------
-
-        const isLogFrame = window.location.href.includes("StreamFile.aspx") ||
-            window.location.href.includes("Proxy.ashx") ||
-            document.querySelector('pre, .log-line, #ConsoleOutput');
-
-        if (!isLogFrame) return;
-
-        let dot = document.getElementById('hh-heartbeat');
-
-        if (!dot) {
-            dot = document.createElement('div');
-            dot.id = 'hh-heartbeat';
-            dot.classList.add('pulsing');
-            document.body.appendChild(dot);
-        }
-
-        if (isEnabled) {
-            dot.style.background = "#00ff00"; // Green
-            dot.style.boxShadow = "0 0 5px #00ff00";
-            dot.title = getI18nMsg("status_active");
-        } else {
-            dot.style.background = "#ffcc00"; // Yellow
-            dot.style.boxShadow = "0 0 5px #ffcc00";
-            dot.title = getI18nMsg("status_standby");
-        }
-    };
+    } else if (isEnabled) {
+        // Active State
+        dot.style.background = "#00ff00"; 
+        dot.style.boxShadow = "0 0 5px #00ff00";
+        dot.title = getI18nMsg("status_active");
+        dot.classList.add('pulsing');
+    } else {
+        // Standby State
+        dot.style.background = "#ffcc00"; 
+        dot.style.boxShadow = "0 0 5px #ffcc00";
+        dot.title = getI18nMsg("status_standby");
+    }
+};
 
     const pruneOnlineState = () => {
         const now = Date.now();
@@ -1852,11 +1864,70 @@
         if (msg.action === "muteAll") {
             isMuted = msg.value;
         }
-	    if (msg.action === "update") {
-			if (msg.settings.preferredLanguage) {
+		if (msg.action === "update") {
+			if (msg.settings && msg.settings.preferredLanguage) {
 				initLocalization(msg.settings.preferredLanguage).then(() => {
-					// Optionally refresh UI elements here
-					if (document.getElementById('hh-help-view')) renderHelpLines();
+					
+					// 1. Rebuild the Main Toolbar
+					const toolbar = document.getElementById('hh-toolbar');
+					if (toolbar) {
+						toolbar.remove();
+						createToolbar();
+					}
+
+					// 2. Refresh passive UI elements
+					updateHeartbeat();
+					updateRaceUI(isRacing);
+
+					const queueContainer = document.getElementById('hh-queue-container');
+					if (queueContainer) {
+						queueContainer.remove();
+						updateQueueDisplay();
+					}
+
+					// 3. Rebuild the Player List Panel if it's open
+					if (document.getElementById('hh-player-panel')) {
+						document.getElementById('hh-player-panel').remove();
+						renderList = null; // Important: resets the internal reference
+						togglePlayerList(); // Re-opens it fresh
+					}
+
+					// 4. Rebuild the Help Window
+					const helpView = document.getElementById('hh-help-view');
+					if (helpView) {
+						const wasOpen = helpView.style.display !== 'none';
+						helpView.remove();
+						if (wasOpen) openHelpWindow();
+					}
+
+					// 5. Rebuild the Mod Log View
+					const modView = document.getElementById('hh-mod-view');
+					if (modView) {
+						const wasOpen = modView.style.display !== 'none';
+						modView.remove();
+						if (wasOpen) openModLog();
+					}
+
+					// 6. Rebuild the Chat View (and remember who they were looking at)
+					const chatView = document.getElementById('hh-chat-view');
+					if (chatView) {
+						const wasOpen = chatView.style.display !== 'none';
+						const currentId = window.currentViewedId;
+						chatView.remove();
+						
+						if (wasOpen) {
+							if (currentId && currentId !== 'ALL' && NAME_MAP[currentId]) {
+								openPlayerChat(currentId, NAME_MAP[currentId].name);
+							} else {
+								openChatSelector();
+							}
+						}
+					}
+
+					// 7. Hide any open context menus (they will regenerate with new text on next click)
+					if (typeof actionMenu !== 'undefined' && actionMenu) {
+						actionMenu.style.display = 'none';
+					}
 				});
 			}
 		}
@@ -2405,6 +2476,8 @@ document.addEventListener('contextmenu', (e) => {
             createToolbar();
             updateQueueDisplay();
             updateRegex();
+
+			setInterval(updateHeartbeat, 5000);
 
             let logRoot = document.querySelector('pre, #ConsoleOutput, .log-container');
             let attempts = 0;

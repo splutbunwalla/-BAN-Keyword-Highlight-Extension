@@ -252,6 +252,8 @@ function loadSettings() {
         if (data.preferredLanguage) {
             document.getElementById("languageSelect").value = data.preferredLanguage;
         }
+		
+		updatePopupLanguage(data.preferredLanguage);
 
         KEYWORDS = data.keywords || [];
         SECONDARYWORDS = data.secondarykeywords || [];
@@ -324,7 +326,20 @@ muteAllToggle.addEventListener("change", () => {
     });
 });
 
-langSelect.addEventListener("change", updateContentScript);
+langSelect.addEventListener("change", (e) => {
+	updatePopupLanguage(e.target.value);
+
+    updateContentScript();
+
+    localizeHtml();
+
+    renderKeywords("primary-list", KEYWORDS, "keywords");
+    renderKeywords("secondary-list", SECONDARYWORDS, "secondarykeywords");
+    
+    chrome.storage.sync.get("messages", (data) => {
+        renderMessages(data.messages || []);
+    });
+});
 
 toggleCheckbox.addEventListener("change", () => {
     enabled = toggleCheckbox.checked;
@@ -440,14 +455,53 @@ document.querySelectorAll('input, select, textarea').forEach(input => {
 
 loadSettings();
 
+let customI18nMessages = null;
+
+async function updatePopupLanguage(lang) {
+    if (!lang || lang === "auto") {
+        customI18nMessages = null; // Revert to browser default
+        localizeHtml();
+        return;
+    }
+
+    try {
+        // Fetch English as the ultimate fallback
+        const enRes = await fetch(chrome.runtime.getURL('_locales/en/messages.json'));
+        const enMsgs = await enRes.json();
+
+        // Fetch the user's selected language
+        const langRes = await fetch(chrome.runtime.getURL(`_locales/${lang}/messages.json`));
+        const langMsgs = await langRes.json();
+
+        // Merge: selected language overwrites English where keys exist
+        customI18nMessages = { ...enMsgs, ...langMsgs };
+    } catch (e) {
+        console.error("Failed to fetch localization files:", e);
+        customI18nMessages = null; // Fallback to default if files aren't found
+    }
+
+    // Refresh the UI with the newly fetched messages
+    localizeHtml();
+}
+
+// Custom wrapper to get the message
+function getI18nMsg(key) {
+    if (customI18nMessages && customI18nMessages[key]) {
+        return customI18nMessages[key].message;
+    }
+    // Fallback to Chrome's native i18n if custom isn't loaded or key is missing
+    return chrome.i18n.getMessage(key); 
+}
+
 function localizeHtml() {
     document.querySelectorAll('[data-i18n]').forEach(el => {
-        const message = chrome.i18n.getMessage(el.getAttribute('data-i18n'));
+        const message = getI18nMsg(el.getAttribute('data-i18n'));
         if (message) el.textContent = message;
     });
-	document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-		const messageKey = el.getAttribute('data-i18n-placeholder');
-		el.setAttribute('placeholder', chrome.i18n.getMessage(messageKey));
-	});
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const messageKey = el.getAttribute('data-i18n-placeholder');
+        const message = getI18nMsg(messageKey);
+        if (message) el.setAttribute('placeholder', message);
+    });
 }
 localizeHtml();

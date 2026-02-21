@@ -172,5 +172,6 @@
   "message_run": { "message": "Klickt op e Kommando fir en auszeféieren" },
   "btn_run": { "message": "Ausféieren" },
   "server_commands": { "message": "Server-Kommandoen" },
-  "prompt_params": { "message": "Parameter fir $1 aginn", "placeholders": { "1": { "content": "$1" } } }
+  "prompt_params": { "message": "Parameter fir $1 aginn", "placeholders": { "1": { "content": "$1" } } },
+  "disconnected_title": {"message": "Verbindung ënnerbrach - Klickt fir ze aktualiséieren"}
 }

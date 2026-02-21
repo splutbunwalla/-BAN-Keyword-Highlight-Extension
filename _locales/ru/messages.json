@@ -172,5 +172,6 @@
   "message_run": { "message": "Нажмите на команду для запуска" },
   "btn_run": { "message": "Запуск" },
   "server_commands": { "message": "Команды сервера" },
-  "prompt_params": { "message": "Введите параметры для $1", "placeholders": { "1": { "content": "$1" } } }
+  "prompt_params": { "message": "Введите параметры для $1", "placeholders": { "1": { "content": "$1" } } },
+  "disconnected_title": {"message": "Соединение разорвано — нажмите, чтобы обновить"}
 }

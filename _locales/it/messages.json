@@ -172,5 +172,6 @@
   "message_run": { "message": "Clicca su un comando per eseguirlo" },
   "btn_run": { "message": "Esegui" },
   "server_commands": { "message": "Comandi del server" },
-  "prompt_params": { "message": "Inserisci i parametri per $1", "placeholders": { "1": { "content": "$1" } } }
+  "prompt_params": { "message": "Inserisci i parametri per $1", "placeholders": { "1": { "content": "$1" } } },
+  "disconnected_title": {"message": "Disconnesso - Clicca per aggiornare"}
 }

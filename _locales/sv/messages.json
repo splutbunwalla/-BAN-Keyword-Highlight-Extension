@@ -172,5 +172,6 @@
   "message_run": { "message": "Klicka på ett kommando för att köra" },
   "btn_run": { "message": "Kör" },
   "server_commands": { "message": "Serverkommandon" },
-  "prompt_params": { "message": "Ange parametrar för $1", "placeholders": { "1": { "content": "$1" } } }
+  "prompt_params": { "message": "Ange parametrar för $1", "placeholders": { "1": { "content": "$1" } } },
+  "disconnected_title": {"message": "Frånkopplad – Klicka för att uppdatera"}
 }

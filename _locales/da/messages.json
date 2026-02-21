@@ -172,5 +172,6 @@
   "message_run": { "message": "Klik på en kommando for at køre" },
   "btn_run": { "message": "Kør" },
   "server_commands": { "message": "Serverkommandoer" },
-  "prompt_params": { "message": "Indtast parametre for $1", "placeholders": { "1": { "content": "$1" } } }
+  "prompt_params": { "message": "Indtast parametre for $1", "placeholders": { "1": { "content": "$1" } } },
+  "disconnected_title": {"message": "Forbindelse afbrudt - Klik for at opdatere"}
 }

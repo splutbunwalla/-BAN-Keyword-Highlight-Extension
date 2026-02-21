@@ -171,5 +171,6 @@
    "message_run": { "message": "Klicken Sie auf einen Befehl zum Ausführen" },
   "btn_run": { "message": "Ausführen" },
   "server_commands": { "message": "Serverbefehle" },
-  "prompt_params": { "message": "Parameter für $1 eingeben", "placeholders": { "1": { "content": "$1" } } }
+  "prompt_params": { "message": "Parameter für $1 eingeben", "placeholders": { "1": { "content": "$1" } } },
+  "disconnected_title": {"message": "Verbindung getrennt – Zum Aktualisieren klicken"}
 }

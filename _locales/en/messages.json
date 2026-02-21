@@ -198,5 +198,6 @@
   "message_run": {"message": "Click a command to run" }, 
   "btn_run": {"message": "Run" }, 
   "server_commands": {"message": "Server Commands"},
-  "prompt_params": {"message": "Enter parameters for $1", "placeholders": {"1": { "content": "$1" }} }
+  "prompt_params": {"message": "Enter parameters for $1", "placeholders": {"1": { "content": "$1" }} },
+  "disconnected_title": {"message": "Disconnected - Click to Refresh" }
  }
