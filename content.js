@@ -1743,12 +1743,30 @@ const updateHeartbeat = () => {
     const saveRegistry = () => sessionStorage.setItem('hh_registry', JSON.stringify(NAME_MAP));
 
     const copyToClipboard = (text) => {
-        const el = document.createElement('textarea');
-        el.value = text;
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
+		const cleanText = text
+        // 1. Replace non-breaking spaces (\u00a0) and other weird whitespace with a normal space
+        .replace(/[\u00a0\u1680​\u180e\u2000-\u200a\u202f\u205f\u3000]/g, " ")
+        // 2. Normalize any double spaces that might have been created
+        .replace(/\s+/g, " ")
+        .trim();
+		
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(cleanText).catch(err => {
+				console.error('Failed to copy: ', err);
+			});
+		} else {
+			// Fallback for older environments or non-secure contexts
+			const textArea = document.createElement("textarea");
+			textArea.value = cleanText;
+			document.body.appendChild(textArea);
+			textArea.select();
+			try {
+				document.execCommand('copy');
+			} catch (err) {
+				console.error('Fallback copy failed: ', err);
+			}
+			document.body.removeChild(textArea);
+		}
     };
 
     const injectToInput = (cmd, autoSubmit = false) => {
@@ -2257,9 +2275,9 @@ document.addEventListener('contextmenu', (e) => {
     if (isLogContext) {
 		e.preventDefault();
         e.stopPropagation();
-		
+		const line = e.target.closest('tr, div, p');
 		const selectedText = window.getSelection().toString().trim();
-        const textToTranslate = selectedText || e.target.innerText;
+        const textToTranslate = selectedText || line.innerText;
 
         if (textToTranslate && textToTranslate.length > 1) {
             let tip = document.getElementById('hh-console-translation-tip');
