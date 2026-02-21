@@ -22,11 +22,46 @@
     let compiledRegex = null;
 	let matrixInterval = null;
 	let matrixCanvas = null;	
-
+	let customMessages = null;
+	let currentLanguage = 'en';
+	
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
 
     const getKeywordText = k => typeof k === 'string' ? k : k.text;
+
+	const initLocalization = async (langSetting) => {
+		// If 'auto', use browser language
+		if (!langSetting || langSetting === 'auto') {
+			currentLanguage = chrome.i18n.getUILanguage().split('-')[0];
+		} else {
+			currentLanguage = langSetting;
+		}
+
+		try {
+			const url = chrome.runtime.getURL(`_locales/${currentLanguage}/messages.json`);
+			const response = await fetch(url);
+			customMessages = await response.json();
+		} catch (e) {
+			console.warn(`Locale ${currentLanguage} not found, using native fallback.`);
+			customMessages = null;
+		}
+	};
+
+
+	const getI18nMsg = (key, placeholders = []) => {
+		if (customMessages && customMessages[key]) {
+			let msg = customMessages[key].message;
+			// Handle $1, $2 placeholders
+			if (Array.isArray(placeholders)) {
+				placeholders.forEach((p, i) => {
+					msg = msg.replace(`$${i + 1}`, p);
+				});
+			}
+			return msg;
+		}
+		return chrome.i18n.getMessage(key, placeholders);
+	};
 
 	const handleModAction = (type, sid, options = {}) => {
 		if (!sid || isNaN(sid)) return;
@@ -34,7 +69,7 @@
 		const { 
 			duration = PERMA_DUR, 
 			role = 'default', 
-			name = chrome.i18n.getMessage("queue_manual_entry") 
+			name = getI18nMsg("queue_manual_entry") 
 		} = options;
 
 		if (isRacing) {
@@ -54,18 +89,18 @@
 			
             copyToClipboard(`${data.name || name} (${sid}) banned by Server for ${dur} minutes`);
 			const toastMsg = type === 'role' 
-				? chrome.i18n.getMessage("toast_queued_role", [sid, role])
-				: chrome.i18n.getMessage(`toast_queued_${type}`, [sid]);
+				? getI18nMsg("toast_queued_role", [sid, role])
+				: getI18nMsg(`toast_queued_${type}`, [sid]);
 			showToast(toastMsg);
 		} else {
 			let cmd = "";
 			switch (type) {
-				case 'ban': cmd = `ban ${sid} ${duration}`; break;
+				case 'ban': cmd = (duration === PERMA_DUR ? `ban ${sid}` : `ban ${sid},${duration}`); break;
 				case 'role': cmd = `role ${sid},${role}`; break;
 			}
 			
 			safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true });
-			showToast(chrome.i18n.getMessage("toast_sent", [type.toUpperCase()]));
+			showToast(getI18nMsg("toast_sent", [type.toUpperCase()]));
 		}
 	};
 
@@ -135,11 +170,11 @@
 		el.className = 'hh-chat-view'; // Reuses your modal base styles
 		el.innerHTML = `
 			<div class="hh-panel-header">
-				<span class="hh-panel-title">${chrome.i18n.getMessage("server_commands")}</span>
+				<span class="hh-panel-title">${getI18nMsg("server_commands")}</span>
 				<span id="hh-help-close" style="cursor:pointer;color:#ff4444;font-weight:bold;font-size:18px;">✖</span>
 			</div>
 			<div class="hh-chat-filter-row">
-				<input type="text" id="hh-help-search" class="hh-chat-search" placeholder="${chrome.i18n.getMessage("search_placeholder")}" style="flex-grow:1;">
+				<input type="text" id="hh-help-search" class="hh-chat-search" placeholder="${getI18nMsg("search_placeholder")}" style="flex-grow:1;">
 			</div>
 			<div class="hh-chat-content" id="hh-help-content"></div>
 			<div class="hh-chat-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
@@ -148,7 +183,7 @@
 					<span id="hh-help-page-num" style="color: #ccc; min-width: 20px; text-align: center;">1</span>
 					<button id="hh-help-next" class="hh-tool-btn info" style="margin: 0;">▶</button>
 				</div>
-				<span style="font-size: 10px; color: #666; font-style: italic;">${chrome.i18n.getMessage("message_run")}</span>
+				<span style="font-size: 10px; color: #666; font-style: italic;">${getI18nMsg("message_run")}</span>
 			</div>
 		`;
 		getUIWrapper().appendChild(el);
@@ -183,11 +218,11 @@
 					<span style="color: #888; font-size: 11px;">${c.aliases ? '('+c.aliases+')' : ''}</span>
 					<div style="font-size: 12px; color: #bbb;">${c.desc}</div>
 				</div>
-				<button class="hh-tool-btn info" style="padding: 2px 8px;">${chrome.i18n.getMessage("btn_run")}</button>
+				<button class="hh-tool-btn info" style="padding: 2px 8px;">${getI18nMsg("btn_run")}</button>
 			`;
 			line.onclick = () => {
 				if (['ban', 'kick', 'role'].includes(c.cmd)) {
-					const input = prompt(chrome.i18n.getMessage("prompt_params", [c.cmd]));
+					const input = prompt(getI18nMsg("prompt_params", [c.cmd]));
 					if (!input) return;
 
 					const parts = input.split(/[ ,]+/);
@@ -202,7 +237,7 @@
 					return;
 				}
 				
-				const input = c.params ? prompt(chrome.i18n.getMessage("prompt_params",[c.cmd])) : "";
+				const input = c.params ? prompt(getI18nMsg("prompt_params",[c.cmd])) : "";
 				if(input) {
 					safeSendMessage({ action: "PROXY_COMMAND", cmd: `${c.cmd} ${input}`, autoSubmit: true });
 				} else {
@@ -239,10 +274,10 @@
 				return `<div class="hh-menu-row player-action-item" data-index="${idx}">${displayText}</div>`;
 			}).join('');
 		} else {
-			menuHtml = `<div class="hh-menu-row disabled">${chrome.i18n.getMessage("submenu_no_messages")}</div>`;
+			menuHtml = `<div class="hh-menu-row disabled">${getI18nMsg("submenu_no_messages")}</div>`;
 		}
 
-		menuHtml += `<div class="hh-menu-row" id="ctx-btn-close" style="border-top: 1px solid #444; color: #ff4444;">${chrome.i18n.getMessage("menu_close")}</div>`;
+		menuHtml += `<div class="hh-menu-row" id="ctx-btn-close" style="border-top: 1px solid #444; color: #ff4444;">${getI18nMsg("menu_close")}</div>`;
 		
 		actionMenu.innerHTML = menuHtml;
 
@@ -264,7 +299,7 @@
 					autoSubmit: true
 				});
 
-				showToast(chrome.i18n.getMessage("toast_sent", [player.name]));
+				showToast(getI18nMsg("toast_sent", [player.name]));
 				actionMenu.style.display = 'none';
 			};
 		});
@@ -302,9 +337,9 @@
 		}
 
 		actionMenu.innerHTML = `
-			<div class="hh-menu-row" id="ctx-btn-translate">${chrome.i18n.getMessage("menu_translate")}</div>
-			<div class="hh-menu-row" id="ctx-btn-copy">${chrome.i18n.getMessage("menu_copy")}</div>
-			<div class="hh-menu-row" id="ctx-btn-close">${chrome.i18n.getMessage("menu_close")}</div>
+			<div class="hh-menu-row" id="ctx-btn-translate">${getI18nMsg("menu_translate")}</div>
+			<div class="hh-menu-row" id="ctx-btn-copy">${getI18nMsg("menu_copy")}</div>
+			<div class="hh-menu-row" id="ctx-btn-close">${getI18nMsg("menu_close")}</div>
 		`;
 
 		actionMenu.style.display = 'flex'; 
@@ -355,7 +390,11 @@
 		
 		if( btnCopy) {
 			btnCopy.onclick = async () => {
-				copyToClipboard(message);
+				let text = (message || "").replace(/^\d{2}:\d{2}:\d{2}\.\d{3}:\s*/g, "").replace(/Command:\s*/i, "").trim();
+				const idMatch = text.match(/\b\d{17}\b/);
+				if (idMatch && NAME_MAP[idMatch[0]]) text = text.replace("??", NAME_MAP[idMatch[0]].name);
+				
+				copyToClipboard(text);
 				actionMenu.style.display = 'none';
 			};
 		}
@@ -406,34 +445,34 @@
 		el.innerHTML = `
 			<div class="hh-panel-header">
 				<div class="hh-header-left">
-					<span class="hh-panel-title">${chrome.i18n.getMessage("mod_panel_title")}</span>
+					<span class="hh-panel-title">${getI18nMsg("mod_panel_title")}</span>
 				</div>
 				<span id="hh-mod-close" style="cursor:pointer;color:#ff4444;font-weight:bold;font-size:18px;">✖</span>
 			</div>
 			
 			<div class="hh-chat-filter-row">
 				<select id="hh-mod-filter-type" class="hh-chat-player-select" style="margin:0; width:100px;">
-					<option value="all">${chrome.i18n.getMessage("mod_filter_all")}</option>
-					<option value="KICKED">${chrome.i18n.getMessage("mod_filter_kick")}</option>
-					<option value="BANNED">${chrome.i18n.getMessage("mod_filter_ban")}</option>
+					<option value="all">${getI18nMsg("mod_filter_all")}</option>
+					<option value="KICKED">${getI18nMsg("mod_filter_kick")}</option>
+					<option value="BANNED">${getI18nMsg("mod_filter_ban")}</option>
 				</select>
 				
-				<input type="text" id="hh-mod-search" class="hh-chat-search" placeholder="${chrome.i18n.getMessage("mod_search_placeholder")}" style="margin:0; flex-grow:1;">
+				<input type="text" id="hh-mod-search" class="hh-chat-search" placeholder="${getI18nMsg("mod_search_placeholder")}" style="margin:0; flex-grow:1;">
 				
 				<div style="display:flex; align-items:center; gap:5px;">
-					<span style="font-size:10px; color:#888;">${chrome.i18n.getMessage("mod_label_from")}</span>
-					<input type="text" id="hh-mod-time-start" class="hh-chat-time-input" placeholder="${chrome.i18n.getMessage("time_player_holder")}">
-					<span style="font-size:10px; color:#888;">${chrome.i18n.getMessage("mod_label_to")}</span>
-					<input type="text" id="hh-mod-time-end" class="hh-chat-time-input" placeholder="${chrome.i18n.getMessage("time_player_holder2")}">
+					<span style="font-size:10px; color:#888;">${getI18nMsg("mod_label_from")}</span>
+					<input type="text" id="hh-mod-time-start" class="hh-chat-time-input" placeholder="${getI18nMsg("time_player_holder")}">
+					<span style="font-size:10px; color:#888;">${getI18nMsg("mod_label_to")}</span>
+					<input type="text" id="hh-mod-time-end" class="hh-chat-time-input" placeholder="${getI18nMsg("time_player_holder2")}">
 				</div>
 			</div>
 
 			<div class="hh-chat-content" id="hh-mod-content"></div>
 			<div class="hh-chat-footer">
-				<span id="hh-mod-stats" style="font-size:10px; color:#666;">${chrome.i18n.getMessage("mod_0_actions")}</span>
+				<span id="hh-mod-stats" style="font-size:10px; color:#666;">${getI18nMsg("mod_0_actions")}</span>
 				<div style="display:flex; gap:5px;">
-					<button id="hh-export-mod" class="hh-tool-btn info">${chrome.i18n.getMessage("mod_btn_export")}</button>
-					<button id="hh-copy-mod" class="hh-tool-btn info">${chrome.i18n.getMessage("mod_btn_copy")}</button>
+					<button id="hh-export-mod" class="hh-tool-btn info">${getI18nMsg("mod_btn_export")}</button>
+					<button id="hh-copy-mod" class="hh-tool-btn info">${getI18nMsg("mod_btn_copy")}</button>
 				</div>
 			</div>
 		`;
@@ -455,7 +494,7 @@
 		el.querySelector('#hh-copy-mod').onclick = () => {
 			const text = getVisibleModText();
 			navigator.clipboard.writeText(text);
-			showToast(chrome.i18n.getMessage("toast_mod_copied"));
+			showToast(getI18nMsg("toast_mod_copied"));
 		};
 
 		// Export Mod Log
@@ -482,7 +521,7 @@
 			if (endTime && m.timestamp > endTime) return false;
 			return true;
 		})
-		.map(m => `${chrome.i18n.getMessage("mod_entry_format", [m.timestamp, m.action, m.targetName, m.targetId, m.adminName])}${m.duration ? chrome.i18n.getMessage("mod_entry_duration",[m.duration.toString()]) : ''}`)
+		.map(m => `${getI18nMsg("mod_entry_format", [m.timestamp, m.action, m.targetName, m.targetId, m.adminName])}${m.duration ? getI18nMsg("mod_entry_duration",[m.duration.toString()]) : ''}`)
 		.join('\n');
 	};
 
@@ -530,7 +569,7 @@
 			container.appendChild(line);
 		});
 
-		document.getElementById('hh-mod-stats').innerText = `${chrome.i18n.getMessage("mod_stats", [filtered.length.toString(), modHistory.length.toString()])}`;
+		document.getElementById('hh-mod-stats').innerText = `${getI18nMsg("mod_stats", [filtered.length.toString(), modHistory.length.toString()])}`;
 	};
 	
 	const processModLog = (text) => {
@@ -633,11 +672,11 @@
         if (isEnabled) {
             dot.style.background = "#00ff00"; // Green
             dot.style.boxShadow = "0 0 5px #00ff00";
-            dot.title = chrome.i18n.getMessage("status_active");
+            dot.title = getI18nMsg("status_active");
         } else {
             dot.style.background = "#ffcc00"; // Yellow
             dot.style.boxShadow = "0 0 5px #ffcc00";
-            dot.title = chrome.i18n.getMessage("status_standby");
+            dot.title = getI18nMsg("status_standby");
         }
     };
 
@@ -678,7 +717,7 @@
         const existing = NAME_MAP[id] || {};
 
         NAME_MAP[id] = {
-            name: name || existing.name || chrome.i18n.getMessage("name_unknown"),
+            name: name || existing.name || getI18nMsg("name_unknown"),
             connId: connId || existing.connId,
             online: joined,
             lastSeen: joined ? Date.now() : existing.lastSeen || 0
@@ -746,15 +785,15 @@
 		if (!chrome.runtime?.id) { return; }
 
         const count = getOnlineCount();
-        const countText = chrome.i18n.getMessage("player_count", [count]);
+        const countText = getI18nMsg("player_count", [count]);
 
         if (active) {
-            el.innerHTML = `${chrome.i18n.getMessage("race_active")}${countText}`;
+            el.innerHTML = `${getI18nMsg("race_active")}${countText}`;
             el.style.background = 'rgba(255, 0, 0, 0.2)';
             el.style.color = '#ff4d4d';
             el.style.border = '1px solid #ff4d4d';
         } else {
-            el.innerHTML = `${chrome.i18n.getMessage("race_none")}${countText}`;
+            el.innerHTML = `${getI18nMsg("race_none")}${countText}`;
             el.style.background = 'rgba(255, 255, 255, 0.1)';
             el.style.color = '#ccc';
             el.style.border = '1px solid #444';
@@ -782,13 +821,13 @@
 
         // Standard Tools
         const tools = [
-            {label: chrome.i18n.getMessage("tool_sid_label"), type: 'info', icon: '🛠️', id: 'hh-sid-trigger', desc: chrome.i18n.getMessage("tool_sid_desc")},
-            {label: chrome.i18n.getMessage("tool_chat_label"), type: 'info', icon: '💬', action: 'openChat', desc: chrome.i18n.getMessage("tool_chat_desc")},
-			{label: chrome.i18n.getMessage("tool_mod_label"), type: 'info', icon: '🛡️', action: 'openModLog', desc: chrome.i18n.getMessage("tool_mod_desc")},
-            {label: chrome.i18n.getMessage("tool_msg_label"), type: 'info', icon: '💬', id: 'hh-msg-trigger', desc: chrome.i18n.getMessage("tool_msg_desc")},
-            {label: chrome.i18n.getMessage("tool_players_label"), type: 'info', icon: '📋', action: 'togglePlayers', desc: chrome.i18n.getMessage("tool_players_desc")},
-            {label: chrome.i18n.getMessage("tool_commands_label"), type: 'info', icon: '🖥️', id: 'hh-cmd-trigger', desc: chrome.i18n.getMessage("tool_commands_desc")},
-			{label: chrome.i18n.getMessage("tool_restart_label"), type: 'danger', icon: '🔄', cmd: 'restart', desc: chrome.i18n.getMessage("tool_restart_desc")}
+            {label: getI18nMsg("tool_sid_label"), type: 'info', icon: '🛠️', id: 'hh-sid-trigger', desc: getI18nMsg("tool_sid_desc")},
+            {label: getI18nMsg("tool_chat_label"), type: 'info', icon: '💬', action: 'openChat', desc: getI18nMsg("tool_chat_desc")},
+			{label: getI18nMsg("tool_mod_label"), type: 'info', icon: '🛡️', action: 'openModLog', desc: getI18nMsg("tool_mod_desc")},
+            {label: getI18nMsg("tool_msg_label"), type: 'info', icon: '💬', id: 'hh-msg-trigger', desc: getI18nMsg("tool_msg_desc")},
+            {label: getI18nMsg("tool_players_label"), type: 'info', icon: '📋', action: 'togglePlayers', desc: getI18nMsg("tool_players_desc")},
+            {label: getI18nMsg("tool_commands_label"), type: 'info', icon: '🖥️', id: 'hh-cmd-trigger', desc: getI18nMsg("tool_commands_desc")},
+			{label: getI18nMsg("tool_restart_label"), type: 'danger', icon: '🔄', cmd: 'restart', desc: getI18nMsg("tool_restart_desc")}
         ];
 
         tools.forEach(tool => {
@@ -828,19 +867,19 @@
                         // First click
                         restartClickTimer = setTimeout(() => {
                             restartClickTimer = null;
-                            showToast(chrome.i18n.getMessage("toast_restart_confirm"));
+                            showToast(getI18nMsg("toast_restart_confirm"));
                         }, 500); // Window for the second click
                     } else {
                         // Second click within 500ms
                         clearTimeout(restartClickTimer);
                         restartClickTimer = null;
                         safeSendMessage({action: "PROXY_COMMAND", cmd: "restart"});
-                        showToast(chrome.i18n.getMessage("toast_restarting"));
+                        showToast(getI18nMsg("toast_restarting"));
                     }
                 } else if (tool.action === 'openChat') {
                     openChatSelector();
                 } else if (tool.action === 'perma') {
-                    sid = prompt(chrome.i18n.getMessage("prompt_steam_id_to_ban"));
+                    sid = prompt(getI18nMsg("prompt_steam_id_to_ban"));
                     if (!sid || isNaN(sid)) return;
                     
 					handleBanAction(sid, PERMA_DUR);
@@ -852,7 +891,7 @@
 				} else {
                     // Standard commands (users, etc.)
                     safeSendMessage({action: "PROXY_COMMAND", cmd: tool.cmd});
-                    showToast(chrome.i18n.getMessage("toast_sent", [tool.label]));
+                    showToast(getI18nMsg("toast_sent", [tool.label]));
                 }
             };
             toolbar.appendChild(btn);
@@ -862,8 +901,8 @@
         const infoGroup = document.createElement('div');
         infoGroup.className = 'hh-info-group';
         infoGroup.innerHTML = `
-    <div id="hh-race-status" class="hh-status-tag" title="${chrome.i18n.getMessage("race_title")}">${chrome.i18n.getMessage("race_none")}</div>
-    <div id="hh-track-name" class="hh-track-display" title="${chrome.i18n.getMessage("race_track_title")}">${chrome.i18n.getMessage("waiting_for_track")}</div>
+    <div id="hh-race-status" class="hh-status-tag" title="${getI18nMsg("race_title")}">${getI18nMsg("race_none")}</div>
+    <div id="hh-track-name" class="hh-track-display" title="${getI18nMsg("race_track_title")}">${getI18nMsg("waiting_for_track")}</div>
   `;
 
         updateRaceUI(isRacing);
@@ -907,12 +946,12 @@
         }
 
         const cmdActions = [
-            {label: chrome.i18n.getMessage("tool_users_label"), type: 'users', icon: '👥', cmd: 'users', desc: chrome.i18n.getMessage("tool_users_desc")},
-            {label: chrome.i18n.getMessage("tool_list_label"), type: 'list', icon: '🗒️', cmd: 'el list', desc: chrome.i18n.getMessage("tool_list_desc")},
-            {label: chrome.i18n.getMessage("tool_select_label"), type: 'select', icon: '✅', cmd: 'el select', desc: chrome.i18n.getMessage("tool_select_desc")},
-	        {label: chrome.i18n.getMessage("tool_help_label"), type: 'info', icon: '❓', action: 'openHelp', desc: chrome.i18n.getMessage("tool_help_desc")},
+            {label: getI18nMsg("tool_users_label"), type: 'users', icon: '👥', cmd: 'users', desc: getI18nMsg("tool_users_desc")},
+            {label: getI18nMsg("tool_list_label"), type: 'list', icon: '🗒️', cmd: 'el list', desc: getI18nMsg("tool_list_desc")},
+            {label: getI18nMsg("tool_select_label"), type: 'select', icon: '✅', cmd: 'el select', desc: getI18nMsg("tool_select_desc")},
+	        {label: getI18nMsg("tool_help_label"), type: 'info', icon: '❓', action: 'openHelp', desc: getI18nMsg("tool_help_desc")},
 
-			{label: '', type: 'matrix', icon: '🕶️', desc: chrome.i18n.getMessage("tool_spluts_desc")}
+			{label: '', type: 'matrix', icon: '🕶️', desc: getI18nMsg("tool_spluts_desc")}
         ];
 				
 	    cmdActions.forEach(act => {
@@ -923,7 +962,7 @@
             item.onclick = (e) => {
                 e.stopPropagation();
 				if(act.type === 'select') {
-					const num = prompt(`${chrome.i18n.getMessage("prompt_num")}`);
+					const num = prompt(`${getI18nMsg("prompt_num")}`);
 					if (!num || isNaN(num)) return;
 					const finalCmd = `${act.cmd} ${num}`;
 					safeSendMessage({action: "PROXY_COMMAND", cmd: finalCmd, autoSubmit: true});
@@ -948,11 +987,11 @@
         sidSubmenu.style.bottom = 'auto';
 
         const sidActions = [
-            {label: chrome.i18n.getMessage("submenu_permanent_ban"), type: 'ban', dur: PERMA_DUR},
-            {label: chrome.i18n.getMessage("submenu_set_default"), type: 'role', role: 'default'},
-            {label: chrome.i18n.getMessage("submenu_set_vip"), type: 'role', role: 'vip'},
-            {label: chrome.i18n.getMessage("submenu_set_moderator"), type: 'role', role: 'moderator'},
-            {label: chrome.i18n.getMessage("submenu_set_admin"), type: 'role', role: 'admin'}
+            {label: getI18nMsg("submenu_permanent_ban"), type: 'ban', dur: PERMA_DUR},
+            {label: getI18nMsg("submenu_set_default"), type: 'role', role: 'default'},
+            {label: getI18nMsg("submenu_set_vip"), type: 'role', role: 'vip'},
+            {label: getI18nMsg("submenu_set_moderator"), type: 'role', role: 'moderator'},
+            {label: getI18nMsg("submenu_set_admin"), type: 'role', role: 'admin'}
         ];
 
         sidActions.forEach(act => {
@@ -961,13 +1000,13 @@
             item.textContent = act.label;
             item.onclick = (e) => {
                 e.stopPropagation();
-                const sid = prompt(`${chrome.i18n.getMessage("prompt_steam_id",[act.label])}`);
+                const sid = prompt(`${getI18nMsg("prompt_steam_id",[act.label])}`);
                 if (!sid || isNaN(sid) || sid.length !== 17) return;
 
 				handleModAction(act.type, sid, {
 							role: act.role,
 							duration: act.dur,
-							name: chrome.i18n.getMessage("queue_manual_entry")
+							name: getI18nMsg("queue_manual_entry")
 						});
                 sidSubmenu.style.display = 'none';
             };
@@ -1016,7 +1055,7 @@
         select.className = 'hh-chat-player-select';
         const filter = document.createElement('input');
         filter.type = 'text';
-        filter.placeholder = chrome.i18n.getMessage("filter_users");
+        filter.placeholder = getI18nMsg("filter_users");
         filter.className = 'hh-chat-player-filter';
 
         const rebuildOptions = () => {
@@ -1026,7 +1065,7 @@
             // Add ALL Option
             const allOpt = document.createElement('option');
             allOpt.value = "ALL";
-            allOpt.textContent = chrome.i18n.getMessage("all_players_option");
+            allOpt.textContent = getI18nMsg("all_players_option");
             select.appendChild(allOpt);
 
             // Filter and sort players
@@ -1066,10 +1105,10 @@
             const title = chatView.querySelector('.hh-panel-title');
 
             if (select.value === 'ALL') {
-                title.innerText = `${chrome.i18n.getMessage("chat_history_title")}`;
+                title.innerText = `${getI18nMsg("chat_history_title")}`;
             } else {
                 const data = NAME_MAP[select.value];
-                if (data) title.innerText = `${chrome.i18n.getMessage("chat_username", [data.name])}`;
+                if (data) title.innerText = `${getI18nMsg("chat_username", [data.name])}`;
             }
             renderChatLines();
         };
@@ -1092,8 +1131,8 @@
         panel.style.pointerEvents = 'auto';
         panel.innerHTML = `
     <div class="hh-panel-header">
-      <span>${chrome.i18n.getMessage("online_players")}</span>
-      <input type="text" id="hh-player-search" placeholder="${chrome.i18n.getMessage("search_placeholder")}">
+      <span>${getI18nMsg("online_players")}</span>
+      <input type="text" id="hh-player-search" placeholder="${getI18nMsg("search_placeholder")}">
       <button id="hh-panel-close">×</button>
     </div>
     <div id="hh-player-list-content"></div>
@@ -1125,21 +1164,21 @@
                         const row = document.createElement('div');
                         row.className = 'hh-player-row';
                         row.innerHTML = `
-            <div class="hh-player-info" title="${chrome.i18n.getMessage("player_list_copy_title")}">
+            <div class="hh-player-info" title="${getI18nMsg("player_list_copy_title")}">
               <span class="hh-player-name">${data.name}</span>
               <span class="hh-player-id">${id}</span>
             </div>
             <div class="hh-player-actions">
-              <button class="hh-btn-profile" title="${chrome.i18n.getMessage("player_list_profile_title")}">P</button>
-              <button class="hh-btn-kick" 	 title="${chrome.i18n.getMessage("player_list_kick_title")}">K</button>
-              <button class="hh-btn-ban" 	 title="${chrome.i18n.getMessage("player_list_ban_title")}">B</button>
+              <button class="hh-btn-profile" title="${getI18nMsg("player_list_profile_title")}">P</button>
+              <button class="hh-btn-kick" 	 title="${getI18nMsg("player_list_kick_title")}">K</button>
+              <button class="hh-btn-ban" 	 title="${getI18nMsg("player_list_ban_title")}">B</button>
             </div>
           `;
 
                         // Copy ID logic
                         row.querySelector('.hh-player-info').onclick = () => {
                             navigator.clipboard.writeText(id);
-                            showToast(chrome.i18n.getMessage("toast_copied_id",[id]));
+                            showToast(getI18nMsg("toast_copied_id",[id]));
                         };
 
                         // Profile Action
@@ -1194,7 +1233,7 @@
         window.currentViewedId = steamId;
 
         // Update panel title
-        title.innerText = `${chrome.i18n.getMessage("chat_username", [name])}`;
+        title.innerText = `${getI18nMsg("chat_username", [name])}`;
         if (searchInput) searchInput.value = ''; // Clear search on open
 
         // Sync dropdown selection
@@ -1309,28 +1348,28 @@
         el.innerHTML = `
         <div class="hh-panel-header">
             <div class="hh-header-left">
-                <span class="hh-panel-title">${chrome.i18n.getMessage("chat_history")}</span>
+                <span class="hh-panel-title">${getI18nMsg("chat_history")}</span>
             </div>
             <div style="display:flex; align-items:center;">
-                <input type="text" class="hh-chat-search" placeholder="${chrome.i18n.getMessage("search_keywords_placeholder")}">
+                <input type="text" class="hh-chat-search" placeholder="${getI18nMsg("search_keywords_placeholder")}">
                 <span id="hh-chat-close" style="cursor:pointer;color:#ff4444;font-weight:bold;">✖</span>
             </div>
         </div>
         
         <div class="hh-chat-filter-row">
-            <input type="text" id="hh-chat-start" class="hh-chat-time-input" placeholder="${chrome.i18n.getMessage("time_start_placeholder")}">
-            <input type="text" id="hh-chat-end" class="hh-chat-time-input" placeholder="${chrome.i18n.getMessage("time_end_placeholder")}">
+            <input type="text" id="hh-chat-start" class="hh-chat-time-input" placeholder="${getI18nMsg("time_start_placeholder")}">
+            <input type="text" id="hh-chat-end" class="hh-chat-time-input" placeholder="${getI18nMsg("time_end_placeholder")}">
             
-            <label class="hh-chat-checkbox-label" title="${chrome.i18n.getMessage("search_hide_title")}">
+            <label class="hh-chat-checkbox-label" title="${getI18nMsg("search_hide_title")}">
                 <input type="checkbox" id="hh-hide-server" checked> 
-                ${chrome.i18n.getMessage("search_hide_server")}
+                ${getI18nMsg("search_hide_server")}
             </label>
         </div>
         
         <div class="hh-chat-content"></div>
         <div class="hh-chat-footer">
-            <button id="hh-export-chat" class="hh-tool-btn info">${chrome.i18n.getMessage("popup_btn_export")}</button>
-            <button id="hh-copy-chat" class="hh-tool-btn info">${chrome.i18n.getMessage("mod_btn_copy")}</button>
+            <button id="hh-export-chat" class="hh-tool-btn info">${getI18nMsg("popup_btn_export")}</button>
+            <button id="hh-copy-chat" class="hh-tool-btn info">${getI18nMsg("mod_btn_copy")}</button>
         </div>
     `;
 
@@ -1344,24 +1383,24 @@
         el.querySelector('#hh-copy-chat').onclick = () => {
             const content = el.querySelector('.hh-chat-content').innerText;
             navigator.clipboard.writeText(content);
-            showToast(chrome.i18n.getMessage("toast_mod_copied"));
+            showToast(getI18nMsg("toast_mod_copied"));
         };
 
         // Export
         el.querySelector('#hh-export-chat').onclick = () => {
             const text = getVisibleChatText();
             if (!text) {
-				showToast(chrome.i18n.getMessage("toast_mod_no_content"));
+				showToast(getI18nMsg("toast_mod_no_content"));
                 return;
             }
 
             const sid = window.currentViewedId || "ALL";
-			const name = (NAME_MAP[sid]?.name || chrome.i18n.getMessage("global_chat")).replace(/[^\w\d_-]+/g, '_');
+			const name = (NAME_MAP[sid]?.name || getI18nMsg("global_chat")).replace(/[^\w\d_-]+/g, '_');
             const ts = new Date().toISOString().replace(/[:T]/g, '-').split('.')[0];
             const filename = `chat_${name}_${ts}.txt`;
 
             downloadTextFile(text, filename);
-            showToast(chrome.i18n.getMessage("toast_exported",[filename]));
+            showToast(getI18nMsg("toast_exported",[filename]));
         };
 		let wrapper = document.getElementById('hh-ui-wrapper');
 		if (!wrapper) {
@@ -1386,7 +1425,7 @@
         const globalMessages = messages.filter(m => !m.text.includes('{player}'));
 
         if (globalMessages.length === 0) {
-            container.innerHTML = `<div class="hh-menu-item disabled">${chrome.i18n.getMessage("messages_global_empty")}</div>`;
+            container.innerHTML = `<div class="hh-menu-item disabled">${getI18nMsg("messages_global_empty")}</div>`;
             return;
         }
 
@@ -1403,7 +1442,7 @@
                 // We must send a message to the Input Frame.
                 safeSendMessage({action: "PROXY_COMMAND", cmd: `message ${msg.text}`});
 
-                showToast(chrome.i18n.getMessage("toast_signal",[msg.label]));
+                showToast(getI18nMsg("toast_signal",[msg.label]));
                 container.style.display = 'none';
             };
 
@@ -1427,7 +1466,7 @@
             container = document.createElement('div');
             container.id = 'hh-queue-container';
             container.innerHTML = `
-        <div id="hh-queue-header"><span>${chrome.i18n.getMessage("queue_title")}</span><span id="hh-queue-count">0</span></div>
+        <div id="hh-queue-header"><span>${getI18nMsg("queue_title")}</span><span id="hh-queue-count">0</span></div>
         <div id="hh-queue-list"></div>
       `;
             wrapper.appendChild(container);
@@ -1452,10 +1491,10 @@
                 // --- NEW: Generate label for same-line display ---
                 let extraLabel = "";
                 if (item.type === 'role') {
-                    extraLabel = `<span style="margin-left:8px; color:#00ffff; font-weight:bold;">[Role: ${item.role || chrome.i18n.getMessage("queue_role_check")}]</span>`;
+                    extraLabel = `<span style="margin-left:8px; color:#00ffff; font-weight:bold;">[Role: ${item.role || getI18nMsg("queue_role_check")}]</span>`;
                 } else {
                     const d = (item.dur === PERMA_DUR) ? "Perma" : `${item.dur}m`;
-                    extraLabel = `<span style="margin-left:8px; color:#ffbc00; font-weight:bold;">[${chrome.i18n.getMessage("menu_ban_prefix")} ${d}]</span>`;
+                    extraLabel = `<span style="margin-left:8px; color:#ffbc00; font-weight:bold;">[${getI18nMsg("menu_ban_prefix")} ${d}]</span>`;
                 }
 
                 row.innerHTML = `
@@ -1503,14 +1542,14 @@
             if (!isRacing) {
                 isRacing = true;
                 safeSendMessage({action: "SET_RACE_MODE", value: true});
-                if (isSilent) showToast(chrome.i18n.getMessage("toast_queued_bans"));
+                if (isSilent) showToast(getI18nMsg("toast_queued_bans"));
                 updateRaceUI(true);
             }
         } else if (/race\s+finished/i.test(text) || /race\s+abandoned/i.test(text)) {
             if (isRacing) {
                 isRacing = false;
                 safeSendMessage({action: "SET_RACE_MODE", value: false});
-                if (isSilent) showToast(chrome.i18n.getMessage("toast_bans_not_queued"));
+                if (isSilent) showToast(getI18nMsg("toast_bans_not_queued"));
                 processBanQueue();
                 updateRaceUI(false);
             }
@@ -1664,7 +1703,7 @@
         });
 
         copyToClipboard(queuedBansMsgs.join("\n"));
-        showToast( chrome.i18n.getMessage("toast_processing",[banQueue.length]));
+        showToast( getI18nMsg("toast_processing",[banQueue.length]));
         banQueue = [];
         updateQueueDisplay();
     };
@@ -1813,6 +1852,14 @@
         if (msg.action === "muteAll") {
             isMuted = msg.value;
         }
+	    if (msg.action === "update") {
+			if (msg.settings.preferredLanguage) {
+				initLocalization(msg.settings.preferredLanguage).then(() => {
+					// Optionally refresh UI elements here
+					if (document.getElementById('hh-help-view')) renderHelpLines();
+				});
+			}
+		}
     });
 
     function bootstrapOnlineFromHistory() {
@@ -1893,7 +1940,7 @@
                 // Only update if status actually changes to avoid spamming saveRegistry
                 if (existing.online !== joined) {
                     NAME_MAP[id] = {
-                        name: logMatch[3].trim() || existing.name || chrome.i18n.getMessage("name_unknown"),
+                        name: logMatch[3].trim() || existing.name || getI18nMsg("name_unknown"),
                         connId: logMatch[2] || existing.connId,
                         online: joined,
                         lastSeen: joined ? Date.now() : (existing.lastSeen || 0)
@@ -2000,11 +2047,11 @@
 			else {
                 let cmd = `role ${sid}`;
                 safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
-                showToast(chrome.i18n.getMessage("toast_checking_role"));
+                showToast(getI18nMsg("toast_checking_role"));
             }
         } else if (type === 'ban') {
             if (dur === "custom") {
-                dur = prompt(chrome.i18n.getMessage("prompt_duration"));
+                dur = prompt(getI18nMsg("prompt_duration"));
                 if (!dur || isNaN(dur)) return;
             }
 			handleModAction(type, sid, {duration: dur || PERMA_DUR});
@@ -2015,17 +2062,17 @@
 
             const cmd = `message ${finalText}`;
             safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
-            showToast(chrome.i18n.getMessage("toast_message_sent"));
+            showToast(getI18nMsg("toast_message_sent"));
         } else if (type === 'restart') {
             const cmd = `restart`
             safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
-            showToast(chrome.i18n.getMessage("toast_restarting"));
+            showToast(getI18nMsg("toast_restarting"));
         } else if (type === 'lookup') {
             safeSendMessage({action: "OPEN_TAB", url: `https://steamcommunity.com/profiles/${sid}`});
         } else if (type === 'users') {
             const cmd = `users`
             safeSendMessage({action: "PROXY_COMMAND", cmd: cmd});
-            showToast(chrome.i18n.getMessage("submenu_user_listing"));
+            showToast(getI18nMsg("submenu_user_listing"));
         } else if (type === 'chatlog') {
             openPlayerChat(sid, currentData.name);
         } else {
@@ -2048,47 +2095,47 @@
         }
 
         const sid = target.textContent.trim();
-        const data = NAME_MAP[sid] || {name: chrome.i18n.getMessage("offline_player"), connId: null, online: false};
+        const data = NAME_MAP[sid] || {name: getI18nMsg("offline_player"), connId: null, online: false};
 
         actionMenu.innerHTML = `
       <div class="hh-menu-header">
         <div class="hh-header-left"><span class="hh-status-dot ${data.online ? 'hh-status-online' : 'hh-status-offline'}"></span><span>${data.name}</span></div>
         <span id="hh-close-x">✕</span>
       </div>
-	<div class="hh-menu-row ${!data.online ? 'disabled' : ''}" data-type="kick" data-sid="${sid}" data-conn="${data.connId || ''}">${chrome.i18n.getMessage("menu_kick")}</div>
-      <div class="hh-menu-row" data-type="parent" id="hh-ban-row">${chrome.i18n.getMessage("menu_ban")}
+	<div class="hh-menu-row ${!data.online ? 'disabled' : ''}" data-type="kick" data-sid="${sid}" data-conn="${data.connId || ''}">${getI18nMsg("menu_kick")}</div>
+      <div class="hh-menu-row" data-type="parent" id="hh-ban-row">${getI18nMsg("menu_ban")}
         <div class="hh-submenu" id="hh-ban-submenu">
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="${PERMA_DUR}" >${chrome.i18n.getMessage("submenu_permanent_ban")}</div>
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="2880" >${chrome.i18n.getMessage("submenu_ban_2880")}</div>
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="5000" >${chrome.i18n.getMessage("submenu_ban_5000")}</div>
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="10000" >${chrome.i18n.getMessage("submenu_ban_10000")}</div>
-          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="custom" >${chrome.i18n.getMessage("submenu_ban_custom")}</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="${PERMA_DUR}" >${getI18nMsg("submenu_permanent_ban")}</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="2880" >${getI18nMsg("submenu_ban_2880")}</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="5000" >${getI18nMsg("submenu_ban_5000")}</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="10000" >${getI18nMsg("submenu_ban_10000")}</div>
+          <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="custom" >${getI18nMsg("submenu_ban_custom")}</div>
         </div>
       </div>
-      <div class="hh-menu-row" data-type="unban" data-sid="${sid}">${chrome.i18n.getMessage("menu_unban")}</div>
-      <div class="hh-menu-row" data-type="parent" id="hh-role-row">${chrome.i18n.getMessage("menu_role")}
+      <div class="hh-menu-row" data-type="unban" data-sid="${sid}">${getI18nMsg("menu_unban")}</div>
+      <div class="hh-menu-row" data-type="parent" id="hh-role-row">${getI18nMsg("menu_role")}
          <div class="hh-submenu" id="hh-role-submenu">
-             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="">${chrome.i18n.getMessage("submenu_check_status")}</div>
-             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="default">${chrome.i18n.getMessage("submenu_set_default")}</div>
-             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="vip">${chrome.i18n.getMessage("submenu_set_vip")}</div>
-             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="moderator">${chrome.i18n.getMessage("submenu_set_moderator")}</div>
-             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="admin">${chrome.i18n.getMessage("submenu_set_admin")}</div>
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="">${getI18nMsg("submenu_check_status")}</div>
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="default">${getI18nMsg("submenu_set_default")}</div>
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="vip">${getI18nMsg("submenu_set_vip")}</div>
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="moderator">${getI18nMsg("submenu_set_moderator")}</div>
+             <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="admin">${getI18nMsg("submenu_set_admin")}</div>
          </div>
       </div>
-      <div class="hh-menu-row" data-type="parent" id="hh-message-row">${chrome.i18n.getMessage("submenu_message")}
+      <div class="hh-menu-row" data-type="parent" id="hh-message-row">${getI18nMsg("submenu_message")}
         <div class="hh-submenu" id="hh-message-submenu">
 			${MESSAGES.filter(m => m.text.includes('{player}')).length > 0
             ? MESSAGES.filter(m => m.text.includes('{player}')).map(m => {
                 const safeText = m.text.replace(/"/g, '&quot;');
                 return `<div class="hh-submenu-item" data-type="msg" data-sid="${sid}" data-text="${safeText}">${m.label}</div>`;
             }).join('')
-            : `<div class="hh-submenu-item disabled">${chrome.i18n.getMessage("submenu_no_messages")}</div>`
+            : `<div class="hh-submenu-item disabled">${getI18nMsg("submenu_no_messages")}</div>`
         }
         </div>
       </div>
-	  <div class="hh-menu-row" data-type="lookup" data-sid="${sid}">${chrome.i18n.getMessage("menu_profile")}</div>
-      <div class="hh-menu-row" data-type="copy" data-sid="${sid}">${chrome.i18n.getMessage("menu_copy_id")}</div>
-      <div class="hh-menu-row" data-type="chatlog" data-sid="${sid}">${chrome.i18n.getMessage("menu_chat_logs")}</div>`;
+	  <div class="hh-menu-row" data-type="lookup" data-sid="${sid}">${getI18nMsg("menu_profile")}</div>
+      <div class="hh-menu-row" data-type="copy" data-sid="${sid}">${getI18nMsg("menu_copy_id")}</div>
+      <div class="hh-menu-row" data-type="chatlog" data-sid="${sid}">${getI18nMsg("menu_chat_logs")}</div>`;
 
         actionMenu.onclick = (ev) => handleMenuClick(ev, data, sid);
 
@@ -2227,22 +2274,15 @@ document.addEventListener('contextmenu', (e) => {
         }
     }, true);
 
-
-// 1. Updated Storage Listener
     chrome.storage.onChanged.addListener((changes, area) => {
         if (area === 'sync') {
             chrome.storage.sync.get(null, (data) => {
-                // ALWAYS update styles for CSS variables
                 applyStyles(data);
 
                 if (!isEnabled) {
-                    // 1. Stop the observer
                     if (window.hhObserver) window.hhObserver.disconnect();
-                    // 2. Clear visual highlights
                     stripHighlights();
-                    // 3. Remove any active toasts immediately
                     document.querySelectorAll('.hh-toast').forEach(t => t.remove());
-                    // 4. Hide UI
                     const wrapper = document.getElementById('hh-ui-wrapper');
                     if (wrapper) wrapper.style.display = 'none';
                     return;
@@ -2280,7 +2320,7 @@ document.addEventListener('contextmenu', (e) => {
         const entries = rawText.split(/(?=\d{2}:\d{2}:\d{2}\.\d{3}:)/);
 
         let lastRaceEvent = null; // Track the most recent status found
-        let lastTrackFound = chrome.i18n.getMessage("race_track_none");
+        let lastTrackFound = getI18nMsg("race_track_none");
 
         entries.forEach(entry => {
             const line = entry.replace(/\u00a0/g, ' ').trim();
@@ -2347,6 +2387,8 @@ document.addEventListener('contextmenu', (e) => {
             const sync = await chrome.storage.sync.get(null);
             isEnabled = sync.enabled !== false;
 
+			await initLocalization(sync.preferredLanguage);
+			
             // ... (Rest of your settings/UI setup: KEYWORDS, createToolbar, etc.)
             KEYWORDS = sync.keywords || [];
             SECONDARYWORDS = sync.secondarykeywords || [];
@@ -2364,7 +2406,6 @@ document.addEventListener('contextmenu', (e) => {
             updateQueueDisplay();
             updateRegex();
 
-            // 1. FAST POLLING for container
             let logRoot = document.querySelector('pre, #ConsoleOutput, .log-container');
             let attempts = 0;
             while (!logRoot && attempts < 40) {
@@ -2375,8 +2416,6 @@ document.addEventListener('contextmenu', (e) => {
             if (!logRoot) logRoot = document.body;
 
             updateHeartbeat();
-            // 2. INSTANT START: Observer and Initial Scan
-            // This makes sure new lines and existing lines are highlighted immediately
             scan();
             if (window.hhObserver) window.hhObserver.disconnect();
             window.hhObserver = new MutationObserver((mutations) => {
@@ -2459,7 +2498,7 @@ const enterTheMatrix = () => {
             matrixCanvas = null;
         }
         
-		showToast(chrome.i18n.getMessage("toast_matrix_exit"));
+		showToast(getI18nMsg("toast_matrix_exit"));
         return; // Stop execution here
     }
 	
@@ -2510,9 +2549,9 @@ const enterTheMatrix = () => {
             matrixCanvas.remove();
             matrixCanvas = null;
         }
-		showToast(chrome.i18n.getMessage("toast_matrix_exit"));
+		showToast(getI18nMsg("toast_matrix_exit"));
     };
-    showToast(chrome.i18n.getMessage("toast_matrix_welcome"));
+    showToast(getI18nMsg("toast_matrix_welcome"));
 };
 
 

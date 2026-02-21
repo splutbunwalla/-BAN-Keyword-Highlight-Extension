@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<meta charset="UTF-8">
     <link href="pickr/nano.min.css" rel="stylesheet">
     <style>
 
@@ -38,7 +39,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, sans-serif;
+            font-family: 'Segoe UI', Roboto, Helvetica, Tahoma, Arial, sans-serif;
             width: 280px;
             margin: 0;
             padding: 8px;
@@ -594,7 +595,27 @@
             <button id="add-msg-btn">+</button>
         </div>
     </div>
-
+	<div class="control-group">
+		<div class="setting-row">
+			<label data-i18n="settings_language">Language</label>
+			<select id="languageSelect" class="hh-chat-player-select" style="flex: 1; background: #40444b; color: white; border: 1px solid #222; border-radius: 4px; padding: 2px;">
+				<option value="auto" data-i18n="lang_browser_default">Browser Default</option>
+				<option value="en">English (en)</option>
+				<option value="de">Deutsch (de)</option>
+				<option value="fr">Français (fr)</option>
+				<option value="es">Español (es)</option>
+				<option value="it">Italiano (it)</option>
+				<option value="nl">Nederlands (nl)</option>
+				<option value="fi">Suomi (fi)</option>
+				<option value="sv">Svenska (sv)</option>
+				<option value="da">Dansk (da)</option>
+				<option value="no">Norsk (no)</option>
+				<option value="ru">Русский (ru)</option>
+				<option value="ltz">Lëtzebuergesch (ltz)</option>
+				<option value="cs">Čeština (cs)</option>
+			</select>
+		</div>
+	</div>
 </div>
 <script src="pickr/pickr.min.js"></script>
 <script src="popup.js"></script>

@@ -2,6 +2,7 @@ const toggleCheckbox = document.getElementById("toggleCheckbox");
 const container = document.querySelector('.main-container');
 const toggle = document.getElementById('toggleCheckbox');
 const muteAllToggle = document.getElementById("muteAllToggle");
+const langSelect = document.getElementById("languageSelect");
 const speakerIconSVG = `
 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="display:block;">
     <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
@@ -23,7 +24,6 @@ function closePopup() {
         window.close();
     }, 140);
 }
-
 
 document.querySelectorAll('.color-swatch').forEach(swatch => {
     const input = document.getElementById(swatch.dataset.target);
@@ -68,7 +68,9 @@ function updateContentScript() {
         steamidColorMiddle: document.getElementById("steamidColorMiddle").value,
         steamidColorEnd: document.getElementById("steamidColorEnd").value,
         steamidTextColor: document.getElementById("steamidTextColor").value,
-        steamidBorderColor: "#FFFFFF"
+        steamidBorderColor: "#FFFFFF",
+		
+		preferredLanguage: document.getElementById("languageSelect").value
     };
 
     chrome.tabs.query({active: true, currentWindow: true}, tabs => {
@@ -244,8 +246,13 @@ function loadSettings() {
         "keywords", "secondarykeywords", "messages", "enabled", "muteAll",
         "primaryColorFirst", "primaryColorMiddle", "primaryColorEnd", "primaryTextColor", "primaryBorderColor",
         "secondaryColorFirst", "secondaryColorMiddle", "secondaryColorEnd", "secondaryTextColor", "secondaryBorderColor",
-        "steamidColorFirst", "steamidColorMiddle", "steamidColorEnd", "steamidTextColor"
+        "steamidColorFirst", "steamidColorMiddle", "steamidColorEnd", "steamidTextColor", "preferredLanguage"
     ], (data) => {
+
+        if (data.preferredLanguage) {
+            document.getElementById("languageSelect").value = data.preferredLanguage;
+        }
+
         KEYWORDS = data.keywords || [];
         SECONDARYWORDS = data.secondarykeywords || [];
         renderKeywords("primary-list", KEYWORDS, "keywords");
@@ -316,6 +323,8 @@ muteAllToggle.addEventListener("change", () => {
         }
     });
 });
+
+langSelect.addEventListener("change", updateContentScript);
 
 toggleCheckbox.addEventListener("change", () => {
     enabled = toggleCheckbox.checked;
@@ -410,7 +419,9 @@ document.querySelectorAll('input, select, textarea').forEach(input => {
                 steamidColorMiddle: document.getElementById("steamidColorMiddle").value,
                 steamidColorEnd: document.getElementById("steamidColorEnd").value,
                 steamidTextColor: document.getElementById("steamidTextColor").value,
-                steamidBorderColor: "#FFFFFF"
+                steamidBorderColor: "#FFFFFF",
+				
+				preferredLanguage: document.getElementById("languageSelect").value
             };
 
             chrome.tabs.query({active: true, currentWindow: true}, tabs => {
