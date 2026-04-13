@@ -24,6 +24,8 @@
 	let matrixCanvas = null;	
 	let customMessages = null;
 	let currentLanguage = 'en';
+	let lastLogActivityTime = Date.now();
+	const INACTIVITY_RELOAD_MS = 15 * 60 * 1000; // 5 minutes
 	
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -63,50 +65,61 @@
 		return chrome.i18n.getMessage(key, placeholders);
 	};
 
-	const handleModAction = (type, sid, options = {}) => {
-		if (!sid || isNaN(sid)) return;
+const handleModAction = (type, sid, options = {}) => {
+	if (!sid || isNaN(sid)) return;
 
-		const { 
-			duration = PERMA_DUR, 
-			role = 'default', 
-			name = getI18nMsg("queue_manual_entry") 
-		} = options;
+	const data = NAME_MAP[sid];
 
-		if (isRacing) {
-			// Add to queue
-			const data = NAME_MAP[sid];
-			const queueEntry = { type, sid, name };
-			if (type === 'ban') {
-				queueEntry.dur = duration;
-				if( data && data.online && data.connId ) {
-					safeSendMessage({ action: "PROXY_COMMAND", cmd: `kick ${data.connId}`, autoSubmit: true });
-				}					
+	const {
+		duration = PERMA_DUR,
+		role = 'default',
+		name: optionName
+	} = options;
+
+	const fallbackName = getI18nMsg("queue_manual_entry");
+	const resolvedName = data?.name ?? optionName ?? fallbackName;
+
+	if (isRacing) {
+		// Add to queue
+		const queueEntry = { type, sid, name: resolvedName };
+
+		if (type === 'ban') {
+			queueEntry.dur = duration;
+
+			if (data?.online && data?.connId) {
+				safeSendMessage({ action: "PROXY_COMMAND", cmd: `kick ${data.connId}`, autoSubmit: true });
 			}
-			if (type === 'role') queueEntry.role = role;
-			
-			banQueue.push(queueEntry);
-			updateQueueDisplay();
-			
-            copyToClipboard(`${data.name || options.name} (${sid}) banned by Server for ${duration} minutes`);
-			const toastMsg = type === 'role' 
-				? getI18nMsg("toast_queued_role", [sid, role])
-				: getI18nMsg(`toast_queued_${type}`, [sid]);
-			showToast(toastMsg);
-		} else {
-			let cmd = "";
-			switch (type) {
-				case 'ban': { cmd = (duration === PERMA_DUR ? `ban ${sid}` : `ban ${sid},${duration}`); 
-				
-					copyToClipboard(`${data.name || options.name} (${sid}) banned by Server for ${dur} minutes`);
-					break;
-				}
-				case 'role': cmd = `role ${sid},${role}`; break;
-			}
-			
-			safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true });
-			showToast(getI18nMsg("toast_sent", [type.toUpperCase()]));
 		}
-	};
+
+		if (type === 'role') {
+			queueEntry.role = role;
+		}
+
+		banQueue.push(queueEntry);
+		updateQueueDisplay();
+
+		// copyToClipboard( `${resolvedName} (${sid}) banned by Server for ${duration} minutes` );
+		const toastMsg = type === 'role' ? getI18nMsg("toast_queued_role", [sid, role]) : getI18nMsg(`toast_queued_${type}`, [sid]);
+		showToast(toastMsg);
+
+	} else {
+		let cmd = "";
+
+		switch (type) {
+			case 'ban':
+				cmd = duration === PERMA_DUR ? `ban ${sid}` : `ban ${sid},${duration}`;
+				copyToClipboard( `${resolvedName} (${sid}) suspended by Server for ${duration} minutes` );
+				break;
+
+			case 'role':
+				cmd = `role ${sid},${role}`;
+				break;
+		}
+
+		safeSendMessage({ action: "PROXY_COMMAND", cmd,	autoSubmit: true });
+		showToast(getI18nMsg("toast_sent", [type.toUpperCase()]));
+	}
+};
 
 	const SERVER_COMMANDS = [
 		{ cmd: "countdown", aliases: "", desc: "Set starting lobby countdown (seconds).", params: true },
@@ -320,6 +333,7 @@
 		try {
 			const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`);
 			const data = await response.json();
+			console.log(response, data);
 			return data[0].map(x => x[0]).join('');
 		} catch (e) {
 			return "Translation error.";
@@ -577,6 +591,7 @@
 	};
 	
 	const processModLog = (text) => {
+		lastLogActivityTime = Date.now();
 		const line = text.replace(/\u00a0/g, ' ').trim();
 		if (!line) return;
 
@@ -642,6 +657,19 @@ let reloadInitiated = false;
 
 const updateHeartbeat = () => {
     if (!chrome.runtime?.id) return;
+
+	const now = Date.now();
+    if (isEnabled && (now - lastLogActivityTime) > INACTIVITY_RELOAD_MS) {
+        if (!reloadInitiated) {
+            reloadInitiated = true;
+            console.log("HH: No log activity for 5 minutes. Reloading...");
+            showToast("Inactivity detected, reloading..."); 
+            setTimeout(() => {
+                window.top.location.reload();
+            }, 2000);
+        }
+        return;
+    }
 
     const isLogFrame = window.location.href.includes("StreamFile.aspx") ||
         window.location.href.includes("Proxy.ashx") ||
