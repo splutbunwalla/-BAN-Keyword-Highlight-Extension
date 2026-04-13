@@ -203,8 +203,10 @@ const handleModAction = (type, sid, options = {}) => {
 
 	function createHelpView() {
 		const el = document.createElement('div');
+		el.style.pointerEvents = 'auto'
 		el.id = 'hh-help-view';
 		el.className = 'hh-chat-view'; // Reuses your modal base styles
+		el.style.pointerEvents = 'auto'
 		el.innerHTML = `
 			<div class="hh-panel-header">
 				<span class="hh-panel-title">${getI18nMsg("server_commands")}</span>
@@ -484,6 +486,7 @@ const handleModAction = (type, sid, options = {}) => {
 		el.style.overflow = 'auto';
 		el.style.minWidth = '300px';
 		el.style.minHeight = '200px';
+		el.style.pointerEvents = 'auto'
 		el.innerHTML = `
 			<div class="hh-panel-header">
 				<div class="hh-header-left">
@@ -836,7 +839,7 @@ const updateHeartbeat = () => {
                 alignItems: 'flex-end',
                 gap: '10px',
                 zIndex: '2147483647',
-                pointerEvents: 'auto'
+                pointerEvents: 'none'
             });
 
             document.body.appendChild(wrapper);
@@ -884,7 +887,8 @@ const updateHeartbeat = () => {
 
         const toolbar = document.createElement('div');
         toolbar.id = 'hh-toolbar';
-
+		toolbar.style.pointerEvents = 'auto';
+		
         // Standard Tools
         const tools = [
             {label: getI18nMsg("tool_sid_label"), type: 'info', icon: '🛠️', id: 'hh-sid-trigger', desc: getI18nMsg("tool_sid_desc")},
@@ -1415,6 +1419,7 @@ const updateHeartbeat = () => {
 		el.style.overflow = 'auto';
 		el.style.minWidth = '300px';
 		el.style.minHeight = '200px';
+		el.style.pointerEvents = 'auto'
         el.innerHTML = `
         <div class="hh-panel-header">
             <div class="hh-header-left">
@@ -1536,6 +1541,7 @@ const updateHeartbeat = () => {
         if (!container) {
             container = document.createElement('div');
             container.id = 'hh-queue-container';
+			container.style.pointerEvents = 'auto';
             container.innerHTML = `
         <div id="hh-queue-header"><span>${getI18nMsg("queue_title")}</span><span id="hh-queue-count">0</span></div>
         <div id="hh-queue-list"></div>
