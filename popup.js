@@ -3,6 +3,7 @@ const container = document.querySelector('.main-container');
 const toggle = document.getElementById('toggleCheckbox');
 const muteAllToggle = document.getElementById("muteAllToggle");
 const langSelect = document.getElementById("languageSelect");
+const cmdDelay = document.getElementById("cmdDelay");
 const speakerIconSVG = `
 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="display:block;">
     <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
@@ -70,7 +71,8 @@ function updateContentScript() {
         steamidTextColor: document.getElementById("steamidTextColor").value,
         steamidBorderColor: "#FFFFFF",
 		
-		preferredLanguage: document.getElementById("languageSelect").value
+		preferredLanguage: document.getElementById("languageSelect").value,
+		cmdDelay: parseInt(document.getElementById("cmdDelay").value) || 1000
     };
 
     chrome.tabs.query({active: true, currentWindow: true}, tabs => {
@@ -246,12 +248,16 @@ function loadSettings() {
         "keywords", "secondarykeywords", "messages", "enabled", "muteAll",
         "primaryColorFirst", "primaryColorMiddle", "primaryColorEnd", "primaryTextColor", "primaryBorderColor",
         "secondaryColorFirst", "secondaryColorMiddle", "secondaryColorEnd", "secondaryTextColor", "secondaryBorderColor",
-        "steamidColorFirst", "steamidColorMiddle", "steamidColorEnd", "steamidTextColor", "preferredLanguage"
+        "steamidColorFirst", "steamidColorMiddle", "steamidColorEnd", "steamidTextColor", "preferredLanguage", "cmdDelay"
     ], (data) => {
 
         if (data.preferredLanguage) {
             document.getElementById("languageSelect").value = data.preferredLanguage;
         }
+		
+		if (data.cmdDelay) {
+			document.getElementById("cmdDelay").value = data.cmdDelay;
+		}
 		
 		updatePopupLanguage(data.preferredLanguage);
 
@@ -436,7 +442,8 @@ document.querySelectorAll('input, select, textarea').forEach(input => {
                 steamidTextColor: document.getElementById("steamidTextColor").value,
                 steamidBorderColor: "#FFFFFF",
 				
-				preferredLanguage: document.getElementById("languageSelect").value
+				preferredLanguage: document.getElementById("languageSelect").value,
+				cmdDelay: parseInt(document.getElementById("cmdDelay").value) || 1000
             };
 
             chrome.tabs.query({active: true, currentWindow: true}, tabs => {

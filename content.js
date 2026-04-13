@@ -65,6 +65,27 @@
 		return chrome.i18n.getMessage(key, placeholders);
 	};
 
+	const cleanLogText = (rawText) => {
+		if (!rawText) return "";
+		
+		// Split the raw blob into individual lines
+		return rawText.split('\n')
+			.map(line => {
+				let cleaned = line.trim();
+				if (!cleaned) return null;
+
+				// 1. Remove timestamps: matches [18:38:39.228] or 18:38:39.228:
+				cleaned = cleaned.replace(/^\[?\d{2}:\d{2}:\d{2}(\.\d{3})?\]?:?\s*/, "");
+				// 2. Fix internal line breaks (broken name/message)
+				// This collapses spaces but preserves the line as a single unit
+				cleaned = cleaned.replace(/\s+/g, " ");
+
+				return cleaned.trim();
+			})
+			.filter(line => line !== null && line.length > 0)
+			.join('\n'); // Standard newline works best for most clipboards
+	};
+	
 const handleModAction = (type, sid, options = {}) => {
 	if (!sid || isNaN(sid)) return;
 
@@ -98,7 +119,6 @@ const handleModAction = (type, sid, options = {}) => {
 		banQueue.push(queueEntry);
 		updateQueueDisplay();
 
-		// copyToClipboard( `${resolvedName} (${sid}) banned by Server for ${duration} minutes` );
 		const toastMsg = type === 'role' ? getI18nMsg("toast_queued_role", [sid, role]) : getI18nMsg(`toast_queued_${type}`, [sid]);
 		showToast(toastMsg);
 
@@ -408,7 +428,7 @@ const handleModAction = (type, sid, options = {}) => {
 		
 		if( btnCopy) {
 			btnCopy.onclick = async () => {
-				let text = (message || "").replace(/^\d{2}:\d{2}:\d{2}\.\d{3}:\s*/g, "").replace(/Command:\s*/i, "").trim();
+				let text = cleanLogText(message || "")
 				const idMatch = text.match(/\b\d{17}\b/);
 				if (idMatch && NAME_MAP[idMatch[0]]) text = text.replace("??", NAME_MAP[idMatch[0]].name);
 				
@@ -460,6 +480,10 @@ const handleModAction = (type, sid, options = {}) => {
 		const el = document.createElement('div');
 		el.id = 'hh-mod-view';
 		el.className = 'hh-chat-view'; // Reusing chat window base styles
+		el.style.resize = 'both';
+		el.style.overflow = 'auto';
+		el.style.minWidth = '300px';
+		el.style.minHeight = '200px';
 		el.innerHTML = `
 			<div class="hh-panel-header">
 				<div class="hh-header-left">
@@ -511,7 +535,7 @@ const handleModAction = (type, sid, options = {}) => {
 		// Copy Visible Mod Log
 		el.querySelector('#hh-copy-mod').onclick = () => {
 			const text = getVisibleModText();
-			navigator.clipboard.writeText(text);
+			copyToClipboard(cleanLogText(text));    
 			showToast(getI18nMsg("toast_mod_copied"));
 		};
 
@@ -595,13 +619,15 @@ const handleModAction = (type, sid, options = {}) => {
 		const line = text.replace(/\u00a0/g, ' ').trim();
 		if (!line) return;
 
-		const coreMatch = line.match(/(\d{2}:\d{2}:\d{2}\.\d{3}):\s+(.*?)\s+\((?:id:\s*)?(\d+)\)\s+(kicked|banned)\s+by\s+(.*)/i);
+		const coreMatch = line.match(/(\d{2}:\d{2}:\d{2}\.\d{3}):\s+(.*?)\s+\((?:id:\s*)?(\d+)\)\s+(kicked|banned|suspended)\s+by\s+(.*)/i);
 
 		if (coreMatch) {
 			const timestamp = coreMatch[1];
 			const targetName = coreMatch[2].trim();
 			const targetId = coreMatch[3];
-			const action = coreMatch[4].toUpperCase();
+			let action = coreMatch[4].toUpperCase();
+			if (action === 'SUSPENDED') action = 'BANNED';
+			
 			const rawDetails = coreMatch[5].trim();
 			
 			let actor = rawDetails;
@@ -786,7 +812,7 @@ const updateHeartbeat = () => {
                 processChatLog(cleaned);
             }
 			
-			if (lower.includes("kicked") || lower.includes("banned")) {
+			if (lower.includes("kicked") || lower.includes("banned") || lower.includes("suspended")) {
 						processModLog(cleaned);
 					}
         });
@@ -1385,6 +1411,10 @@ const updateHeartbeat = () => {
     function createChatView() {
         const el = document.createElement('div');
         el.id = 'hh-chat-view';
+		el.style.resize = 'both';
+		el.style.overflow = 'auto';
+		el.style.minWidth = '300px';
+		el.style.minHeight = '200px';
         el.innerHTML = `
         <div class="hh-panel-header">
             <div class="hh-header-left">
@@ -1419,10 +1449,11 @@ const updateHeartbeat = () => {
         el.querySelector('#hh-chat-end').oninput = renderChatLines;
         el.querySelector('#hh-hide-server').onchange = renderChatLines;
 
-        // Copy Visible
+		// Copy Visible
         el.querySelector('#hh-copy-chat').onclick = () => {
-            const content = el.querySelector('.hh-chat-content').innerText;
-            navigator.clipboard.writeText(content);
+            // Get the clean string directly from your data array, bypassing the DOM
+            const text = getVisibleChatText();
+            copyToClipboard(text);			
             showToast(getI18nMsg("toast_mod_copied"));
         };
 
@@ -1727,7 +1758,7 @@ const updateHeartbeat = () => {
                 } else {
                     // Default to Ban
                     cmd = (item.dur === PERMA_DUR) ? `ban ${item.sid}` : `ban ${item.sid},${item.dur}`;
-					const msg = `${item.name} (${item.sid}) banned by Server for ${item.dur} minutes`
+					const msg = `${item.name} (${item.sid}) suspended by Server for ${item.dur} minutes`
                     combinedLogs.push(msg);
 					queuedBansMsgs.push(msg);
                 }
@@ -1770,12 +1801,12 @@ const updateHeartbeat = () => {
     };
     const saveRegistry = () => sessionStorage.setItem('hh_registry', JSON.stringify(NAME_MAP));
 
-    const copyToClipboard = (text) => {
+	const copyToClipboard = (text) => {
 		const cleanText = text
         // 1. Replace non-breaking spaces (\u00a0) and other weird whitespace with a normal space
         .replace(/[\u00a0\u1680​\u180e\u2000-\u200a\u202f\u205f\u3000]/g, " ")
-        // 2. Normalize any double spaces that might have been created
-        .replace(/\s+/g, " ")
+        // 2. Normalize horizontal spaces only (preserving \n and \r)
+        .replace(/[ \t]+/g, " ")
         .trim();
 		
 		if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1996,7 +2027,7 @@ const updateHeartbeat = () => {
             processJoinLeaveFromText(text);
             processChatLog(text);
 
-			if (text.toLowerCase().includes("kicked") || text.toLowerCase().includes("banned")) {
+			if (text.toLowerCase().includes("kicked") || text.toLowerCase().includes("banned") || text.toLowerCase().includes("suspended")) {
 				processModLog(text);
 }
         });
@@ -2546,7 +2577,7 @@ document.addEventListener('contextmenu', (e) => {
                         if (node.textContent) {
                             scanForKeywords(node.textContent);
                             processChatLog(node.textContent);
-							if (node.textContent.toLowerCase().includes("kicked") || node.textContent.toLowerCase().includes("banned")) {
+							if (node.textContent.toLowerCase().includes("kicked") || node.textContent.toLowerCase().includes("banned") || node.textContent.toLowerCase().includes("suspended")) {
 								processModLog(node.textContent);
 							}
                             checkRaceStatus(node.textContent, false);
@@ -2578,7 +2609,11 @@ document.addEventListener('contextmenu', (e) => {
                 // Final check: Is the table there now?
                 if (!isUsersCommandOutputVisible()) {
                     console.log("HH: No table found in history. Requesting 'users'...");
-                    safeSendMessage({action: "PROXY_COMMAND", cmd: "users"});
+					const initialDelay = sync.cmdDelay || 1000;
+
+					setTimeout(() => {
+						safeSendMessage({ action: "PROXY_COMMAND", cmd: "users", autoSubmit: true });
+					}, initialDelay);
                 }
                 didBootstrap = true;
             }

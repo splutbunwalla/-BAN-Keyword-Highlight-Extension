@@ -130,6 +130,15 @@
             border-radius: 4px;
             padding: 4px;
         }
+		
+		input[type="number"] {
+            background-color: #40444b;
+            border: 1px solid #222;
+            color: white;
+            border-radius: 4px;
+            padding: 4px;
+        }
+
 
         input[type="text"]::placeholder {
             color: #888;
@@ -615,6 +624,11 @@
 				<option value="cs">Čeština (cs)</option>
 			</select>
 		</div>
+	</div>
+	
+	<div class="setting-row">
+		<label data-i18n="settings_cmd_delay">Command Delay (ms)</label>
+		<input id="cmdDelay" type="number" value="1000" step="100" style="width: 60px;">
 	</div>
 </div>
 <script src="pickr/pickr.min.js"></script>
