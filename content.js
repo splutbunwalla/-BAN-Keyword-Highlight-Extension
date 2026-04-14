@@ -100,45 +100,22 @@ const handleModAction = (type, sid, options = {}) => {
 	const fallbackName = getI18nMsg("queue_manual_entry");
 	const resolvedName = data?.name ?? optionName ?? fallbackName;
 
-	if (isRacing) {
-		// Add to queue
-		const queueEntry = { type, sid, name: resolvedName };
+	let cmd = "";
 
-		if (type === 'ban') {
-			queueEntry.dur = duration;
+	switch (type) {
+		case 'ban':
+			cmd = duration === PERMA_DUR ? `ban ${sid}` : `ban ${sid},${duration}`;
+			copyToClipboard( `${resolvedName} (${sid}) suspended by Server for ${duration} minutes` );
+			break;
 
-			if (data?.online && data?.connId) {
-				safeSendMessage({ action: "PROXY_COMMAND", cmd: `kick ${data.connId}`, autoSubmit: true });
-			}
-		}
-
-		if (type === 'role') {
-			queueEntry.role = role;
-		}
-
-		banQueue.push(queueEntry);
-		updateQueueDisplay();
-
-		const toastMsg = type === 'role' ? getI18nMsg("toast_queued_role", [sid, role]) : getI18nMsg(`toast_queued_${type}`, [sid]);
-		showToast(toastMsg);
-
-	} else {
-		let cmd = "";
-
-		switch (type) {
-			case 'ban':
-				cmd = duration === PERMA_DUR ? `ban ${sid}` : `ban ${sid},${duration}`;
-				copyToClipboard( `${resolvedName} (${sid}) suspended by Server for ${duration} minutes` );
-				break;
-
-			case 'role':
-				cmd = `role ${sid},${role}`;
-				break;
-		}
-
-		safeSendMessage({ action: "PROXY_COMMAND", cmd,	autoSubmit: true });
-		showToast(getI18nMsg("toast_sent", [type.toUpperCase()]));
+		case 'role':
+			cmd = `role ${sid},${role}`;
+			break;
 	}
+
+	safeSendMessage({ action: "PROXY_COMMAND", cmd,	autoSubmit: true });
+	showToast(getI18nMsg("toast_sent", [type.toUpperCase()]));
+
 };
 
 	const SERVER_COMMANDS = [
