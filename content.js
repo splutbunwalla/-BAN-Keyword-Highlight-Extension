@@ -580,12 +580,15 @@ const handleModAction = (type, sid, options = {}) => {
 			line.className = 'hh-mod-line';
 			line.style.borderLeft = m.action === 'BANNED' ? '3px solid #ff4444' : '3px solid #ff8800';
 			
+            // Force block layout so the browser copies it as a single line
+            line.style.display = 'block';
+            
 			const color = m.action === 'BANNED' ? '#ff4444' : '#ffcc00';
 			line.innerHTML = `
-                <span class="hh-mod-ts">[${m.timestamp}]</span>
-                <span class="hh-mod-action" style="color:${color}">${m.action}</span>
-                <span class="hh-mod-target">${m.targetName}</span>
-                <span style="color:#666">(${m.targetId})</span>
+                <span class="hh-mod-ts" style="margin-right: 6px;">[${m.timestamp}]</span>
+                <span class="hh-mod-action" style="color:${color}; margin-right: 6px;">${m.action}</span>
+                <span class="hh-mod-target" style="margin-right: 6px;">${m.targetName}</span>
+                <span style="color:#666; margin-right: 6px;">(${m.targetId})</span>
                 <span class="hh-mod-admin">by ${m.adminName}</span>
             `;
 			container.appendChild(line);
