@@ -48,6 +48,58 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+document.addEventListener('DOMContentLoaded', () => {
+	const versionText = document.querySelector('.version-tag');
+    const adminLogin = document.getElementById('admin-login');
+    const saveKeyBtn = document.getElementById('save-key-btn');
+    const apiKeyInput = document.getElementById('api-key-input');
+    const adminStatus = document.getElementById('admin-status');
+
+    let clickCount = 0;
+    let clickTimer;
+
+    // --- The Secret Handshake Logic ---
+    versionText.addEventListener('click', () => {
+        clickCount++;
+        clearTimeout(clickTimer); // Reset the timer on each click
+
+        if (clickCount >= 5) {
+            // Unhide the panel and reset the count
+            adminLogin.style.display = 'block';
+            clickCount = 0; 
+        } else {
+            // If they pause for more than 400ms, reset the count to 0
+            clickTimer = setTimeout(() => {
+                clickCount = 0;
+            }, 400); 
+        }
+    });
+
+    // --- Saving the API Key ---
+    saveKeyBtn.addEventListener('click', () => {
+        const key = apiKeyInput.value.trim();
+        if (key) {
+            // Save to Chrome's local storage
+            chrome.storage.local.set({ 
+                isAdmin: true, 
+                apiKey: key 
+            }, () => {
+                adminStatus.textContent = "Admin mode enabled! Refresh the Host Havoc console.";
+                adminStatus.style.color = "green";
+            });
+        }
+    });
+
+    // --- Optional: Keep it unhidden if they are already an admin ---
+    chrome.storage.local.get(['isAdmin'], (result) => {
+        if (result.isAdmin) {
+            adminLogin.style.display = 'block';
+            apiKeyInput.placeholder = "API Key already set";
+        }
+    });
+});
+
+
 function updateContentScript() {
     const settings = {
         // Primary

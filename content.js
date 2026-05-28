@@ -2539,7 +2539,7 @@ document.addEventListener('contextmenu', (e) => {
             createToolbar();
             updateQueueDisplay();
             updateRegex();
-
+			
 			setInterval(updateHeartbeat, 5000);
 
             let logRoot = document.querySelector('pre, #ConsoleOutput, .log-container');
@@ -2575,6 +2575,7 @@ document.addEventListener('contextmenu', (e) => {
                     clearTimeout(scanTimeout);
                     scanTimeout = setTimeout(scan, 50);
                 }
+				
             });
             window.hhObserver.observe(logRoot, {childList: true, subtree: true});
 
@@ -2601,6 +2602,15 @@ document.addEventListener('contextmenu', (e) => {
 						safeSendMessage({ action: "PROXY_COMMAND", cmd: "users", autoSubmit: true });
 					}, initialDelay);
                 }
+							
+				chrome.storage.local.get(['isAdmin', 'apiKey'], (result) => {
+					console.log("HH Admin Debug: Storage check completed.", result);
+					if (result.isAdmin && result.apiKey) {
+						initializeDatabaseOverlay(result.apiKey);
+					} else {
+						console.log("HH Admin Debug: Aborted. Admin is false or API key is missing.");
+					}
+				});
                 didBootstrap = true;
             }
 
@@ -2697,5 +2707,210 @@ const enterTheMatrix = () => {
 
 // Expose it to the window so you can call it from the browser console
 window.enterTheMatrix = enterTheMatrix;
+// ==========================================
+// --- ADMIN DATABASE OVERLAY MODULE ---
+// ==========================================
 
+const updateTooltipPosition = (tooltip) => {
+    const playerPanel = document.getElementById('hh-player-panel');
+    let rightOffset = 24; // Base padding from the right edge
+    
+    // If the player list is open, push the tooltip out of its way
+    if (playerPanel && playerPanel.offsetParent !== null) {
+        rightOffset = playerPanel.offsetWidth + 24; 
+    }
+
+    // Lock to the bottom right!
+    tooltip.style.bottom = '24px';
+    tooltip.style.right = `${rightOffset}px`;
+    
+    // Ensure top and left aren't fighting us
+    tooltip.style.top = 'auto';  
+    tooltip.style.left = 'auto'; 
+};
+
+const initializeDatabaseOverlay = (apiKey) => {
+    if (document.getElementById('hh-admin-tooltip')) return;
+
+    if (!document.getElementById('hh-admin-styles')) {
+        const style = document.createElement('style');
+        style.id = 'hh-admin-styles';
+        style.textContent = `
+            @keyframes splut-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        `;
+        document.head.appendChild(style);
+    }
+
+    const tooltip = document.createElement('div');
+    tooltip.id = 'hh-admin-tooltip';
+    
+    Object.assign(tooltip.style, {
+        position: 'fixed', 
+        display: 'none',
+        margin: '0',          
+        transform: 'none',    
+        backgroundColor: '#0a0a0a',
+        color: '#fff',
+        border: '1px solid #27272a',
+        borderRadius: '16px', 
+        padding: '24px',
+        boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.95)', // Flipped shadow to cast upwards
+        zIndex: '2147483647',
+        fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
+        width: '420px',
+        maxHeight: 'calc(100vh - 48px)', 
+        overflowY: 'auto', 
+        pointerEvents: 'none'
+    });
+
+    document.documentElement.appendChild(tooltip);
+
+    document.addEventListener('mouseover', (e) => {
+        const target = e.target.closest('.hh-idhighlight');
+        if (target) {
+            const steamId = target.textContent.trim();
+            showDbLoadingState(tooltip);
+            fetchPlayerData(steamId, apiKey, tooltip);
+        }
+    });
+
+    document.addEventListener('mouseout', (e) => {
+        const target = e.target.closest('.hh-idhighlight');
+        if (target) {
+            tooltip.style.display = 'none';
+        }
+    });
+};
+
+async function fetchPlayerData(steamId, apiKey, tooltipElement) {
+    const endpoint = `https://splutbot.com/api/get_player_stats.php?steamid=${steamId}`;
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'GET',
+            headers: {
+                'X-Admin-API-Key': apiKey,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const data = await response.json();
+        renderDbTooltipData(tooltipElement, data, steamId);
+
+    } catch (error) {
+        console.error("Admin DB Fetch Error:", error);
+        tooltipElement.innerHTML = `<div style="color: #f43f5e; font-weight: bold; text-align: center;">Failed to load dossier for ${steamId}</div>`;
+        updateTooltipPosition(tooltipElement);
+    }
+}
+
+function showDbLoadingState(tooltip) {
+    tooltip.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 0;">
+            <svg style="animation: splut-spin 1s linear infinite; height: 32px; width: 32px; color: #a855f7;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle style="opacity: 0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path style="opacity: 0.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <h3 style="font-size: 14px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; font-style: italic; color: #c084fc; margin: 16px 0 4px 0;">Querying Database...</h3>
+            <p style="font-size: 10px; color: #71717a; text-transform: uppercase; letter-spacing: 0.1em; margin: 0;">Compiling historical telemetry</p>
+        </div>
+    `;
+    updateTooltipPosition(tooltip); // Snap it to the right position before showing
+    tooltip.style.display = 'block';
+}
+
+function formatTime(seconds) {
+    if (!seconds || seconds <= 0) return "0h 0m";
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return `${h}h ${m}m`;
+}
+
+function renderDbTooltipData(tooltip, data, steamId) {
+    const localName = typeof NAME_MAP !== 'undefined' && NAME_MAP[steamId] ? NAME_MAP[steamId].name : 'Unknown';
+    const displayName = data.name !== 'Unknown Player' ? data.name : localName;
+
+    const allServers = new Set([...Object.keys(data.roles || {}), ...Object.keys(data.bans || {})]);
+    let nodesHtml = '';
+    
+    if (allServers.size > 0) {
+        nodesHtml += `<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #27272a;">`;
+        
+        allServers.forEach(srv => {
+            const role = (data.roles && data.roles[srv]) ? data.roles[srv] : 'Default';
+            const ban = (data.bans && data.bans[srv]) ? data.bans[srv] : null;
+            
+            let roleColor = '#52525b';
+            const rLower = role.toLowerCase();
+            if (rLower === 'admin') roleColor = '#60a5fa';
+            else if (rLower === 'moderator') roleColor = '#f43f5e';
+            else if (rLower === 'vip') roleColor = '#34d399';
+
+            let banBadge = '';
+            let borderClass = 'border-color: #27272a; background: rgba(24, 24, 27, 0.5);'; 
+            
+            if (ban) {
+                banBadge = `<div style="margin-top: 4px; font-size: 8px; font-weight: 700; text-transform: uppercase; color: #f87171;">BANNED</div>`;
+                borderClass = 'border-color: rgba(127, 29, 29, 0.5); background: rgba(69, 10, 10, 0.3);';
+            }
+
+            nodesHtml += `
+                <div style="${borderClass} border-style: solid; border-width: 1px; border-radius: 6px; padding: 6px 10px; min-width: 80px; text-align: center;">
+                    <div style="font-size: 9px; color: #71717a; text-transform: uppercase; font-weight: 700;">${srv}</div>
+                    <div style="font-size: 11px; font-weight: 700; color: ${roleColor};">${role.charAt(0).toUpperCase() + role.slice(1)}</div>
+                    ${banBadge}
+                </div>
+            `;
+        });
+        nodesHtml += `</div>`;
+    } else {
+        nodesHtml += `<div style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #27272a;"></div>`;
+    }
+
+    const avgSession = data.stats.sessions > 0 ? formatTime(Math.floor(data.stats.total_time / data.stats.sessions)) : '0h 0m';
+
+    tooltip.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #27272a; padding-bottom: 16px; margin-bottom: 16px; gap: 24px;">
+            <div style="min-width: 0; flex: 1;">
+                <h2 style="font-size: 1.25rem; font-weight: 700; text-transform: uppercase; color: #fff; margin: 0; line-height: 1.2;">${displayName}</h2>
+                <p style="color: #c084fc; font-size: 0.75rem; font-family: monospace; margin: 4px 0 0 0;">${data.steam_id}</p>
+            </div>
+            <div style="text-align: right; flex-shrink: 0;">
+                <div style="font-size: 9px; color: #71717a; font-weight: 700; text-transform: uppercase;">Last Seen</div>
+                <div style="color: #4ade80; font-family: monospace; font-size: 12px; margin-top: 2px;">${data.last_seen}</div>
+            </div>
+        </div>
+
+        ${nodesHtml}
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+            ${createStatBox("Time", formatTime(data.stats.total_time), "#c084fc")}
+            ${createStatBox("Sessions", data.stats.sessions, "#fff")}
+            ${createStatBox("Avg Ses", avgSession, "#fff")}
+            ${createStatBox("Chats", data.stats.chats, "#38bdf8")}
+            ${createStatBox("Kicked", data.stats.kicked_received, "#fb7185", true)}
+            ${createStatBox("Susp.", data.stats.banned_received, "#f43f5e", true)}
+            ${createStatBox("Kicks G", data.stats.kicks_given, "#a1a1aa")}
+            ${createStatBox("Bans G", data.stats.bans_given, "#a1a1aa")}
+        </div>
+    `;
+    
+    // Safety check just in case the player opened the panel while data was fetching
+    updateTooltipPosition(tooltip); 
+}
+
+function createStatBox(label, value, color, isDanger = false) {
+    const borderColor = isDanger ? "rgba(136, 19, 55, 0.3)" : "#27272a";
+    return `
+        <div style="display: flex; flex-direction: column; background: rgba(24, 24, 27, 0.3); border: 1px solid ${borderColor}; border-radius: 6px; padding: 8px;">
+            <div style="font-size: 8px; color: #71717a; text-transform: uppercase; font-weight: 700;">${label}</div>
+            <div style="color: ${color}; font-size: 14px; font-weight: 700;">${value}</div>
+        </div>
+    `;
+}
+// ==========================================
+// --- END OF ADMIN DATABASE OVERLAY MODULE ---
+// ==========================================
 })();

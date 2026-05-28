@@ -493,7 +493,7 @@
     <div class="toggle-section">
         <div class="title-wrapper">
             <span class="section-title-big" data-i18n="extension_name">Wreckfest 2 Admin Tool (HH)</span>
-            <div class="version-tag">v1.9</div>
+            <div class="version-tag">v1.92</div>
         </div>
         <label class="switch">
             <input id="toggleCheckbox" type="checkbox">
@@ -629,6 +629,14 @@
 	<div class="setting-row">
 		<label data-i18n="settings_cmd_delay">Command Delay (ms)</label>
 		<input id="cmdDelay" type="number" value="1000" step="100" style="width: 60px;">
+	</div>
+	
+				
+	<div id="admin-login" style="display: none; margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px;">
+		<h3>Admin DB Access</h3>
+		<input type="password" id="api-key-input" placeholder="Enter Database API Key">
+		<button id="save-key-btn">Save & Enable</button>
+		<p id="admin-status"></p>
 	</div>
 </div>
 <script src="pickr/pickr.min.js"></script>

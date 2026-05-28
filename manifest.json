@@ -3,14 +3,15 @@
   "default_locale": "en",
   "name": "__MSG_extension_name__",
   "description": "__MSG_extension_description__",
-  "version": "1.9",
+  "version": "1.92",
   "permissions": [
     "storage",
     "clipboardWrite"
   ],
   "host_permissions": [
     "https://gamepanel.hosthavoc.com/Aspx/Interface/*",
-    "https://*.dyn.tcadmin.net:8881/Monitor/Public/*"
+    "https://*.dyn.tcadmin.net:8881/Monitor/Public/*",
+	"https://splutbot.com/*"
   ],
   "background": {
     "service_worker": "background.js"
