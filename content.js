@@ -2737,6 +2737,20 @@ const initializeDatabaseOverlay = (apiKey) => {
         style.id = 'hh-admin-styles';
         style.textContent = `
             @keyframes splut-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            #hh-admin-tooltip { transition: border-color 0.2s ease; }
+			.splut-link { 
+                color: #c084fc; 
+                font-family: monospace; 
+                font-size: 10px; 
+                margin-top: 4px; 
+                display: inline-block; 
+                text-decoration: none; 
+                transition: color 0.2s; 
+            }
+            .splut-link:hover { 
+                color: #d8b4fe; 
+                text-decoration: underline; 
+            }
         `;
         document.head.appendChild(style);
     }
@@ -2754,18 +2768,22 @@ const initializeDatabaseOverlay = (apiKey) => {
         border: '1px solid #27272a',
         borderRadius: '16px', 
         padding: '24px',
-        boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.95)', // Flipped shadow to cast upwards
+        boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.95)', 
         zIndex: '2147483647',
         fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
         width: '420px',
         maxHeight: 'calc(100vh - 48px)', 
         overflowY: 'auto', 
-        pointerEvents: 'none'
+        pointerEvents: 'auto' 
     });
 
     document.documentElement.appendChild(tooltip);
 
+    let isTooltipPinned = false;
+	
     document.addEventListener('mouseover', (e) => {
+        if (isTooltipPinned) return; 
+        
         const target = e.target.closest('.hh-idhighlight');
         if (target) {
             const steamId = target.textContent.trim();
@@ -2775,8 +2793,29 @@ const initializeDatabaseOverlay = (apiKey) => {
     });
 
     document.addEventListener('mouseout', (e) => {
+        if (isTooltipPinned) return; 
+        
         const target = e.target.closest('.hh-idhighlight');
         if (target) {
+            tooltip.style.display = 'none';
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        const highlightTarget = e.target.closest('.hh-idhighlight');
+        const tooltipTarget = e.target.closest('#hh-admin-tooltip');
+
+        if (highlightTarget) {
+            isTooltipPinned = true;
+            tooltip.style.borderColor = '#a855f7';
+            
+            const steamId = highlightTarget.textContent.trim();
+            showDbLoadingState(tooltip);
+            fetchPlayerData(steamId, apiKey, tooltip);
+        } 
+        else if (!tooltipTarget && isTooltipPinned) {
+            isTooltipPinned = false;
+            tooltip.style.borderColor = '#27272a'; 
             tooltip.style.display = 'none';
         }
     });
@@ -2817,7 +2856,7 @@ function showDbLoadingState(tooltip) {
             <p style="font-size: 10px; color: #71717a; text-transform: uppercase; letter-spacing: 0.1em; margin: 0;">Compiling historical telemetry</p>
         </div>
     `;
-    updateTooltipPosition(tooltip); // Snap it to the right position before showing
+    updateTooltipPosition(tooltip); 
     tooltip.style.display = 'block';
 }
 
@@ -2872,17 +2911,17 @@ function renderDbTooltipData(tooltip, data, steamId) {
     const avgSession = data.stats.sessions > 0 ? formatTime(Math.floor(data.stats.total_time / data.stats.sessions)) : '0h 0m';
 
     tooltip.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #27272a; padding-bottom: 16px; margin-bottom: 16px; gap: 24px;">
+		<div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #27272a; padding-bottom: 16px; margin-bottom: 16px; gap: 24px;">
             <div style="min-width: 0; flex: 1;">
                 <h2 style="font-size: 1.25rem; font-weight: 700; text-transform: uppercase; color: #fff; margin: 0; line-height: 1.2;">${displayName}</h2>
-                <p style="color: #c084fc; font-size: 0.75rem; font-family: monospace; margin: 4px 0 0 0;">${data.steam_id}</p>
+                <a href="https://splutbot.com/dossier.php?player=${data.steam_id}" target="_blank" rel="noopener noreferrer" class="splut-link" title="View Dossier">${data.steam_id}</a>
             </div>
             <div style="text-align: right; flex-shrink: 0;">
                 <div style="font-size: 9px; color: #71717a; font-weight: 700; text-transform: uppercase;">Last Seen</div>
                 <div style="color: #4ade80; font-family: monospace; font-size: 12px; margin-top: 2px;">${data.last_seen}</div>
             </div>
         </div>
-
+	
         ${nodesHtml}
 
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
@@ -2897,8 +2936,9 @@ function renderDbTooltipData(tooltip, data, steamId) {
         </div>
     `;
     
-    // Safety check just in case the player opened the panel while data was fetching
-    updateTooltipPosition(tooltip); 
+    if (typeof updateTooltipPosition === 'function') {
+        updateTooltipPosition(tooltip);
+    }
 }
 
 function createStatBox(label, value, color, isDanger = false) {
