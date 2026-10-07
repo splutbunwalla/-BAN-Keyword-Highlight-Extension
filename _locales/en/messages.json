@@ -199,5 +199,8 @@
   "btn_run": {"message": "Run" }, 
   "server_commands": {"message": "Server Commands"},
   "prompt_params": {"message": "Enter parameters for $1", "placeholders": {"1": { "content": "$1" }} },
-  "disconnected_title": {"message": "Disconnected - Click to Refresh" }
+  "disconnected_title": {"message": "Disconnected - Click to Refresh" },
+  "global_ban": {"message": "🔨 Global Perma Ban"},
+  "global_unban": {"message": "🔨 Global Unban"},
+  "global_actions": {"message": "📡 Global Actions"}
  }

@@ -173,5 +173,8 @@
   "btn_run": { "message": "Uitvoeren" },
   "server_commands": { "message": "Servercommando's" },
   "prompt_params": { "message": "Voer parameters in voor $1", "placeholders": { "1": { "content": "$1" } } },
-  "disconnected_title": {"message": "Verbinding verbroken - Klik om te vernieuwen"}
+  "disconnected_title": {"message": "Verbinding verbroken - Klik om te vernieuwen"},
+  "global_ban": {"message": "🔨 Wereldwijde permanente verbanning"},
+  "global_unban": {"message": "🔨 Wereldwijde opheffing van verbod"},
+  "global_actions": {"message": "📡 Wereldwijde acties"}
 }

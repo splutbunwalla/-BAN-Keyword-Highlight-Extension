@@ -173,5 +173,8 @@
   "btn_run": { "message": "Kör" },
   "server_commands": { "message": "Serverkommandon" },
   "prompt_params": { "message": "Ange parametrar för $1", "placeholders": { "1": { "content": "$1" } } },
-  "disconnected_title": {"message": "Frånkopplad – Klicka för att uppdatera"}
+  "disconnected_title": {"message": "Frånkopplad – Klicka för att uppdatera"},
+  "global_ban": {"message": "🔨 Globalt permanent avstängning"},
+  "global_unban": {"message": "🔨 Global upphävning av avstängning"},
+  "global_actions": {"message": "📡 Globala åtgärder"}
 }

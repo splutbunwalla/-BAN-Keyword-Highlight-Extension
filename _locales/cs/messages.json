@@ -173,5 +173,8 @@
   "btn_run": { "message": "Spustit" },
   "server_commands": { "message": "Příkazy serveru" },
   "prompt_params": { "message": "Zadejte parametry pro $1", "placeholders": { "1": { "content": "$1" } } },
-  "disconnected_title": {"message": "Odpojeno – Kliknutím obnovte"}
+  "disconnected_title": {"message": "Odpojeno – Kliknutím obnovte"},
+  "global_ban": {"message": "🔨 Globálny trvalý zákaz"},
+  "global_unban": {"message": "🔨 Globální zrušení zákazu"},
+  "global_actions": {"message": "📡 Globální akce"}
 }

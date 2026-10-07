@@ -172,5 +172,8 @@
   "btn_run": { "message": "Ausführen" },
   "server_commands": { "message": "Serverbefehle" },
   "prompt_params": { "message": "Parameter für $1 eingeben", "placeholders": { "1": { "content": "$1" } } },
-  "disconnected_title": {"message": "Verbindung getrennt – Zum Aktualisieren klicken"}
+  "disconnected_title": {"message": "Verbindung getrennt – Zum Aktualisieren klicken"},
+  "global_ban": {"message": "🔨 Globaler Dauerbann"},
+  "global_unban": {"message": "🔨 Globale Aufhebung der Sperre"},
+  "global_actions": {"message": "📡 Globale Aktionen"}
 }

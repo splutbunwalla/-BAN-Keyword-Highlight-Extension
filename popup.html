@@ -53,7 +53,6 @@
             border-radius: 16px;
             border: 1px solid #333;
             padding: 12px;
-            /* A subtle shadow makes the edge look crisp against the background */
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
             display: flex;
             flex-direction: column;
@@ -76,7 +75,7 @@
         }
 
         .setting-row {
-            display: flex; /* Changed from grid to flex for better control */
+            display: flex; 
             align-items: center;
             gap: 10px;
             margin-top: 8px;
@@ -86,18 +85,16 @@
         .setting-row label {
             font-size: 11px;
             color: #bbb;
-            flex: 0 0 70px; /* Fixed width for labels so inputs align */
+            flex: 0 0 70px; 
         }
 
-        /* The vertical container for the two rows of inputs */
         .input-stack {
             display: flex;
             flex-direction: column;
             gap: 6px;
-            flex: 1; /* Take up all remaining horizontal space */
+            flex: 1; 
         }
 
-        /* Horizontal rows inside the stack */
         .input-group {
             display: flex;
             align-items: center;
@@ -115,7 +112,7 @@
         input[type="color"] {
             width: 24px;
             height: 24px;
-            flex-shrink: 0; /* Prevent them from squishing */
+            flex-shrink: 0; 
             border: 1px solid #111;
             border-radius: 4px;
             background: none;
@@ -153,7 +150,6 @@
             margin-bottom: 8px;
         }
 
-        /* Dark slim scrollbar */
         .keyword-list::-webkit-scrollbar {
             width: 4px;
             display: block;
@@ -189,7 +185,6 @@
             flex-grow: 1;
         }
 
-        /* Buttons */
         #add-msg-btn {
             width: 24px !important;
             min-width: 24px;
@@ -216,7 +211,6 @@
             color: #ff4d4d;
         }
 
-        /* Header */
         .toggle-section {
             display: flex;
             justify-content: space-between;
@@ -236,7 +230,6 @@
             font-style: italic;
         }
 
-        /* Toggle Switch */
         .switch {
             position: relative;
             display: inline-block;
@@ -282,7 +275,6 @@
             transform: translateX(16px);
         }
 
-        /* Message Spanning Button */
         .msg-grid-container {
             display: flex;
             gap: 5px;
@@ -317,8 +309,8 @@
         }
 
         .item-info {
-            flex: 1; /* This is the magic property */
-            min-width: 0; /* Allows text truncation to work properly */
+            flex: 1; 
+            min-width: 0; 
             display: flex;
             flex-direction: column;
             gap: 2px;
@@ -336,7 +328,7 @@
             color: white;
             padding: 5px;
             border-radius: 4px;
-            resize: vertical; /* Allows user to drag it larger if needed */
+            resize: vertical; 
             font-family: inherit;
             font-size: 12px;
         }
@@ -357,7 +349,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px; /* Space between header and the list */
+            margin-bottom: 8px; 
         }
 
         .section-title {
@@ -367,7 +359,7 @@
 
         .message-actions {
             display: flex;
-            gap: 4px; /* Space between Export and Import buttons */
+            gap: 4px; 
         }
 
         .mini-btn {
@@ -395,14 +387,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #777; /* Gray when sound is OFF */
+            color: #777; 
             transition: all 0.2s ease;
             margin-right: 5px;
         }
 
-        /* Color when sound is ON */
         .icon-btn.active {
-            color: #ff0033; /* Your accent red */
+            color: #ff0033; 
             background: rgba(255, 0, 51, 0.1);
             border-color: #ff0033;
         }
@@ -432,7 +423,6 @@
             box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
         }
 
-        /* Chrome / Edge */
         input[type="color"]::-webkit-color-swatch-wrapper {
             padding: 3px;
         }
@@ -442,7 +432,6 @@
             border: none;
         }
 
-        /* Hover / focus polish */
         input[type="color"]:hover {
             border-color: #666;
         }
@@ -465,7 +454,6 @@
             border-color: #666;
         }
 
-        /* Pickr dark theme overrides */
         .pcr-app {
             background: #1e2124 !important;
             border: 1px solid #333;
@@ -493,7 +481,7 @@
     <div class="toggle-section">
         <div class="title-wrapper">
             <span class="section-title-big" data-i18n="extension_name">Wreckfest 2 Admin Tool (HH)</span>
-            <div class="version-tag">v1.92</div>
+            <div class="version-tag">v1.95</div>
         </div>
         <label class="switch">
             <input id="toggleCheckbox" type="checkbox">
@@ -585,7 +573,7 @@
         </div>
     </div>
 
-    <div class="control-group" style="border-bottom: none;">
+    <div class="control-group">
         <div class="section-header">
             <div class="section-title" data-i18n="popup_title_messages">Messages</div>
             <div class="message-actions">
@@ -604,7 +592,7 @@
             <button id="add-msg-btn">+</button>
         </div>
     </div>
-	<div class="control-group">
+	<div class="control-group" style="border-bottom: none;">
 		<div class="setting-row">
 			<label data-i18n="settings_language">Language</label>
 			<select id="languageSelect" class="hh-chat-player-select" style="flex: 1; background: #40444b; color: white; border: 1px solid #222; border-radius: 4px; padding: 2px;">
@@ -624,13 +612,17 @@
 				<option value="cs">Čeština (cs)</option>
 			</select>
 		</div>
-	</div>
 	
-	<div class="setting-row">
-		<label data-i18n="settings_cmd_delay">Command Delay (ms)</label>
-		<input id="cmdDelay" type="number" value="1000" step="100" style="width: 60px;">
+        <div class="setting-row">
+            <label data-i18n="settings_cmd_delay">Command Delay (ms)</label>
+            <input id="cmdDelay" type="number" value="1000" step="100" style="width: 60px;">
+        </div>
+        
+        <div style="margin-top: 10px;">
+            <label for="server-ids" style="display: block; font-size: 12px; margin-bottom: 5px;" data-i18n="settings_global_ids">Global Service IDs (comma-separated):</label>
+            <input type="text" id="server-ids" placeholder="e.g. 123456, 234567, 345678" style="width: 100%; box-sizing: border-box;" />
+        </div>
 	</div>
-	
 				
 	<div id="admin-login" style="display: none; margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px;">
 		<h3>Admin DB Access</h3>

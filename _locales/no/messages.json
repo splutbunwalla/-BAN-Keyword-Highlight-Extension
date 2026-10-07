@@ -173,5 +173,8 @@
   "btn_run": { "message": "Kjør" },
   "server_commands": { "message": "Serverkommandoer" },
   "prompt_params": { "message": "Skriv inn parametere for $1", "placeholders": { "1": { "content": "$1" } } },
-  "disconnected_title": {"message": "Frakoblet – Klikk for å oppdatere"}
+  "disconnected_title": {"message": "Frakoblet – Klikk for å oppdatere"},
+  "global_ban": {"message": "🔨 Globalt permanent utestengingsforbud"},
+  "global_unban": {"message": "🔨 Global oppheving"},
+  "global_actions": {"message": "📡 Globale handlinger"}
 }

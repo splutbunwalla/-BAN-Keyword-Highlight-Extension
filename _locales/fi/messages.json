@@ -173,5 +173,8 @@
   "btn_run": { "message": "Suorita" },
   "server_commands": { "message": "Palvelimen komennot" },
   "prompt_params": { "message": "Syötä parametrit kohteelle $1", "placeholders": { "1": { "content": "$1" } } },
-  "disconnected_title": {"message": "Yhteys katkesi - Päivitä napsauttamalla"}
+  "disconnected_title": {"message": "Yhteys katkesi - Päivitä napsauttamalla"},
+  "global_ban": {"message": "🔨 Maailmanlaajuinen pysyvä porttikielto"},
+  "global_unban": {"message": "🔨 Globaali porttikiellon poisto"},
+  "global_actions": {"message": "📡 Globaalit toiminnot"}
 }

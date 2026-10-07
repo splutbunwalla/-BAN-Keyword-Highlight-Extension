@@ -173,5 +173,8 @@
   "btn_run": { "message": "Ausféieren" },
   "server_commands": { "message": "Server-Kommandoen" },
   "prompt_params": { "message": "Parameter fir $1 aginn", "placeholders": { "1": { "content": "$1" } } },
-  "disconnected_title": {"message": "Verbindung ënnerbrach - Klickt fir ze aktualiséieren"}
+  "disconnected_title": {"message": "Verbindung ënnerbrach - Klickt fir ze aktualiséieren"},
+  "global_ban": {"message": "🔨 Globale permanente Bann"},
+  "global_unban": {"message": "🔨 Global Spär ophiewen"},
+  "global_actions": {"message": "📡 Global Aktiounen"}
 }

@@ -173,5 +173,9 @@
   "btn_run": { "message": "Kør" },
   "server_commands": { "message": "Serverkommandoer" },
   "prompt_params": { "message": "Indtast parametre for $1", "placeholders": { "1": { "content": "$1" } } },
-  "disconnected_title": {"message": "Forbindelse afbrudt - Klik for at opdatere"}
+  "disconnected_title": {"message": "Forbindelse afbrudt - Klik for at opdatere"},
+  "global_ban": {"message": "🔨 Globalt permanent udelukkelse"},
+  "global_unban": {"message": "🔨 Global ophævelse af udelukkelse"},
+  "global_actions": {"message": "📡 Globale handlinger"}
 }
+

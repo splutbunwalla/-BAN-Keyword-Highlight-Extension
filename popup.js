@@ -54,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveKeyBtn = document.getElementById('save-key-btn');
     const apiKeyInput = document.getElementById('api-key-input');
     const adminStatus = document.getElementById('admin-status');
+    const serverIdsInput = document.getElementById('server-ids');
 
     let clickCount = 0;
     let clickTimer;
@@ -61,14 +62,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- The Secret Handshake Logic ---
     versionText.addEventListener('click', () => {
         clickCount++;
-        clearTimeout(clickTimer); // Reset the timer on each click
+        clearTimeout(clickTimer);
 
         if (clickCount >= 5) {
-            // Unhide the panel and reset the count
             adminLogin.style.display = 'block';
             clickCount = 0; 
         } else {
-            // If they pause for more than 400ms, reset the count to 0
             clickTimer = setTimeout(() => {
                 clickCount = 0;
             }, 400); 
@@ -79,7 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
     saveKeyBtn.addEventListener('click', () => {
         const key = apiKeyInput.value.trim();
         if (key) {
-            // Save to Chrome's local storage
             chrome.storage.local.set({ 
                 isAdmin: true, 
                 apiKey: key 
@@ -90,39 +88,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Optional: Keep it unhidden if they are already an admin ---
     chrome.storage.local.get(['isAdmin'], (result) => {
         if (result.isAdmin) {
             adminLogin.style.display = 'block';
             apiKeyInput.placeholder = "API Key already set";
         }
     });
-});
 
+    // --- Global Service IDs Save/Load ---
+    if (serverIdsInput) {
+        chrome.storage.sync.get(['globalServerIds'], (result) => {
+            if (result.globalServerIds) {
+                serverIdsInput.value = result.globalServerIds.join(', ');
+            }
+        });
+
+        serverIdsInput.addEventListener('change', (e) => {
+            const rawInput = e.target.value;
+            const cleanIdsArray = rawInput.split(',').map(id => id.trim()).filter(id => id !== '');
+            
+            chrome.storage.sync.set({ globalServerIds: cleanIdsArray }, () => {
+                console.log("Saved Global Server IDs:", cleanIdsArray);
+            });
+        });
+    }
+});
 
 function updateContentScript() {
     const settings = {
-        // Primary
         primaryColorFirst: document.getElementById("primaryColorFirst").value,
         primaryColorMiddle: document.getElementById("primaryColorMiddle").value,
         primaryColorEnd: document.getElementById("primaryColorEnd").value,
         primaryTextColor: document.getElementById("primaryTextColor").value,
         primaryBorderColor: document.getElementById("primaryBorderColor").value,
-
-        // Secondary
         secondaryColorFirst: document.getElementById("secondaryColorFirst").value,
         secondaryColorMiddle: document.getElementById("secondaryColorMiddle").value,
         secondaryColorEnd: document.getElementById("secondaryColorEnd").value,
         secondaryTextColor: document.getElementById("secondaryTextColor").value,
         secondaryBorderColor: document.getElementById("secondaryBorderColor").value,
-
-        // SteamID
         steamidColorFirst: document.getElementById("steamidColorFirst").value,
         steamidColorMiddle: document.getElementById("steamidColorMiddle").value,
         steamidColorEnd: document.getElementById("steamidColorEnd").value,
         steamidTextColor: document.getElementById("steamidTextColor").value,
         steamidBorderColor: "#FFFFFF",
-		
 		preferredLanguage: document.getElementById("languageSelect").value,
 		cmdDelay: parseInt(document.getElementById("cmdDelay").value) || 1000
     };
@@ -133,7 +141,6 @@ function updateContentScript() {
         }
     });
 
-    // Save to storage
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
         chrome.storage.sync.set(settings);
@@ -333,7 +340,6 @@ function loadSettings() {
             if (input) input.value = savedColor;
             swatch.style.backgroundColor = savedColor;
             
-            // Localize swatch title based on ID
             swatch.title = chrome.i18n.getMessage(targetId) || targetId;
 
             const pickr = Pickr.create({
@@ -388,7 +394,6 @@ langSelect.addEventListener("change", (e) => {
 	updatePopupLanguage(e.target.value);
 
     updateContentScript();
-
     localizeHtml();
 
     renderKeywords("primary-list", KEYWORDS, "keywords");
@@ -518,37 +523,31 @@ let customI18nMessages = null;
 
 async function updatePopupLanguage(lang) {
     if (!lang || lang === "auto") {
-        customI18nMessages = null; // Revert to browser default
+        customI18nMessages = null; 
         localizeHtml();
         return;
     }
 
     try {
-        // Fetch English as the ultimate fallback
         const enRes = await fetch(chrome.runtime.getURL('_locales/en/messages.json'));
         const enMsgs = await enRes.json();
 
-        // Fetch the user's selected language
         const langRes = await fetch(chrome.runtime.getURL(`_locales/${lang}/messages.json`));
         const langMsgs = await langRes.json();
 
-        // Merge: selected language overwrites English where keys exist
         customI18nMessages = { ...enMsgs, ...langMsgs };
     } catch (e) {
         console.error("Failed to fetch localization files:", e);
-        customI18nMessages = null; // Fallback to default if files aren't found
+        customI18nMessages = null;
     }
 
-    // Refresh the UI with the newly fetched messages
     localizeHtml();
 }
 
-// Custom wrapper to get the message
 function getI18nMsg(key) {
     if (customI18nMessages && customI18nMessages[key]) {
         return customI18nMessages[key].message;
     }
-    // Fallback to Chrome's native i18n if custom isn't loaded or key is missing
     return chrome.i18n.getMessage(key); 
 }
 

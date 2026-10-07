@@ -173,5 +173,8 @@
   "btn_run": { "message": "Exécuter" },
   "server_commands": { "message": "Commandes du serveur" },
   "prompt_params": { "message": "Entrez les paramètres pour $1", "placeholders": { "1": { "content": "$1" } } },
-  "disconnected_title": {"message": "Déconnecté - Cliquez pour rafraîchir"}
+  "disconnected_title": {"message": "Déconnecté - Cliquez pour rafraîchir"},
+  "global_ban": {"message": "🔨 Bannissement permanent global"},
+  "global_unban": {"message": "🔨 Débannissement global"},
+  "global_actions": {"message": "📡 Actions globales"}
 }

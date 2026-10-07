@@ -27,13 +27,23 @@
 	let lastLogActivityTime = Date.now();
 	const INACTIVITY_RELOAD_MS = 15 * 60 * 1000; // 5 minutes
 	
+    const getServiceId = () => {
+        let sid = new URLSearchParams(window.location.search).get('serviceid');
+        if (sid) return sid;
+        
+        try { sid = new URLSearchParams(window.top.location.search).get('serviceid'); } catch(e) {}
+        if (sid) return sid;
+        
+        try { sid = new URLSearchParams(window.parent.location.search).get('serviceid'); } catch(e) {}
+        return sid || null;
+    };
+	
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
 
     const getKeywordText = k => typeof k === 'string' ? k : k.text;
 
 	const initLocalization = async (langSetting) => {
-		// If 'auto', use browser language
 		if (!langSetting || langSetting === 'auto') {
 			currentLanguage = chrome.i18n.getUILanguage().split('-')[0];
 		} else {
@@ -50,11 +60,9 @@
 		}
 	};
 
-
 	const getI18nMsg = (key, placeholders = []) => {
 		if (customMessages && customMessages[key]) {
 			let msg = customMessages[key].message;
-			// Handle $1, $2 placeholders
 			if (Array.isArray(placeholders)) {
 				placeholders.forEach((p, i) => {
 					msg = msg.replace(`$${i + 1}`, p);
@@ -68,22 +76,16 @@
 	const cleanLogText = (rawText) => {
 		if (!rawText) return "";
 		
-		// Split the raw blob into individual lines
 		return rawText.split('\n')
 			.map(line => {
 				let cleaned = line.trim();
 				if (!cleaned) return null;
-
-				// 1. Remove timestamps: matches [18:38:39.228] or 18:38:39.228:
 				cleaned = cleaned.replace(/^\[?\d{2}:\d{2}:\d{2}(\.\d{3})?\]?:?\s*/, "");
-				// 2. Fix internal line breaks (broken name/message)
-				// This collapses spaces but preserves the line as a single unit
 				cleaned = cleaned.replace(/\s+/g, " ");
-
 				return cleaned.trim();
 			})
 			.filter(line => line !== null && line.length > 0)
-			.join('\n'); // Standard newline works best for most clipboards
+			.join('\n'); 
 	};
 	
 const handleModAction = (type, sid, options = {}) => {
@@ -94,7 +96,8 @@ const handleModAction = (type, sid, options = {}) => {
 	const {
 		duration = PERMA_DUR,
 		role = 'default',
-		name: optionName
+		name: optionName,
+        global = false 
 	} = options;
 
 	const fallbackName = getI18nMsg("queue_manual_entry");
@@ -105,7 +108,13 @@ const handleModAction = (type, sid, options = {}) => {
 	switch (type) {
 		case 'ban':
 			cmd = duration === PERMA_DUR ? `ban ${sid}` : `ban ${sid},${duration}`;
-			copyToClipboard( `${resolvedName} (${sid}) suspended by Server for ${duration} minutes` );
+            
+            // Clipboard logic
+            let copyMsg = `${resolvedName} (${sid}) suspended by Server for ${duration} minutes`;
+            if (global) {
+                copyMsg += ` ALL SERVERS`;
+            }
+			copyToClipboard(copyMsg);
 			break;
 
 		case 'role':
@@ -115,7 +124,6 @@ const handleModAction = (type, sid, options = {}) => {
 
 	safeSendMessage({ action: "PROXY_COMMAND", cmd,	autoSubmit: true });
 	showToast(getI18nMsg("toast_sent", [type.toUpperCase()]));
-
 };
 
 	const SERVER_COMMANDS = [
@@ -128,45 +136,23 @@ const handleModAction = (type, sid, options = {}) => {
 		{ cmd: "grid_size", aliases: "", desc: "Set max participants (grid size).", params: true },
 		{ cmd: "race_end", aliases: "abandon", desc: "End race without processing results.", params: false },
 		{ cmd: "restart_countdown", aliases: "", desc: "Restart the lobby countdown timer.", params: false },
-		
-		
-		// { cmd: "banlist", aliases: "", desc: "Print the current ban list.", params: false },
-		// { cmd: "idle_kick", aliases: "", desc: "Print or set idle kick timer.", params: true },
-		// { cmd: "name", aliases: "", desc: "Print or set the server name.", params: true },
-		// { cmd: "description", aliases: "", desc: "Print or set server description.", params: true },
 		{ cmd: "role", aliases: "", desc: "Get or set user role (user-id, role).", params: true },
 		{ cmd: "race_director", aliases: "", desc: "Print/set auto-assigned director role.", params: true },
 		{ cmd: "password", aliases: "", desc: "Set/check password (use 'disabled' to open).", params: true },
 		{ cmd: "status", aliases: "", desc: "Print current game server status.", params: false },
-		// { cmd: "version", aliases: "", desc: "Print game version.", params: false },
-		// { cmd: "print_config", aliases: "", desc: "Print current server configuration.", params: false },
 		{ cmd: "restart", aliases: "", desc: "Restart the server immediately.", params: false },
 		{ cmd: "shutdown", aliases: "", desc: "Request a graceful server shutdown.", params: false },
 		{ cmd: "exit", aliases: "quit", desc: "Exit the server application.", params: false },
-		
 		{ cmd: "players", aliases: "plrs", desc: "List all connected players.", params: false },
 		{ cmd: "bot", aliases: "add_bot", desc: "Add AI players (optional count).", params: true },
 		{ cmd: "bots", aliases: "bot_count", desc: "Print or set total number of bots.", params: true },
-
-		
-		// { cmd: "level", aliases: "track", desc: "Print or set the current track.", params: true },
-		// { cmd: "levels", aliases: "tracks", desc: "List all available environments and levels.", params: false },
-		// { cmd: "weather", aliases: "", desc: "Print or set the current weather.", params: true },
-		// { cmd: "weathers", aliases: "", desc: "List weathers for the current level.", params: false },
 		{ cmd: "damage", aliases: "", desc: "Change damage settings or list types.", params: true },
 		{ cmd: "rules", aliases: "", desc: "List current event rules.", params: false },
 		{ cmd: "event", aliases: "", desc: "Print current event settings.", params: false },
-
 		{ cmd: "roles", aliases: "", desc: "List all available roles and admins.", params: false },
-
-		// --- Utilities ---
 		{ cmd: "countdown", aliases: "", desc: "Set starting lobby countdown (seconds).", params: true },
-		// { cmd: "race_end_timer", aliases: "", desc: "Print or set the race end timer.", params: true },
-		// { cmd: "telemetry_player", aliases: "", desc: "Set player ID for rich data packets.", params: true },
-		// { cmd: "show_join_errors", aliases: "", desc: "Toggle console visibility for join errors.", params: true },
 		{ cmd: "cup", aliases: "", desc: "Manage cup settings.", params: true },
 		{ cmd: "eventloop", aliases: "el", desc: "Manage event loop settings.", params: true },
-		// { cmd: "help", aliases: "commands, ?", desc: "List all available commands.", params: false }
 	];
 
 	let helpPage = 0;
@@ -182,7 +168,7 @@ const handleModAction = (type, sid, options = {}) => {
 		const el = document.createElement('div');
 		el.style.pointerEvents = 'auto'
 		el.id = 'hh-help-view';
-		el.className = 'hh-chat-view'; // Reuses your modal base styles
+		el.className = 'hh-chat-view'; 
 		el.style.pointerEvents = 'auto'
 		el.innerHTML = `
 			<div class="hh-panel-header">
@@ -226,7 +212,7 @@ const handleModAction = (type, sid, options = {}) => {
 		container.innerHTML = '';
 		paginated.forEach(c => {
 			const line = document.createElement('div');
-			line.className = 'hh-mod-line'; // Reuses styling for rows
+			line.className = 'hh-mod-line'; 
 			line.style.cursor = 'pointer';
 			line.innerHTML = `
 				<div style="flex-grow:1">
@@ -345,7 +331,6 @@ const handleModAction = (type, sid, options = {}) => {
 			actionMenu.className = 'hh-action-menu';
 			document.body.appendChild(actionMenu);
 			
-			// Add the click listener to close it when clicking elsewhere
 			document.addEventListener('click', (e) => {
 				 if (actionMenu && !actionMenu.contains(e.target)) {
 					 actionMenu.style.display = 'none';
@@ -458,7 +443,7 @@ const handleModAction = (type, sid, options = {}) => {
 	function createModView() {
 		const el = document.createElement('div');
 		el.id = 'hh-mod-view';
-		el.className = 'hh-chat-view'; // Reusing chat window base styles
+		el.className = 'hh-chat-view';
 		el.style.resize = 'both';
 		el.style.overflow = 'auto';
 		el.style.minWidth = '300px';
@@ -506,20 +491,17 @@ const handleModAction = (type, sid, options = {}) => {
 		}
 		wrapper.appendChild(el);
 		
-		// Event Listeners for Live Filtering
 		const inputs = ['hh-mod-filter-type', 'hh-mod-search', 'hh-mod-time-start', 'hh-mod-time-end'];
 		inputs.forEach(id => {
 			el.querySelector(`#${id}`).addEventListener('input', renderModLines);
 		});
 		
-		// Copy Visible Mod Log
 		el.querySelector('#hh-copy-mod').onclick = () => {
 			const text = getVisibleModText();
 			copyToClipboard(cleanLogText(text));    
 			showToast(getI18nMsg("toast_mod_copied"));
 		};
 
-		// Export Mod Log
 		el.querySelector('#hh-export-mod').onclick = () => {
 			const text = getVisibleModText();
 			const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -551,7 +533,6 @@ const handleModAction = (type, sid, options = {}) => {
 		const container = document.getElementById('hh-mod-content');
 		if (!container) return;
 
-		// Get filter values
 		const typeFilter = document.getElementById('hh-mod-filter-type').value;
 		const searchText = document.getElementById('hh-mod-search').value.toLowerCase();
 		const startTime = document.getElementById('hh-mod-time-start').value;
@@ -560,18 +541,12 @@ const handleModAction = (type, sid, options = {}) => {
 		container.innerHTML = '';
 		
 		const filtered = modHistory.filter(m => {
-			// 1. Action Type Filter
 			if (typeFilter !== 'all' && m.action !== typeFilter) return false;
-
-			// 2. Search Text Filter (Name or ID)
 			if (searchText && !m.targetName.toLowerCase().includes(searchText) && !m.targetId.includes(searchText)) {
 				return false;
 			}
-
-			// 3. Timepoint Filter
 			if (startTime && m.timestamp < startTime) return false;
 			if (endTime && m.timestamp > endTime) return false;
-
 			return true;
 		});
 
@@ -579,8 +554,6 @@ const handleModAction = (type, sid, options = {}) => {
 			const line = document.createElement('div');
 			line.className = 'hh-mod-line';
 			line.style.borderLeft = m.action === 'BANNED' ? '3px solid #ff4444' : '3px solid #ff8800';
-			
-            // Force block layout so the browser copies it as a single line
             line.style.display = 'block';
             
 			const color = m.action === 'BANNED' ? '#ff4444' : '#ffcc00';
@@ -686,7 +659,6 @@ const updateHeartbeat = () => {
 
     if (!isLogFrame) return;
 
-    // Detection Logic: If the stream stops loading, it is 'complete'
     if (document.readyState === 'complete' && !isDisconnected) {
         console.log("HH: Stream finished (ReadyState Complete). Marking as disconnected.");
         isDisconnected = true;
@@ -701,13 +673,11 @@ const updateHeartbeat = () => {
     }
 
     if (isDisconnected) {
-        // Disconnected/Stuck State
-        dot.style.background = "#ffcc00"; // Yellow
+        dot.style.background = "#ffcc00";
         dot.style.boxShadow = "0 0 10px #ffcc00";
         dot.title = "Disconnected - Page Load Complete";
         dot.classList.remove('pulsing'); 
         
-        // Prevent refresh loops by using a flag
         if (!reloadInitiated) {
             reloadInitiated = true;
             console.log("HH: Connection lost. Reloading in 3 seconds...");
@@ -716,13 +686,11 @@ const updateHeartbeat = () => {
             }, 3000);
         }
     } else if (isEnabled) {
-        // Active State
         dot.style.background = "#00ff00"; 
         dot.style.boxShadow = "0 0 5px #00ff00";
         dot.title = getI18nMsg("status_active");
         dot.classList.add('pulsing');
     } else {
-        // Standby State
         dot.style.background = "#ffcc00"; 
         dot.style.boxShadow = "0 0 5px #ffcc00";
         dot.title = getI18nMsg("status_standby");
@@ -780,8 +748,6 @@ const updateHeartbeat = () => {
         const logRoot = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
         const rawText = logRoot.innerText || logRoot.textContent;
 
-        // Split by timestamp but KEEP the timestamp in the resulting strings
-        // This regex splits at the start of a timestamp without consuming it
         const entries = rawText.split(/(?=\d{2}:\d{2}:\d{2}\.\d{3}:)/);
 
         console.log(`HH Debug: Bootstrap processing ${entries.length} entries.`);
@@ -791,7 +757,6 @@ const updateHeartbeat = () => {
 			const lower = cleaned.toLowerCase();
             
 			if (lower.includes("chat:")) {
-                // This now sends the string WITH the timestamp to processChatLog
                 processChatLog(cleaned);
             }
 			
@@ -815,7 +780,7 @@ const updateHeartbeat = () => {
                 top: '10px',
                 right: '25px',
                 display: 'flex',
-                flexDirection: 'column', // Stacks Toolbar on top, Queue below
+                flexDirection: 'column', 
                 alignItems: 'flex-end',
                 gap: '10px',
                 zIndex: '2147483647',
@@ -869,7 +834,6 @@ const updateHeartbeat = () => {
         toolbar.id = 'hh-toolbar';
 		toolbar.style.pointerEvents = 'auto';
 		
-        // Standard Tools
         const tools = [
             {label: getI18nMsg("tool_sid_label"), type: 'info', icon: '🛠️', id: 'hh-sid-trigger', desc: getI18nMsg("tool_sid_desc")},
             {label: getI18nMsg("tool_chat_label"), type: 'info', icon: '💬', action: 'openChat', desc: getI18nMsg("tool_chat_desc")},
@@ -892,21 +856,18 @@ const updateHeartbeat = () => {
                 if (tool.id === 'hh-sid-trigger') {
                     e.stopPropagation();
                     const menu = document.getElementById('hh-toolbar-sid-submenu');
-                    // Close other menus
                     document.getElementById('hh-toolbar-msg-submenu').style.display = 'none';
                     document.getElementById('hh-toolbar-cmd-submenu').style.display = 'none';
                     menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
                 } else if (tool.id === 'hh-cmd-trigger') {
 					e.stopPropagation();
                     const menu = document.getElementById('hh-toolbar-cmd-submenu');
-                    // Close other menus
                     document.getElementById('hh-toolbar-msg-submenu').style.display = 'none';
                     document.getElementById('hh-toolbar-sid-submenu').style.display = 'none';
                     menu.style.display = menu.style.display === 'block' ? 'none' : 'block'					
                 } else if (tool.id === 'hh-msg-trigger') {
                     e.stopPropagation();
                     const menu = document.getElementById('hh-toolbar-msg-submenu');
-                    // Close other menus
                     document.getElementById('hh-toolbar-sid-submenu').style.display = 'none';
                     document.getElementById('hh-toolbar-cmd-submenu').style.display = 'none';
                     menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
@@ -914,13 +875,11 @@ const updateHeartbeat = () => {
                     togglePlayerList();
                 } else if (tool.cmd === 'restart') {
                     if (!restartClickTimer) {
-                        // First click
                         restartClickTimer = setTimeout(() => {
                             restartClickTimer = null;
                             showToast(getI18nMsg("toast_restart_confirm"));
-                        }, 500); // Window for the second click
+                        }, 500); 
                     } else {
-                        // Second click within 500ms
                         clearTimeout(restartClickTimer);
                         restartClickTimer = null;
                         safeSendMessage({action: "PROXY_COMMAND", cmd: "restart"});
@@ -931,15 +890,12 @@ const updateHeartbeat = () => {
                 } else if (tool.action === 'perma') {
                     sid = prompt(getI18nMsg("prompt_steam_id_to_ban"));
                     if (!sid || isNaN(sid)) return;
-                    
 					handleBanAction(sid, PERMA_DUR);
-					
                 } else if (tool.action === 'openModLog') {
 					const view = document.getElementById('hh-mod-view') || createModView();
 					renderModLines();
 					view.style.display = 'flex';
 				} else {
-                    // Standard commands (users, etc.)
                     safeSendMessage({action: "PROXY_COMMAND", cmd: tool.cmd});
                     showToast(getI18nMsg("toast_sent", [tool.label]));
                 }
@@ -962,7 +918,6 @@ const updateHeartbeat = () => {
         msgSubmenu.id = 'hh-toolbar-msg-submenu';
         msgSubmenu.className = 'hh-action-menu';
         msgSubmenu.style.display = 'none';
-        
         msgSubmenu.style.top = '100%';
         msgSubmenu.style.left = '0';
         msgSubmenu.style.marginTop = '5px'; 
@@ -970,10 +925,10 @@ const updateHeartbeat = () => {
 
 		const msgBtn = toolbar.querySelector('#hh-msg-trigger');
         if (msgBtn) {
-            msgBtn.style.position = 'relative'; // Make button the anchor
+            msgBtn.style.position = 'relative'; 
             msgBtn.appendChild(msgSubmenu);
         } else {
-            toolbar.appendChild(msgSubmenu); // Fallback
+            toolbar.appendChild(msgSubmenu); 
         }
 
         const cmdSubmenu = document.createElement('div');
@@ -989,10 +944,10 @@ const updateHeartbeat = () => {
 
 		const cmdBtn = toolbar.querySelector('#hh-cmd-trigger');
         if (cmdBtn) {
-            cmdBtn.style.position = 'relative'; // Make button the anchor
+            cmdBtn.style.position = 'relative'; 
             cmdBtn.appendChild(cmdSubmenu);
         } else {
-            toolbar.appendChild(cmdSubmenu); // Fallback
+            toolbar.appendChild(cmdSubmenu); 
         }
 
         const cmdActions = [
@@ -1000,7 +955,6 @@ const updateHeartbeat = () => {
             {label: getI18nMsg("tool_list_label"), type: 'list', icon: '🗒️', cmd: 'el list', desc: getI18nMsg("tool_list_desc")},
             {label: getI18nMsg("tool_select_label"), type: 'select', icon: '✅', cmd: 'el select', desc: getI18nMsg("tool_select_desc")},
 	        {label: getI18nMsg("tool_help_label"), type: 'info', icon: '❓', action: 'openHelp', desc: getI18nMsg("tool_help_desc")},
-
 			{label: '', type: 'matrix', icon: '🕶️', desc: getI18nMsg("tool_spluts_desc")}
         ];
 				
@@ -1035,36 +989,71 @@ const updateHeartbeat = () => {
         sidSubmenu.style.display = 'none';
         sidSubmenu.style.top = '100%';
         sidSubmenu.style.bottom = 'auto';
+        
+        sidSubmenu.innerHTML = `
+            <div class="hh-menu-row" data-type="prompt_ban" data-dur="${PERMA_DUR}">${getI18nMsg("submenu_permanent_ban")}</div>
+            <div class="hh-menu-row" data-type="prompt_unban">${getI18nMsg("menu_unban") || 'Local Unban'}</div>
+            <div class="hh-menu-row" data-type="parent">${getI18nMsg("menu_role")}
+                <div class="hh-submenu">
+                    <div class="hh-submenu-item" data-type="prompt_role" data-role="default">${getI18nMsg("submenu_set_default")}</div>
+                    <div class="hh-submenu-item" data-type="prompt_role" data-role="vip">${getI18nMsg("submenu_set_vip")}</div>
+                    <div class="hh-submenu-item" data-type="prompt_role" data-role="moderator">${getI18nMsg("submenu_set_moderator")}</div>
+                    <div class="hh-submenu-item" data-type="prompt_role" data-role="admin">${getI18nMsg("submenu_set_admin")}</div>
+                </div>
+            </div>
+            <div class="hh-menu-row" data-type="parent">${getI18nMsg("global_actions") || 'Global Actions'}
+                <div class="hh-submenu">
+                    <div class="hh-submenu-item" data-type="prompt_global_ban" data-dur="${PERMA_DUR}">${getI18nMsg("global_ban") || 'Global Ban'}</div>
+                    <div class="hh-submenu-item" data-type="prompt_global_unban">${getI18nMsg("global_unban") || 'Global Unban'}</div>
+                    <div class="hh-submenu-item" data-type="prompt_global_role" data-role="default">${getI18nMsg("submenu_set_default")}</div>
+                    <div class="hh-submenu-item" data-type="prompt_global_role" data-role="vip">${getI18nMsg("submenu_set_vip")}</div>
+                    <div class="hh-submenu-item" data-type="prompt_global_role" data-role="moderator">${getI18nMsg("submenu_set_moderator")}</div>
+                    <div class="hh-submenu-item" data-type="prompt_global_role" data-role="admin">${getI18nMsg("submenu_set_admin")}</div>
+                </div>
+            </div>
+        `;
 
-        const sidActions = [
-            {label: getI18nMsg("submenu_permanent_ban"), type: 'ban', dur: PERMA_DUR},
-            {label: getI18nMsg("submenu_set_default"), type: 'role', role: 'default'},
-            {label: getI18nMsg("submenu_set_vip"), type: 'role', role: 'vip'},
-            {label: getI18nMsg("submenu_set_moderator"), type: 'role', role: 'moderator'},
-            {label: getI18nMsg("submenu_set_admin"), type: 'role', role: 'admin'}
-        ];
+		sidSubmenu.onclick = (e) => {
+            const item = e.target.closest('.hh-menu-row, .hh-submenu-item');
+            if (!item || item.getAttribute('data-type') === 'parent') return;
 
-        sidActions.forEach(act => {
-            const item = document.createElement('div');
-            item.className = 'hh-menu-item';
-            item.textContent = act.label;
-            item.onclick = (e) => {
-                e.stopPropagation();
-                const sid = prompt(`${getI18nMsg("prompt_steam_id",[act.label])}`);
-                if (!sid || isNaN(sid) || sid.length !== 17) return;
+            e.stopPropagation();
+            const type = item.getAttribute('data-type');
+            const role = item.getAttribute('data-role');
+            const dur = item.getAttribute('data-dur');
+            const label = item.textContent.replace('Global Role: ', '');
 
-				handleModAction(act.type, sid, {
-							role: act.role,
-							duration: act.dur,
-							name: getI18nMsg("queue_manual_entry")
-						});
-                sidSubmenu.style.display = 'none';
-            };
-            sidSubmenu.appendChild(item);
-        });
+            const sid = prompt(`${getI18nMsg("prompt_steam_id", [label]) || 'Enter SteamID for: ' + label}`);
+            if (!sid || isNaN(sid) || sid.length !== 17) return;
 
-        toolbar.appendChild(sidSubmenu); // Add to toolbar
+            if (type === 'prompt_global_ban') {
+                const cmd = `ban ${sid}`;
+                handleModAction('ban', sid, { duration: dur, name: getI18nMsg("queue_manual_entry"), global: true });
+                safeSendMessage({ action: "GLOBAL_COMMAND", cmd: cmd, excludeId: getServiceId() });
+                showToast("Global ban initiated via tab queue");
+            } else if (type === 'prompt_global_unban') {
+                const cmd = `unban ${sid}`;
+                safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true });
+                safeSendMessage({ action: "GLOBAL_COMMAND", cmd: cmd, excludeId: getServiceId() });
+                showToast("Global unban initiated via tab queue");
+            } else if (type === 'prompt_global_role') {
+                const cmd = `role ${sid},${role}`;
+                safeSendMessage({ action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true });
+                safeSendMessage({ action: "GLOBAL_COMMAND", cmd: cmd, excludeId: getServiceId() });
+                showToast(`Global role (${role}) initiated via tab queue`);
+            } else if (type === 'prompt_ban') {
+                handleModAction('ban', sid, { duration: dur, name: getI18nMsg("queue_manual_entry") });
+            } else if (type === 'prompt_unban') {
+                safeSendMessage({ action: "PROXY_COMMAND", cmd: `unban ${sid}`, autoSubmit: true });
+                showToast("Local unban sent");
+            } else if (type === 'prompt_role') {
+                handleModAction('role', sid, { role: role, name: getI18nMsg("queue_manual_entry") });
+            }
 
+            sidSubmenu.style.display = 'none';
+        };
+
+        toolbar.appendChild(sidSubmenu); 
 
         wrapper.prepend(toolbar);
 
@@ -1082,7 +1071,6 @@ const updateHeartbeat = () => {
 
         injectChatPlayerDropdown(chatView);
 
-        // Auto-select first online player if none selected
         if (!window.currentViewedId) {
             const firstOnline = Object.entries(NAME_MAP)
                 .find(([_, v]) => v.online);
@@ -1112,13 +1100,11 @@ const updateHeartbeat = () => {
             const term = filter.value.toLowerCase().trim();
             select.innerHTML = '';
 
-            // Add ALL Option
             const allOpt = document.createElement('option');
             allOpt.value = "ALL";
             allOpt.textContent = getI18nMsg("all_players_option");
             select.appendChild(allOpt);
 
-            // Filter and sort players
             const sorted = Object.entries(NAME_MAP)
                 .filter(([, data]) =>
                     !term || (data.name || '').toLowerCase().includes(term)
@@ -1135,7 +1121,6 @@ const updateHeartbeat = () => {
                 select.appendChild(opt);
             });
 
-            // Restore selection or default to ALL
             if (window.currentViewedId && select.querySelector(`option[value="${window.currentViewedId}"]`)) {
                 select.value = window.currentViewedId;
             } else {
@@ -1190,11 +1175,9 @@ const updateHeartbeat = () => {
 
         getUIWrapper().appendChild(panel);
 
-        // Define the logic and assign it to the persistent variable
         renderList = (filter = "") => {
             const content = document.getElementById('hh-player-list-content');
 
-            // Guard Clause: If the panel was closed, kill the reference
             if (!content) {
                 renderList = null;
                 return;
@@ -1202,14 +1185,11 @@ const updateHeartbeat = () => {
 
             content.innerHTML = "";
 
-            // 1. Filter only ONLINE players
-            // 2. Sort them alphabetically
             Object.keys(NAME_MAP)
                 .filter(id => NAME_MAP[id].online === true)
                 .sort((a, b) => (NAME_MAP[a].name || "").localeCompare(NAME_MAP[b].name || ""))
                 .forEach(id => {
                     const data = NAME_MAP[id];
-                    // 3. Apply the search filter
                     if (data.name.toLowerCase().includes(filter.toLowerCase())) {
                         const row = document.createElement('div');
                         row.className = 'hh-player-row';
@@ -1225,25 +1205,21 @@ const updateHeartbeat = () => {
             </div>
           `;
 
-                        // Copy ID logic
                         row.querySelector('.hh-player-info').onclick = () => {
                             navigator.clipboard.writeText(id);
                             showToast(getI18nMsg("toast_copied_id",[id]));
                         };
 
-                        // Profile Action
                         row.querySelector('.hh-btn-profile').onclick = (e) => {
                             e.stopPropagation();
                             safeSendMessage({action: "OPEN_TAB", url: `https://steamcommunity.com/profiles/${id}`});
                         };
 
-                        // Kick Action
                         row.querySelector('.hh-btn-kick').onclick = (e) => {
                             e.stopPropagation();
                             safeSendMessage({action: "PROXY_COMMAND", cmd: `kick ${data.connId}`});
                         };
 
-                        // Ban Action
                         row.querySelector('.hh-btn-ban').onclick = (e) => {
                             e.stopPropagation();
 							handleModAction('ban', id, PERMA_DUR);
@@ -1262,14 +1238,12 @@ const updateHeartbeat = () => {
                 });
         };
 
-        // Setup UI Events
         document.getElementById('hh-player-search').oninput = (e) => renderList(e.target.value);
         document.getElementById('hh-panel-close').onclick = () => {
             panel.remove();
             renderList = null;
         };
 
-        // Initial render
         renderList();
     };
 
@@ -1279,19 +1253,16 @@ const updateHeartbeat = () => {
         const searchInput = chatView.querySelector('.hh-chat-search');
         const select = chatView.querySelector('.hh-chat-player-select');
 
-        // Update current viewed player
         window.currentViewedId = steamId;
 
-        // Update panel title
         title.innerText = `${getI18nMsg("chat_username", [name])}`;
-        if (searchInput) searchInput.value = ''; // Clear search on open
+        if (searchInput) searchInput.value = ''; 
 
-        // Sync dropdown selection
         if (select) {
             select.value = steamId;
         }
 
-        renderChatLines(); // Render lines for this player
+        renderChatLines(); 
         chatView.style.display = 'flex';
     };
 
@@ -1310,33 +1281,22 @@ const updateHeartbeat = () => {
         const searchInput = chatView.querySelector('.hh-chat-search');
         const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-        // Get Filter Values
         const startTime = chatView.querySelector('#hh-chat-start')?.value.trim();
         const endTime = chatView.querySelector('#hh-chat-end')?.value.trim();
         const hideServer = chatView.querySelector('#hh-hide-server')?.checked;
 
         chatHistory
             .filter(m => {
-                // 1. Player Filter
                 if (sid !== 'ALL' && m.steamId !== sid) return false;
-
-                // 2. Server Filter
                 if (hideServer && m.steamId === "0") return false;
-
-                // 3. Text Search
                 if (term && (!m.message || !m.message.toLowerCase().includes(term))) return false;
-
-                // 4. Start Time Filter
                 if (startTime) {
-                    if (m.timestamp === "History") return false; // History has no specific time
+                    if (m.timestamp === "History") return false; 
                     if (m.timestamp < startTime) return false;
                 }
-
-                // 5. End Time Filter
                 if (endTime) {
                     if (m.timestamp !== "History" && m.timestamp > endTime) return false;
                 }
-
                 return true;
             })
             .forEach(m => {
@@ -1428,21 +1388,17 @@ const updateHeartbeat = () => {
         </div>
     `;
 
-        // Event Listeners
         el.querySelector('.hh-chat-search').oninput = renderChatLines;
         el.querySelector('#hh-chat-start').oninput = renderChatLines;
         el.querySelector('#hh-chat-end').oninput = renderChatLines;
         el.querySelector('#hh-hide-server').onchange = renderChatLines;
 
-		// Copy Visible
         el.querySelector('#hh-copy-chat').onclick = () => {
-            // Get the clean string directly from your data array, bypassing the DOM
             const text = getVisibleChatText();
             copyToClipboard(text);			
             showToast(getI18nMsg("toast_mod_copied"));
         };
 
-        // Export
         el.querySelector('#hh-export-chat').onclick = () => {
             const text = getVisibleChatText();
             if (!text) {
@@ -1494,8 +1450,6 @@ const updateHeartbeat = () => {
             item.onclick = (e) => {
                 e.stopPropagation();
 
-                // CRITICAL CHANGE: We cannot type directly here (wrong frame).
-                // We must send a message to the Input Frame.
                 safeSendMessage({action: "PROXY_COMMAND", cmd: `message ${msg.text}`});
 
                 showToast(getI18nMsg("toast_signal",[msg.label]));
@@ -1545,7 +1499,6 @@ const updateHeartbeat = () => {
                 const row = document.createElement('div');
                 row.className = 'hh-queue-row';
 
-                // --- NEW: Generate label for same-line display ---
                 let extraLabel = "";
                 if (item.type === 'role') {
                     extraLabel = `<span style="margin-left:8px; color:#00ffff; font-weight:bold;">[Role: ${item.role || getI18nMsg("queue_role_check")}]</span>`;
@@ -1586,7 +1539,6 @@ const updateHeartbeat = () => {
     // --- CORE LOGIC ---
     const checkRaceStatus = (text, isSilent = false) => {
         if (/Loading\s+Level:/i.test(text)) {
-            // Matches "Loading level: " then captures everything until it hits " ("
             const trackMatch = text.match(/Loading\s+level:\s*([^(\n]+)/i);
             if (trackMatch && trackMatch[1]) {
                 const trackName = trackMatch[1].trim();
@@ -1614,16 +1566,12 @@ const updateHeartbeat = () => {
     };
 
     const processChatLog = (text) => {
-        // 1. Standardize the string (No &nbsp;, trimmed)
         const line = text.replace(/\u00a0/g, ' ').trim();
         if (!line || line.length < 10) return;
 
-        // 2. Duplicate Check
-        // If we already saw this exact timestamp + message, stop immediately.
         if (seenChatLines.has(line)) return;
         seenChatLines.add(line);
 
-        // 3. Regex (Flexible for both Timestamp and Non-Timestamp lines)
         const chatMatch = line.match(/(?:(\d{2}:\d{2}:\d{2}\.\d{3}):\s*)?Chat:\s*(.*?)\s*\(id:\s*(\d+)\):\s*(.*)/i);
 
         if (chatMatch) {
@@ -1632,9 +1580,6 @@ const updateHeartbeat = () => {
             const steamId = chatMatch[3].trim();
             const message = chatMatch[4].trim();
 
-            // 4. Verification Check
-            // If it's a "History" tag, check if we already have this message with a real timestamp
-            // to prevent [History] vs [23:00:00] duplicates
             if (timestamp === "History") {
                 const isDuplicate = chatHistory.some(h =>
                     h.name === name && h.message === message && h.steamId === steamId
@@ -1684,29 +1629,24 @@ const updateHeartbeat = () => {
         if (now - lastAlarmTime < DING_COOLDOWN) return;
 
         lastAlarmTime = now;
-        // Create two oscillators for a "thick" dissonant sound
         const osc1 = audioCtx.createOscillator();
         const osc2 = audioCtx.createOscillator();
 
-        // 440Hz and 445Hz create a jarring interference pattern
         osc1.frequency.setValueAtTime(440, audioCtx.currentTime);
         osc2.frequency.setValueAtTime(445, audioCtx.currentTime);
 
-        // Use 'sawtooth' or 'square' for a harsher, more "alarm-like" buzz
         osc1.type = 'sawtooth';
         osc2.type = 'sawtooth';
 
         const gain = audioCtx.createGain();
         gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
 
-        // Connect both to the same gain node
         osc1.connect(gain);
         osc2.connect(gain);
         gain.connect(audioCtx.destination);
 
         osc1.start();
         osc2.start();
-        // Stop after a short burst
         osc1.stop(audioCtx.currentTime + 0.3);
         osc2.stop(audioCtx.currentTime + 0.3);
     };
@@ -1742,7 +1682,6 @@ const updateHeartbeat = () => {
                     if (item.role) cmd += `,${item.role}`;
                     combinedLogs.push(`${item.name} (${item.sid}) role set to ${item.role || 'Check'} by Server`);
                 } else {
-                    // Default to Ban
                     cmd = (item.dur === PERMA_DUR) ? `ban ${item.sid}` : `ban ${item.sid},${item.dur}`;
 					const msg = `${item.name} (${item.sid}) suspended by Server for ${item.dur} minutes`
                     combinedLogs.push(msg);
@@ -1789,9 +1728,7 @@ const updateHeartbeat = () => {
 
 	const copyToClipboard = (text) => {
 		const cleanText = text
-        // 1. Replace non-breaking spaces (\u00a0) and other weird whitespace with a normal space
         .replace(/[\u00a0\u1680​\u180e\u2000-\u200a\u202f\u205f\u3000]/g, " ")
-        // 2. Normalize horizontal spaces only (preserving \n and \r)
         .replace(/[ \t]+/g, " ")
         .trim();
 		
@@ -1800,7 +1737,6 @@ const updateHeartbeat = () => {
 				console.error('Failed to copy: ', err);
 			});
 		} else {
-			// Fallback for older environments or non-secure contexts
 			const textArea = document.createElement("textarea");
 			textArea.value = cleanText;
 			document.body.appendChild(textArea);
@@ -1871,21 +1807,18 @@ const updateHeartbeat = () => {
         const root = document.documentElement;
         const wrapper = document.getElementById('hh-ui-wrapper');
 
-        // Primary Colors (Pickr strings already contain alpha)
         root.style.setProperty('--hh-p-bg1', sync.primaryColorFirst);
         root.style.setProperty('--hh-p-bg-mid', sync.primaryColorMiddle);
         root.style.setProperty('--hh-p-bg-end', sync.primaryColorEnd);
         root.style.setProperty('--hh-p-txt', sync.primaryTextColor);
         root.style.setProperty('--hh-p-border', sync.primaryBorderColor);
 
-        // Secondary Colors
         root.style.setProperty('--hh-s-bg1', sync.secondaryColorFirst);
         root.style.setProperty('--hh-s-bg-mid', sync.secondaryColorMiddle);
         root.style.setProperty('--hh-s-bg-end', sync.secondaryColorEnd);
         root.style.setProperty('--hh-s-txt', sync.secondaryTextColor);
         root.style.setProperty('--hh-s-border', sync.secondaryBorderColor);
 
-        // SteamID Colors
         root.style.setProperty('--hh-id-bg1', sync.steamidColorFirst);
         root.style.setProperty('--hh-id-bg-mid', sync.steamidColorMiddle);
         root.style.setProperty('--hh-id-bg-end', sync.steamidColorEnd);
@@ -1894,11 +1827,11 @@ const updateHeartbeat = () => {
 
         if (sync.enabled === false) {
             document.body.classList.add('hh-disabled');
-            if (wrapper) wrapper.style.display = 'none'; // Hide toolbar and queue
-            stripHighlights(); // Immediately clear existing highlights
+            if (wrapper) wrapper.style.display = 'none'; 
+            stripHighlights(); 
         } else {
             document.body.classList.remove('hh-disabled');
-            if (wrapper) wrapper.style.display = 'flex'; // Show toolbar and queue
+            if (wrapper) wrapper.style.display = 'flex'; 
         }
     };
 
@@ -1931,14 +1864,12 @@ const updateHeartbeat = () => {
 			if (msg.settings && msg.settings.preferredLanguage) {
 				initLocalization(msg.settings.preferredLanguage).then(() => {
 					
-					// 1. Rebuild the Main Toolbar
 					const toolbar = document.getElementById('hh-toolbar');
 					if (toolbar) {
 						toolbar.remove();
 						createToolbar();
 					}
 
-					// 2. Refresh passive UI elements
 					updateHeartbeat();
 					updateRaceUI(isRacing);
 
@@ -1948,14 +1879,12 @@ const updateHeartbeat = () => {
 						updateQueueDisplay();
 					}
 
-					// 3. Rebuild the Player List Panel if it's open
 					if (document.getElementById('hh-player-panel')) {
 						document.getElementById('hh-player-panel').remove();
-						renderList = null; // Important: resets the internal reference
-						togglePlayerList(); // Re-opens it fresh
+						renderList = null; 
+						togglePlayerList(); 
 					}
 
-					// 4. Rebuild the Help Window
 					const helpView = document.getElementById('hh-help-view');
 					if (helpView) {
 						const wasOpen = helpView.style.display !== 'none';
@@ -1963,7 +1892,6 @@ const updateHeartbeat = () => {
 						if (wasOpen) openHelpWindow();
 					}
 
-					// 5. Rebuild the Mod Log View
 					const modView = document.getElementById('hh-mod-view');
 					if (modView) {
 						const wasOpen = modView.style.display !== 'none';
@@ -1971,7 +1899,6 @@ const updateHeartbeat = () => {
 						if (wasOpen) openModLog();
 					}
 
-					// 6. Rebuild the Chat View (and remember who they were looking at)
 					const chatView = document.getElementById('hh-chat-view');
 					if (chatView) {
 						const wasOpen = chatView.style.display !== 'none';
@@ -1987,7 +1914,6 @@ const updateHeartbeat = () => {
 						}
 					}
 
-					// 7. Hide any open context menus (they will regenerate with new text on next click)
 					if (typeof actionMenu !== 'undefined' && actionMenu) {
 						actionMenu.style.display = 'none';
 					}
@@ -1999,7 +1925,6 @@ const updateHeartbeat = () => {
     function bootstrapOnlineFromHistory() {
         const now = Date.now();
 
-        // Start pessimistic
         Object.values(NAME_MAP).forEach(p => {
             p.online = false;
             p.lastSeen = 0;
@@ -2009,7 +1934,6 @@ const updateHeartbeat = () => {
             const text = (el.innerText || "").trim();
             if (!text) return;
 
-            // Reuse your *existing* parsers
             processJoinLeaveFromText(text);
             processChatLog(text);
 
@@ -2018,7 +1942,6 @@ const updateHeartbeat = () => {
 }
         });
 
-        // Anyone who chatted but never had join logged
         Object.values(NAME_MAP).forEach(p => {
             if (p.lastSeen && !p.online) {
                 p.online = true;
@@ -2036,9 +1959,6 @@ const updateHeartbeat = () => {
         let dataChanged = false;
         let tableFoundInThisScan = false;
 
-        // --- PART 1: DATA EXTRACTION (Robust Text Parsing) ---
-        // We read the entire log text, normalize spaces, and split by line.
-        // This ensures we catch the table row even if it's split across 10 different spans.
         const fullText = (logRoot.innerText || "").replace(/[\u00a0\t]/g, ' ');
         const lines = fullText.split('\n');
 
@@ -2059,7 +1979,7 @@ const updateHeartbeat = () => {
                         name: tableMatch[2].trim(),
                         connId: tableMatch[1],
                         online: true,
-                        role: role, // Store the role
+                        role: role, 
                         lastSeen: Date.now()
                     };
                     dataChanged = true;
@@ -2071,7 +1991,6 @@ const updateHeartbeat = () => {
                 const existing = NAME_MAP[id] || {};
                 const joined = logMatch[1].toLowerCase().includes('joined');
 
-                // Only update if status actually changes to avoid spamming saveRegistry
                 if (existing.online !== joined) {
                     NAME_MAP[id] = {
                         name: logMatch[3].trim() || existing.name || getI18nMsg("name_unknown"),
@@ -2086,12 +2005,10 @@ const updateHeartbeat = () => {
 
         if (dataChanged) {
             saveRegistry();
-            // Force immediate UI update
             if (renderList) renderList(document.getElementById('hh-player-search')?.value || "");
             updateRaceUI(isRacing);
         }
 
-        // --- PART 2: Highlighting (Standard Logic) ---
         const p = KEYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
         const s = SECONDARYWORDS.filter(k => k.enabled !== false).map(k => typeof k === 'string' ? k : k.text).filter(Boolean);
         const allWords = [...p, ...s].sort((a, b) => b.length - a.length);
@@ -2189,7 +2106,23 @@ const updateHeartbeat = () => {
                 if (!dur || isNaN(dur)) return;
             }
 			handleModAction(type, sid, {duration: dur || PERMA_DUR});
-        } else if (type === 'msg') {
+        } else if (type === 'global_ban') {
+			const cmd = `ban ${sid}`;
+            handleModAction('ban', sid, { duration: dur || PERMA_DUR, name: currentData.name, global: true }); // Local execution + Clipboard
+			safeSendMessage({ action: "GLOBAL_COMMAND", cmd: cmd, excludeId: getServiceId() }); // Queue background tabs
+			showToast("Global ban initiated via tab queue");
+		} else if (type === 'global_unban') {
+			const cmd = `unban ${sid}`;
+            safeSendMessage({action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true}); // Local unban
+			safeSendMessage({ action: "GLOBAL_COMMAND", cmd: cmd, excludeId: getServiceId() }); // Queue background tabs
+			showToast("Global unban initiated via tab queue");
+		} else if (type === 'global_role') {
+            const roleArg = item.getAttribute('data-role') || 'default';
+            const cmd = `role ${sid},${roleArg}`;
+            safeSendMessage({action: "PROXY_COMMAND", cmd: cmd, autoSubmit: true}); // Local
+            safeSendMessage({action: "GLOBAL_COMMAND", cmd: cmd, excludeId: getServiceId()}); // Queue
+            showToast(`Global role (${roleArg}) initiated via tab queue`);
+		} else if (type === 'msg') {
             const msgText = item.getAttribute('data-text');
 
             let finalText = msgText.replace('{player}', currentData.name);
@@ -2209,8 +2142,9 @@ const updateHeartbeat = () => {
             showToast(getI18nMsg("submenu_user_listing"));
         } else if (type === 'chatlog') {
             openPlayerChat(sid, currentData.name);
-        } else {
+        } else if (type === 'copy') {
             copyToClipboard(sid);
+            showToast(getI18nMsg("toast_copied_id", [sid])); 
         }
         actionMenu.style.display = 'none';
     };
@@ -2236,7 +2170,7 @@ const updateHeartbeat = () => {
         <div class="hh-header-left"><span class="hh-status-dot ${data.online ? 'hh-status-online' : 'hh-status-offline'}"></span><span>${data.name}</span></div>
         <span id="hh-close-x">✕</span>
       </div>
-	<div class="hh-menu-row ${!data.online ? 'disabled' : ''}" data-type="kick" data-sid="${sid}" data-conn="${data.connId || ''}">${getI18nMsg("menu_kick")}</div>
+	  <div class="hh-menu-row ${!data.online ? 'disabled' : ''}" data-type="kick" data-sid="${sid}" data-conn="${data.connId || ''}">${getI18nMsg("menu_kick")}</div>
       <div class="hh-menu-row" data-type="parent" id="hh-ban-row">${getI18nMsg("menu_ban")}
         <div class="hh-submenu" id="hh-ban-submenu">
           <div class="hh-submenu-item" data-type="ban" data-sid="${sid}" data-dur="${PERMA_DUR}" >${getI18nMsg("submenu_permanent_ban")}</div>
@@ -2247,6 +2181,7 @@ const updateHeartbeat = () => {
         </div>
       </div>
       <div class="hh-menu-row" data-type="unban" data-sid="${sid}">${getI18nMsg("menu_unban")}</div>
+      
       <div class="hh-menu-row" data-type="parent" id="hh-role-row">${getI18nMsg("menu_role")}
          <div class="hh-submenu" id="hh-role-submenu">
              <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="">${getI18nMsg("submenu_check_status")}</div>
@@ -2256,6 +2191,18 @@ const updateHeartbeat = () => {
              <div class="hh-submenu-item" data-type="role" data-sid="${sid}" data-role="admin">${getI18nMsg("submenu_set_admin")}</div>
          </div>
       </div>
+
+      <div class="hh-menu-row" data-type="parent">${getI18nMsg("global_actions") || 'Global Actions'}
+         <div class="hh-submenu" id="hh-global-submenu">
+             <div class="hh-submenu-item" data-type="global_ban" data-sid="${sid}" data-dur="${PERMA_DUR}">${getI18nMsg("global_ban") || 'Global Ban'}</div>
+             <div class="hh-submenu-item" data-type="global_unban" data-sid="${sid}">${getI18nMsg("global_unban") || 'Global Unban'}</div>
+             <div class="hh-submenu-item" data-type="global_role" data-sid="${sid}" data-role="default">${getI18nMsg("submenu_set_default")}</div>
+             <div class="hh-submenu-item" data-type="global_role" data-sid="${sid}" data-role="vip">${getI18nMsg("submenu_set_vip")}</div>
+             <div class="hh-submenu-item" data-type="global_role" data-sid="${sid}" data-role="moderator">${getI18nMsg("submenu_set_moderator")}</div>
+             <div class="hh-submenu-item" data-type="global_role" data-sid="${sid}" data-role="admin">${getI18nMsg("submenu_set_admin")}</div>
+         </div>                                                                                                                     
+	  </div>
+
       <div class="hh-menu-row" data-type="parent" id="hh-message-row">${getI18nMsg("submenu_message")}
         <div class="hh-submenu" id="hh-message-submenu">
 			${MESSAGES.filter(m => m.text.includes('{player}')).length > 0
@@ -2316,7 +2263,7 @@ document.addEventListener('contextmenu', (e) => {
     const isLogContext = window.location.href.includes("StreamFile.aspx") ||
                          window.location.href.includes("Proxy.ashx") ||
                          e.target.closest('pre, #ConsoleOutput, #consoleOutput, .log-container') ||
-                         document.body; // Fallback: If we are running, the body is likely the log.
+                         document.body; 
     if (isLogContext) {
 		e.preventDefault();
         e.stopPropagation();
@@ -2358,7 +2305,7 @@ document.addEventListener('contextmenu', (e) => {
             let leftPos = e.pageX + 5;
 
             if (e.clientY + 200 > viewportHeight) { 
-                topPos = e.pageY - 150; // Offset upwards
+                topPos = e.pageY - 150; 
             }
 
             if (e.clientX + 450 > window.innerWidth) {
@@ -2377,7 +2324,6 @@ document.addEventListener('contextmenu', (e) => {
 
         audioCtx = new AudioContext();
 
-        // Resume is optional but safe
         if (audioCtx.state === 'suspended') {
             audioCtx.resume();
         }
@@ -2386,7 +2332,6 @@ document.addEventListener('contextmenu', (e) => {
         document.removeEventListener('click', primeAudio, true);
     };
 
-    // Capture phase helps extensions
     document.addEventListener('pointerdown', primeAudio, true);
     document.addEventListener('click', primeAudio, true);
 
@@ -2426,19 +2371,16 @@ document.addEventListener('contextmenu', (e) => {
                     isMuted = changes.muteAll.newValue;
                 }
 
-                // Update local variables so scan() uses new words
                 KEYWORDS = data.keywords || [];
                 SECONDARYWORDS = data.secondarykeywords || [];
                 MESSAGES = data.messages || [];
 
-                // If keywords changed, we must re-scan to apply new colors/logic
                 if (changes.keywords || changes.secondarykeywords || changes.enabled) {
-                    stripHighlights(); // Clear old ones
+                    stripHighlights(); 
                     updateRegex();
-                    if (data.enabled !== false) scan(); // Apply new ones
+                    if (data.enabled !== false) scan(); 
                 }
 
-                // Handle Toolbar/UI updates
                 if (changes.messages) {
                     updateToolbarMessages(MESSAGES);
                 }
@@ -2450,24 +2392,21 @@ document.addEventListener('contextmenu', (e) => {
         const logRoot = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
         const rawText = logRoot.innerText || logRoot.textContent || "";
 
-        // Split by timestamp to analyze line by line chronologically
         const entries = rawText.split(/(?=\d{2}:\d{2}:\d{2}\.\d{3}:)/);
 
-        let lastRaceEvent = null; // Track the most recent status found
+        let lastRaceEvent = null; 
         let lastTrackFound = getI18nMsg("race_track_none");
 
         entries.forEach(entry => {
             const line = entry.replace(/\u00a0/g, ' ').trim();
             const lowerLine = line.toLowerCase();
 
-            // 1. Check for Race Status Events
             if (lowerLine.includes("race started")) {
                 lastRaceEvent = "STARTED";
             } else if (lowerLine.includes("race finished") || lowerLine.includes("race abandoned")) {
                 lastRaceEvent = "STOPPED";
             }
 
-            // 2. Check for Track/Level Loading
             if (lowerLine.includes("loading level:")) {
                 const match = line.match(/Loading\s+level:\s*([^(\n\r]+)/i);
                 if (match && match[1]) {
@@ -2476,7 +2415,6 @@ document.addEventListener('contextmenu', (e) => {
             }
         });
 
-        // Apply the results of the scan
         if (lastRaceEvent === "STARTED") {
             isRacing = true;
             safeSendMessage({action: "SET_RACE_MODE", value: true});
@@ -2487,11 +2425,9 @@ document.addEventListener('contextmenu', (e) => {
             console.log("HH Bootstrap: Detected No Active Race");
         }
 
-        // Update the UI with the last track we found in history
         const trackEl = document.getElementById('hh-track-name');
         if (trackEl) trackEl.textContent = lastTrackFound;
 
-        // Sync the visual UI state (the red/green bar)
         updateRaceUI(isRacing);
     };
 
@@ -2501,11 +2437,9 @@ document.addEventListener('contextmenu', (e) => {
             !!document.querySelector('pre, .log-line, #ConsoleOutput');
     };
 
-// Improved detection function
     const isUsersCommandOutputVisible = () => {
         const root = document.querySelector('pre, #ConsoleOutput, .log-container') || document.body;
         const text = root.innerText || "";
-        // Check for the header. Using a regex to handle varying whitespace/hidden chars
         return /player-id,\s*name/i.test(text);
     };
 
@@ -2523,7 +2457,6 @@ document.addEventListener('contextmenu', (e) => {
 
 			await initLocalization(sync.preferredLanguage);
 			
-            // ... (Rest of your settings/UI setup: KEYWORDS, createToolbar, etc.)
             KEYWORDS = sync.keywords || [];
             SECONDARYWORDS = sync.secondarykeywords || [];
             MESSAGES = sync.messages || [];
@@ -2581,10 +2514,9 @@ document.addEventListener('contextmenu', (e) => {
 
             if (!didBootstrap) {
 
-                // Wait until the log actually has content (history loading)
                 let historyWait = 0;
                 while (logRoot.innerText.length < 50 && historyWait < 20) {
-                    await new Promise(r => setTimeout(r, 100)); // Wait up to 2 seconds for history
+                    await new Promise(r => setTimeout(r, 100)); 
                     historyWait++;
                 }
 
@@ -2593,7 +2525,6 @@ document.addEventListener('contextmenu', (e) => {
                 bootstrapRaceStatusFromHistory();
                 updateRaceUI(isRacing);
 
-                // Final check: Is the table there now?
                 if (!isUsersCommandOutputVisible()) {
                     console.log("HH: No table found in history. Requesting 'users'...");
 					const initialDelay = sync.cmdDelay || 1000;
@@ -2649,7 +2580,7 @@ const enterTheMatrix = () => {
         }
         
 		showToast(getI18nMsg("toast_matrix_exit"));
-        return; // Stop execution here
+        return; 
     }
 	
 	matrixCanvas = document.createElement('canvas');
@@ -2705,7 +2636,6 @@ const enterTheMatrix = () => {
 };
 
 
-// Expose it to the window so you can call it from the browser console
 window.enterTheMatrix = enterTheMatrix;
 // ==========================================
 // --- ADMIN DATABASE OVERLAY MODULE ---
@@ -2713,18 +2643,15 @@ window.enterTheMatrix = enterTheMatrix;
 
 const updateTooltipPosition = (tooltip) => {
     const playerPanel = document.getElementById('hh-player-panel');
-    let rightOffset = 24; // Base padding from the right edge
+    let rightOffset = 24; 
     
-    // If the player list is open, push the tooltip out of its way
     if (playerPanel && playerPanel.offsetParent !== null) {
         rightOffset = playerPanel.offsetWidth + 24; 
     }
 
-    // Lock to the bottom right!
     tooltip.style.bottom = '24px';
     tooltip.style.right = `${rightOffset}px`;
     
-    // Ensure top and left aren't fighting us
     tooltip.style.top = 'auto';  
     tooltip.style.left = 'auto'; 
 };
@@ -2953,4 +2880,62 @@ function createStatBox(label, value, color, isDanger = false) {
 // ==========================================
 // --- END OF ADMIN DATABASE OVERLAY MODULE ---
 // ==========================================
+
+// ==========================================
+// --- TAB QUEUE WORKER HOOK ---
+// ==========================================
+const urlParams = new URLSearchParams(window.location.search);
+const autoCmd = urlParams.get('auto_cmd');
+
+if (autoCmd) {
+	const attemptInjection = setInterval(() => {
+		let inputDoc = document;
+		let input = inputDoc.getElementById("ContentPlaceHolderMain_ServiceWebConsoleInput1_TextBoxCommand") || 
+					inputDoc.querySelector('input[id*="TextBoxCommand"]');
+		
+		if (!input) {
+			const innerFrame = document.querySelector('iframe[src*="ServiceWebConsoleInput.aspx"]');
+			if (innerFrame && innerFrame.contentDocument) {
+				inputDoc = innerFrame.contentDocument;
+				input = inputDoc.querySelector('input[name*="TextBoxCommand"]');
+			}
+		}
+
+		if (input) {
+			clearInterval(attemptInjection); 
+			
+			const inputWindow = inputDoc.defaultView;
+			input.focus();
+			
+			const nativeSetter = Object.getOwnPropertyDescriptor(inputWindow.HTMLInputElement.prototype, "value")?.set;
+			if (nativeSetter) {
+				nativeSetter.call(input, autoCmd);
+			} else {
+				input.value = autoCmd;
+			}
+
+			input.dispatchEvent(new inputWindow.Event('input', {bubbles: true}));
+			input.dispatchEvent(new inputWindow.Event('change', {bubbles: true}));
+			
+			setTimeout(() => {
+				const kbdEventOpts = { bubbles: true, cancelable: true, keyCode: 13, which: 13, key: 'Enter' };
+				input.dispatchEvent(new inputWindow.KeyboardEvent('keydown', kbdEventOpts));
+				input.dispatchEvent(new inputWindow.KeyboardEvent('keypress', kbdEventOpts));
+				input.dispatchEvent(new inputWindow.KeyboardEvent('keyup', kbdEventOpts));
+				input.blur();
+				
+				console.log("[HH Worker] Command sent via KeyboardEvent, closing tab in 1.5s...");
+				
+				setTimeout(() => {
+					chrome.runtime.sendMessage({ action: "WORKER_COMMAND_DONE" });
+				}, 1500);
+			}, 100);
+		}
+	}, 500);
+	
+	setTimeout(() => {
+		clearInterval(attemptInjection);
+		chrome.runtime.sendMessage({ action: "WORKER_COMMAND_DONE" });
+	}, 10000);
+}
 })();

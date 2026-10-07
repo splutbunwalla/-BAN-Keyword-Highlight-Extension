@@ -3,10 +3,11 @@
   "default_locale": "en",
   "name": "__MSG_extension_name__",
   "description": "__MSG_extension_description__",
-  "version": "1.92",
+  "version": "1.95",
   "permissions": [
     "storage",
-    "clipboardWrite"
+    "clipboardWrite",
+	"tabs"
   ],
   "host_permissions": [
     "https://gamepanel.hosthavoc.com/Aspx/Interface/*",
@@ -34,6 +35,7 @@
   "content_scripts": [
     {
       "matches": [
+		"https://gamepanel.hosthavoc.com/Aspx/Interface/GameHosting/ServiceWebConsole.aspx*",
         "https://gamepanel.hosthavoc.com/Aspx/Interface/GameHosting/ServiceWebConsoleInput.aspx*",
         "https://*.dyn.tcadmin.net:8881/Monitor/Public/FileSystem/StreamFile.aspx*",
         "https://gamepanel.hosthavoc.com/Aspx/Interface/Base/Proxy.ashx/Request-*"
