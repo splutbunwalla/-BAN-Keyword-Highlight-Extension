@@ -164,14 +164,16 @@ function saveSettingsSilently() {
 
 function renderKeywords(containerId, words, storageKey) {
     const container = document.getElementById(containerId);
-    container.innerHTML = "";
+    container.replaceChildren();
     words.forEach((item, index) => {
         const div = document.createElement("div");
         div.className = "keyword-item";
 
         const dingBtn = document.createElement('button');
         dingBtn.className = 'icon-btn ding-btn' + (item.ding ? ' active' : '');
-        dingBtn.innerHTML = speakerIconSVG;
+		const parser = new DOMParser();
+        const svgDoc = parser.parseFromString(speakerIconSVG, 'image/svg+xml');
+        dingBtn.appendChild(svgDoc.documentElement);
         dingBtn.title = item.ding ? chrome.i18n.getMessage("sound_on") : chrome.i18n.getMessage("sound_off");
 
         dingBtn.onclick = () => {
@@ -206,8 +208,8 @@ function renderKeywords(containerId, words, storageKey) {
         const span = document.createElement("span");
         span.textContent = item.text;
 
-        const del = document.createElement("button");
-        del.innerHTML = "&times;";
+		const del = document.createElement("button");
+        del.textContent = "×";
         del.className = "delete-btn";
         del.onclick = () => {
             words.splice(index, 1);
@@ -224,7 +226,7 @@ function renderKeywords(containerId, words, storageKey) {
 
 function renderMessages(messages) {
     const container = document.getElementById("message-list");
-    container.innerHTML = "";
+    container.replaceChildren();
 
     messages.forEach((m, index) => {
         const div = document.createElement("div");
@@ -234,13 +236,18 @@ function renderMessages(messages) {
         info.className = "item-info";
         info.setAttribute('title', m.text);
 
-        info.innerHTML = `
-      <span class="item-label-text">${m.label}</span>
-      <span class="item-text-val">${m.text}</span>
-    `;
+		const labelSpan = document.createElement("span");
+        labelSpan.className = "item-label-text";
+        labelSpan.textContent = m.label;
+
+        const valSpan = document.createElement("span");
+        valSpan.className = "item-text-val";
+        valSpan.textContent = m.text;
+
+        info.append(labelSpan, valSpan);
 
         const del = document.createElement("button");
-        del.innerHTML = "&times;";
+        del.textContent = "×";
         del.className = "delete-btn";
 
         del.onclick = () => {

@@ -170,7 +170,7 @@ const handleModAction = (type, sid, options = {}) => {
 		el.id = 'hh-help-view';
 		el.className = 'hh-chat-view'; 
 		el.style.pointerEvents = 'auto'
-		el.innerHTML = `
+		el.innerHTML = DOMPurify.sanitize(`
 			<div class="hh-panel-header">
 				<span class="hh-panel-title">${getI18nMsg("server_commands")}</span>
 				<span id="hh-help-close" style="cursor:pointer;color:#ff4444;font-weight:bold;font-size:18px;">✖</span>
@@ -187,7 +187,7 @@ const handleModAction = (type, sid, options = {}) => {
 				</div>
 				<span style="font-size: 10px; color: #666; font-style: italic;">${getI18nMsg("message_run")}</span>
 			</div>
-		`;
+		`);
 		getUIWrapper().appendChild(el);
 
 		el.querySelector('#hh-help-search').oninput = () => { helpPage = 0; renderHelpLines(); };
@@ -214,14 +214,14 @@ const handleModAction = (type, sid, options = {}) => {
 			const line = document.createElement('div');
 			line.className = 'hh-mod-line'; 
 			line.style.cursor = 'pointer';
-			line.innerHTML = `
+			line.innerHTML = DOMPurify.sanitize(`
 				<div style="flex-grow:1">
 					<strong style="color: var(--hh-accent)">${c.cmd}</strong> 
 					<span style="color: #888; font-size: 11px;">${c.aliases ? '('+c.aliases+')' : ''}</span>
 					<div style="font-size: 12px; color: #bbb;">${c.desc}</div>
 				</div>
 				<button class="hh-tool-btn info" style="padding: 2px 8px;">${getI18nMsg("btn_run")}</button>
-			`;
+			`);
 			line.onclick = () => {
 				if (['ban', 'kick', 'role'].includes(c.cmd)) {
 					const input = prompt(getI18nMsg("prompt_params", [c.cmd]));
@@ -281,7 +281,7 @@ const handleModAction = (type, sid, options = {}) => {
 
 		menuHtml += `<div class="hh-menu-row" id="ctx-btn-close" style="border-top: 1px solid #444; color: #ff4444;">${getI18nMsg("menu_close")}</div>`;
 		
-		actionMenu.innerHTML = menuHtml;
+		actionMenu.innerHTML = DOMPurify.sanitize(menuHtml);
 
 		actionMenu.style.left = `${e.pageX}px`;
 		actionMenu.style.top = `${e.pageY}px`;
@@ -338,11 +338,11 @@ const handleModAction = (type, sid, options = {}) => {
 			});
 		}
 
-		actionMenu.innerHTML = `
+		actionMenu.innerHTML = DOMPurify.sanitize(`
 			<div class="hh-menu-row" id="ctx-btn-translate">${getI18nMsg("menu_translate")}</div>
 			<div class="hh-menu-row" id="ctx-btn-copy">${getI18nMsg("menu_copy")}</div>
 			<div class="hh-menu-row" id="ctx-btn-close">${getI18nMsg("menu_close")}</div>
-		`;
+		`);
 
 		actionMenu.style.display = 'flex'; 
 		actionMenu.style.visibility = 'visible';
@@ -414,20 +414,32 @@ const handleModAction = (type, sid, options = {}) => {
 		line.style.flexDirection = 'column';
 		line.style.alignItems = 'flex-start';
 
-		line.innerHTML = `
-			<div class="hh-chat-row-main">
-				<span class="hh-mod-ts">[${m.timestamp}]</span> 
-				<strong>${m.name}</strong>: <span class="hh-message-body">${m.message}</span>
-			</div>
-			<div class="hh-chat-translation" style="display:none; color:#00ff88; font-size:11px; padding-left:15px; font-style:italic; white-space: normal;"></div>
-		`;
+		const rowMain = document.createElement('div');
+		rowMain.className = 'hh-chat-row-main';
+
+		const tsSpan = document.createElement('span');
+		tsSpan.className = 'hh-mod-ts';
+		tsSpan.textContent = `[${m.timestamp}]`;
+
+		const nameStrong = document.createElement('strong');
+		nameStrong.textContent = m.name;
+
+		const msgSpan = document.createElement('span');
+		msgSpan.className = 'hh-message-body';
+		msgSpan.textContent = m.message;
+
+		rowMain.append(tsSpan, document.createTextNode(' '), nameStrong, document.createTextNode(': '), msgSpan);
+
+		const transDiv = document.createElement('div');
+		transDiv.className = 'hh-chat-translation';
+		transDiv.style.cssText = 'display:none; color:#00ff88; font-size:11px; padding-left:15px; font-style:italic; white-space: normal;';
+
+		line.append(rowMain, transDiv);
 
 		line.oncontextmenu = (e) => {
 			if (!isEnabled) return;
-			
 			e.preventDefault();
 			e.stopPropagation();
-			const transDiv = line.querySelector('.hh-chat-translation');
 			showTranslationMenu(e, m.message, transDiv);
 		};
 
@@ -449,7 +461,7 @@ const handleModAction = (type, sid, options = {}) => {
 		el.style.minWidth = '300px';
 		el.style.minHeight = '200px';
 		el.style.pointerEvents = 'auto'
-		el.innerHTML = `
+		el.innerHTML = DOMPurify.sanitize(`
 			<div class="hh-panel-header">
 				<div class="hh-header-left">
 					<span class="hh-panel-title">${getI18nMsg("mod_panel_title")}</span>
@@ -482,7 +494,7 @@ const handleModAction = (type, sid, options = {}) => {
 					<button id="hh-copy-mod" class="hh-tool-btn info">${getI18nMsg("mod_btn_copy")}</button>
 				</div>
 			</div>
-		`;
+		`);
 		let wrapper = document.getElementById('hh-ui-wrapper');
 		if (!wrapper) {
 			wrapper = document.createElement('div');
@@ -557,13 +569,13 @@ const handleModAction = (type, sid, options = {}) => {
             line.style.display = 'block';
             
 			const color = m.action === 'BANNED' ? '#ff4444' : '#ffcc00';
-			line.innerHTML = `
+			line.innerHTML = DOMPurify.sanitize(`
                 <span class="hh-mod-ts" style="margin-right: 6px;">[${m.timestamp}]</span>
                 <span class="hh-mod-action" style="color:${color}; margin-right: 6px;">${m.action}</span>
                 <span class="hh-mod-target" style="margin-right: 6px;">${m.targetName}</span>
                 <span style="color:#666; margin-right: 6px;">(${m.targetId})</span>
                 <span class="hh-mod-admin">by ${m.adminName}</span>
-            `;
+            `);
 			container.appendChild(line);
 		});
 
@@ -802,12 +814,12 @@ const updateHeartbeat = () => {
         const countText = getI18nMsg("player_count", [count]);
 
         if (active) {
-            el.innerHTML = `${getI18nMsg("race_active")}${countText}`;
+            el.innerHTML = DOMPurify.sanitize(`${getI18nMsg("race_active")}${countText}`);
             el.style.background = 'rgba(255, 0, 0, 0.2)';
             el.style.color = '#ff4d4d';
             el.style.border = '1px solid #ff4d4d';
         } else {
-            el.innerHTML = `${getI18nMsg("race_none")}${countText}`;
+            el.innerHTML = DOMPurify.sanitize(`${getI18nMsg("race_none")}${countText}`);
             el.style.background = 'rgba(255, 255, 255, 0.1)';
             el.style.color = '#ccc';
             el.style.border = '1px solid #444';
@@ -847,7 +859,7 @@ const updateHeartbeat = () => {
         tools.forEach(tool => {
             const btn = document.createElement('div');
             btn.className = `hh-tool-btn ${tool.type}`;
-            btn.innerHTML = `<span>${tool.icon}</span> ${tool.label}`;
+            btn.innerHTML = DOMPurify.sanitize(`<span>${tool.icon}</span> ${tool.label}`);
             btn.title = tool.desc;
 
 			if (tool.id) btn.id = tool.id;
@@ -906,10 +918,10 @@ const updateHeartbeat = () => {
 
         const infoGroup = document.createElement('div');
         infoGroup.className = 'hh-info-group';
-        infoGroup.innerHTML = `
+        infoGroup.innerHTML = DOMPurify.sanitize(`
     <div id="hh-race-status" class="hh-status-tag" title="${getI18nMsg("race_title")}">${getI18nMsg("race_none")}</div>
     <div id="hh-track-name" class="hh-track-display" title="${getI18nMsg("race_track_title")}">${getI18nMsg("waiting_for_track")}</div>
-  `;
+  `);
 
         updateRaceUI(isRacing);
         toolbar.appendChild(infoGroup);
@@ -961,7 +973,7 @@ const updateHeartbeat = () => {
 	    cmdActions.forEach(act => {
             const item = document.createElement('div');
             item.className = 'hh-menu-item';
-            item.innerHTML = `<span>${act.icon}</span> ${act.label}`;
+            item.innerHTML = DOMPurify.sanitize(`<span>${act.icon}</span> ${act.label}`);
 			item.title = act.desc;
             item.onclick = (e) => {
                 e.stopPropagation();
@@ -990,7 +1002,7 @@ const updateHeartbeat = () => {
         sidSubmenu.style.top = '100%';
         sidSubmenu.style.bottom = 'auto';
         
-        sidSubmenu.innerHTML = `
+        sidSubmenu.innerHTML = DOMPurify.sanitize(`
             <div class="hh-menu-row" data-type="prompt_ban" data-dur="${PERMA_DUR}">${getI18nMsg("submenu_permanent_ban")}</div>
             <div class="hh-menu-row" data-type="prompt_unban">${getI18nMsg("menu_unban") || 'Local Unban'}</div>
             <div class="hh-menu-row" data-type="parent">${getI18nMsg("menu_role")}
@@ -1011,7 +1023,7 @@ const updateHeartbeat = () => {
                     <div class="hh-submenu-item" data-type="prompt_global_role" data-role="admin">${getI18nMsg("submenu_set_admin")}</div>
                 </div>
             </div>
-        `;
+        `);
 
 		sidSubmenu.onclick = (e) => {
             const item = e.target.closest('.hh-menu-row, .hh-submenu-item');
@@ -1164,14 +1176,14 @@ const updateHeartbeat = () => {
         panel = document.createElement('div');
         panel.id = 'hh-player-panel';
         panel.style.pointerEvents = 'auto';
-        panel.innerHTML = `
+        panel.innerHTML = DOMPurify.sanitize(`
     <div class="hh-panel-header">
       <span>${getI18nMsg("online_players")}</span>
       <input type="text" id="hh-player-search" placeholder="${getI18nMsg("search_placeholder")}">
       <button id="hh-panel-close">×</button>
     </div>
     <div id="hh-player-list-content"></div>
-  `;
+  `);
 
         getUIWrapper().appendChild(panel);
 
@@ -1193,17 +1205,41 @@ const updateHeartbeat = () => {
                     if (data.name.toLowerCase().includes(filter.toLowerCase())) {
                         const row = document.createElement('div');
                         row.className = 'hh-player-row';
-                        row.innerHTML = `
-            <div class="hh-player-info" title="${getI18nMsg("player_list_copy_title")}">
-              <span class="hh-player-name">${data.name}</span>
-              <span class="hh-player-id">${id}</span>
-            </div>
-            <div class="hh-player-actions">
-              <button class="hh-btn-profile" title="${getI18nMsg("player_list_profile_title")}">P</button>
-              <button class="hh-btn-kick" 	 title="${getI18nMsg("player_list_kick_title")}">K</button>
-              <button class="hh-btn-ban" 	 title="${getI18nMsg("player_list_ban_title")}">B</button>
-            </div>
-          `;
+
+						const infoDiv = document.createElement('div');
+						infoDiv.className = 'hh-player-info';
+						infoDiv.title = getI18nMsg("player_list_copy_title");
+
+						const nameSpan = document.createElement('span');
+						nameSpan.className = 'hh-player-name';
+						nameSpan.textContent = data.name;
+
+						const idSpan = document.createElement('span');
+						idSpan.className = 'hh-player-id';
+						idSpan.textContent = id;
+
+						infoDiv.append(nameSpan, idSpan);
+
+						const actionsDiv = document.createElement('div');
+						actionsDiv.className = 'hh-player-actions';
+
+						const btnProfile = document.createElement('button');
+						btnProfile.className = 'hh-btn-profile';
+						btnProfile.title = getI18nMsg("player_list_profile_title");
+						btnProfile.textContent = 'P';
+
+						const btnKick = document.createElement('button');
+						btnKick.className = 'hh-btn-kick';
+						btnKick.title = getI18nMsg("player_list_kick_title");
+						btnKick.textContent = 'K';
+
+						const btnBan = document.createElement('button');
+						btnBan.className = 'hh-btn-ban';
+						btnBan.title = getI18nMsg("player_list_ban_title");
+						btnBan.textContent = 'B';
+
+						actionsDiv.append(btnProfile, btnKick, btnBan);
+						row.append(infoDiv, actionsDiv);
 
                         row.querySelector('.hh-player-info').onclick = () => {
                             navigator.clipboard.writeText(id);
@@ -1360,7 +1396,7 @@ const updateHeartbeat = () => {
 		el.style.minWidth = '300px';
 		el.style.minHeight = '200px';
 		el.style.pointerEvents = 'auto'
-        el.innerHTML = `
+        el.innerHTML = DOMPurify.sanitize(`
         <div class="hh-panel-header">
             <div class="hh-header-left">
                 <span class="hh-panel-title">${getI18nMsg("chat_history")}</span>
@@ -1386,7 +1422,7 @@ const updateHeartbeat = () => {
             <button id="hh-export-chat" class="hh-tool-btn info">${getI18nMsg("popup_btn_export")}</button>
             <button id="hh-copy-chat" class="hh-tool-btn info">${getI18nMsg("mod_btn_copy")}</button>
         </div>
-    `;
+    `);
 
         el.querySelector('.hh-chat-search').oninput = renderChatLines;
         el.querySelector('#hh-chat-start').oninput = renderChatLines;
@@ -1437,7 +1473,7 @@ const updateHeartbeat = () => {
         const globalMessages = messages.filter(m => !m.text.includes('{player}'));
 
         if (globalMessages.length === 0) {
-            container.innerHTML = `<div class="hh-menu-item disabled">${getI18nMsg("messages_global_empty")}</div>`;
+            container.innerHTML = DOMPurify.sanitize(`<div class="hh-menu-item disabled">${getI18nMsg("messages_global_empty")}</div>`);
             return;
         }
 
@@ -1476,10 +1512,10 @@ const updateHeartbeat = () => {
             container = document.createElement('div');
             container.id = 'hh-queue-container';
 			container.style.pointerEvents = 'auto';
-            container.innerHTML = `
+            container.innerHTML = DOMPurify.sanitize(`
         <div id="hh-queue-header"><span>${getI18nMsg("queue_title")}</span><span id="hh-queue-count">0</span></div>
         <div id="hh-queue-list"></div>
-      `;
+      `);
             wrapper.appendChild(container);
         }
 
@@ -1507,13 +1543,13 @@ const updateHeartbeat = () => {
                     extraLabel = `<span style="margin-left:8px; color:#ffbc00; font-weight:bold;">[${getI18nMsg("menu_ban_prefix")} ${d}]</span>`;
                 }
 
-                row.innerHTML = `
+                row.innerHTML = DOMPurify.sanitize(`
           <div class="hh-queue-info">
             <span class="hh-queue-name" style="display:block; font-size:0.9em; opacity:0.8;">${item.name}</span>
             <span class="hh-queue-sid" style="display:flex; align-items:center;">${item.sid} ${extraLabel}</span>
           </div>
           <span class="hh-queue-remove">&times;</span>
-        `;
+        `);
 
                 row.querySelector('.hh-queue-remove').onclick = () => {
                     banQueue.splice(index, 1);
@@ -2165,7 +2201,7 @@ const updateHeartbeat = () => {
         const sid = target.textContent.trim();
         const data = NAME_MAP[sid] || {name: getI18nMsg("offline_player"), connId: null, online: false};
 
-        actionMenu.innerHTML = `
+        actionMenu.innerHTML = DOMPurify.sanitize(`
       <div class="hh-menu-header">
         <div class="hh-header-left"><span class="hh-status-dot ${data.online ? 'hh-status-online' : 'hh-status-offline'}"></span><span>${data.name}</span></div>
         <span id="hh-close-x">✕</span>
@@ -2216,7 +2252,7 @@ const updateHeartbeat = () => {
       </div>
 	  <div class="hh-menu-row" data-type="lookup" data-sid="${sid}">${getI18nMsg("menu_profile")}</div>
       <div class="hh-menu-row" data-type="copy" data-sid="${sid}">${getI18nMsg("menu_copy_id")}</div>
-      <div class="hh-menu-row" data-type="chatlog" data-sid="${sid}">${getI18nMsg("menu_chat_logs")}</div>`;
+      <div class="hh-menu-row" data-type="chatlog" data-sid="${sid}">${getI18nMsg("menu_chat_logs")}</div>`);
 
         actionMenu.onclick = (ev) => handleMenuClick(ev, data, sid);
 
@@ -2767,13 +2803,13 @@ async function fetchPlayerData(steamId, apiKey, tooltipElement) {
 
     } catch (error) {
         console.error("Admin DB Fetch Error:", error);
-        tooltipElement.innerHTML = `<div style="color: #f43f5e; font-weight: bold; text-align: center;">Failed to load dossier for ${steamId}</div>`;
+        tooltipElement.innerHTML = DOMPurify.sanitize(`<div style="color: #f43f5e; font-weight: bold; text-align: center;">Failed to load dossier for ${steamId}</div>`);
         updateTooltipPosition(tooltipElement);
     }
 }
 
 function showDbLoadingState(tooltip) {
-    tooltip.innerHTML = `
+    tooltip.innerHTML = DOMPurify.sanitize(`
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 0;">
             <svg style="animation: splut-spin 1s linear infinite; height: 32px; width: 32px; color: #a855f7;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle style="opacity: 0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -2782,7 +2818,7 @@ function showDbLoadingState(tooltip) {
             <h3 style="font-size: 14px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; font-style: italic; color: #c084fc; margin: 16px 0 4px 0;">Querying Database...</h3>
             <p style="font-size: 10px; color: #71717a; text-transform: uppercase; letter-spacing: 0.1em; margin: 0;">Compiling historical telemetry</p>
         </div>
-    `;
+    `);
     updateTooltipPosition(tooltip); 
     tooltip.style.display = 'block';
 }
@@ -2837,7 +2873,7 @@ function renderDbTooltipData(tooltip, data, steamId) {
 
     const avgSession = data.stats.sessions > 0 ? formatTime(Math.floor(data.stats.total_time / data.stats.sessions)) : '0h 0m';
 
-    tooltip.innerHTML = `
+    tooltip.innerHTML = DOMPurify.sanitize(`
 		<div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #27272a; padding-bottom: 16px; margin-bottom: 16px; gap: 24px;">
             <div style="min-width: 0; flex: 1;">
                 <h2 style="font-size: 1.25rem; font-weight: 700; text-transform: uppercase; color: #fff; margin: 0; line-height: 1.2;">${displayName}</h2>
@@ -2861,7 +2897,7 @@ function renderDbTooltipData(tooltip, data, steamId) {
             ${createStatBox("Kicks G", data.stats.kicks_given, "#a1a1aa")}
             ${createStatBox("Bans G", data.stats.bans_given, "#a1a1aa")}
         </div>
-    `;
+    `);
     
     if (typeof updateTooltipPosition === 'function') {
         updateTooltipPosition(tooltip);

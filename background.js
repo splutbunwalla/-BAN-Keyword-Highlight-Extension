@@ -1,7 +1,9 @@
 chrome.runtime.onInstalled.addListener(() => {
-    chrome.storage.session.setAccessLevel({accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS'});
+    // Safely check if the browser supports setAccessLevel before calling it
+    if (chrome.storage?.session?.setAccessLevel) {
+        chrome.storage.session.setAccessLevel({accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS'});
+    }
 });
-
 let raceMode = false;
 let queueMode = false;
 let tabStates = {};
